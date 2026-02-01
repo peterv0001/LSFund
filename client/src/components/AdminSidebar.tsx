@@ -12,13 +12,17 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
-  Activity
+  Activity,
+  UserPlus,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const adminNavItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/agents", icon: Users, label: "Agents" },
+  { href: "/admin/leads", icon: UserPlus, label: "Leads" },
+  { href: "/admin/ai-queue", icon: Bot, label: "AI Follow-up Queue" },
   { href: "/admin/deals", icon: Briefcase, label: "Deals" },
   { href: "/admin/commissions", icon: DollarSign, label: "Commissions" },
   { href: "/admin/payouts", icon: CreditCard, label: "Payouts" },

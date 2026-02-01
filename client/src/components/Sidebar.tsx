@@ -14,7 +14,8 @@ import {
   Shield,
   Menu,
   X,
-  BarChart3
+  BarChart3,
+  UserPlus
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function Sidebar() {
   const mainLinks = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/training", label: "Training", icon: BookOpen },
+    { href: "/leads", label: "My Leads", icon: UserPlus },
     { href: "/team", label: "My Team", icon: Users },
     { href: "/deals", label: "Deals", icon: Briefcase },
     { href: "/earnings", label: "Earnings", icon: DollarSign },

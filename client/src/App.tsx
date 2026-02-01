@@ -21,6 +21,7 @@ import LeaderboardsPage from "@/pages/leaderboards";
 import ResourcesPage from "@/pages/resources";
 import TrainingPage from "@/pages/training";
 import ReportsPage from "@/pages/reports";
+import LeadsPage from "@/pages/leads";
 import NotFound from "@/pages/not-found";
 
 // Admin Pages
@@ -28,6 +29,8 @@ import AdminDashboard from "@/pages/admin/index";
 import AdminAgents from "@/pages/admin/agents";
 import AdminCommissions from "@/pages/admin/commissions";
 import AdminPayouts from "@/pages/admin/payouts";
+import AdminLeads from "@/pages/admin/leads";
+import AdminAIQueue from "@/pages/admin/ai-queue";
 
 // Protected Route Wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -109,12 +112,15 @@ function Router() {
       <Route path="/resources" component={() => <ProtectedRoute component={ResourcesPage} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={ReportsPage} />} />
       <Route path="/training" component={() => <ProtectedRoute component={TrainingPage} />} />
+      <Route path="/leads" component={() => <ProtectedRoute component={LeadsPage} />} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={() => <AdminRoute component={AdminDashboard} />} />
       <Route path="/admin/agents" component={() => <AdminRoute component={AdminAgents} />} />
       <Route path="/admin/commissions" component={() => <AdminRoute component={AdminCommissions} />} />
       <Route path="/admin/payouts" component={() => <AdminRoute component={AdminPayouts} />} />
+      <Route path="/admin/leads" component={() => <AdminRoute component={AdminLeads} />} />
+      <Route path="/admin/ai-queue" component={() => <AdminRoute component={AdminAIQueue} />} />
       
       {/* Placeholder admin routes - will redirect to main admin for now */}
       <Route path="/admin/deals" component={() => <AdminRoute component={AdminDashboard} />} />
