@@ -1066,6 +1066,191 @@ export async function registerRoutes(
     res.json({ ...result, page, pageSize });
   });
 
+  // ==================== LEADS MANAGEMENT ====================
+
+  // Admin: Get all leads
+  app.get(api.admin.leads.list.path, requireAdmin, async (req, res) => {
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 50;
+    const status = req.query.status as string | undefined;
+    const unassigned = req.query.unassigned === 'true';
+    const agentId = req.query.agentId ? Number(req.query.agentId) : undefined;
+    
+    const result = await storage.getAllLeads(page, pageSize, { status, unassigned, assignedAgentId: agentId });
+    res.json({ ...result, page, pageSize });
+  });
+
+  // Admin: Get lead stats
+  app.get(api.admin.leads.stats.path, requireAdmin, async (req, res) => {
+    const stats = await storage.getLeadStats();
+    res.json(stats);
+  });
+
+  // Admin: Upload leads (bulk import)
+  app.post(api.admin.leads.upload.path, requireAdmin, async (req, res) => {
+    try {
+      const { leads: leadsData, batchId } = api.admin.leads.upload.input.parse(req.body);
+      const generatedBatchId = batchId || `batch_${Date.now()}`;
+      
+      const createdLeads = await storage.createLeadsBulk(
+        leadsData.map(lead => ({
+          ...lead,
+          batchId: generatedBatchId,
+          status: 'new' as const,
+        }))
+      );
+      
+      res.status(201).json({ created: createdLeads.length, batchId: generatedBatchId });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error(err);
+      res.status(500).json({ message: "Failed to upload leads" });
+    }
+  });
+
+  // Admin: Assign leads to agent
+  app.post(api.admin.leads.assign.path, requireAdmin, async (req, res) => {
+    try {
+      const { leadIds, agentId } = api.admin.leads.assign.input.parse(req.body);
+      
+      const assigned = await storage.assignLeadsToAgent(leadIds, agentId, req.user!.id);
+      
+      res.json({ assigned: assigned.length });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to assign leads" });
+    }
+  });
+
+  // Admin: Get unassigned leads
+  app.get(api.admin.leads.unassigned.path, requireAdmin, async (req, res) => {
+    const leads = await storage.getUnassignedLeads();
+    res.json(leads);
+  });
+
+  // Admin: Get AI followup queue
+  app.get(api.admin.leads.aiQueue.path, requireAdmin, async (req, res) => {
+    const queue = await storage.getAIFollowupQueue();
+    res.json(queue);
+  });
+
+  // Admin: Mark lead as AI processed
+  app.post(api.admin.leads.markAIProcessed.path, requireAdmin, async (req, res) => {
+    const lead = await storage.markAIFollowupProcessed(Number(req.params.id));
+    res.json({ success: true, lead });
+  });
+
+  // Admin: Get all lead requests
+  app.get(api.admin.leadRequests.list.path, requireAdmin, async (req, res) => {
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 50;
+    
+    const result = await storage.getAllLeadRequests(page, pageSize);
+    res.json({ ...result, page, pageSize });
+  });
+
+  // Admin: Get pending lead requests
+  app.get(api.admin.leadRequests.pending.path, requireAdmin, async (req, res) => {
+    const pending = await storage.getPendingLeadRequests();
+    res.json(pending);
+  });
+
+  // Admin: Respond to lead request
+  app.post(api.admin.leadRequests.respond.path, requireAdmin, async (req, res) => {
+    try {
+      const { status, responseNotes, leadsAssigned } = api.admin.leadRequests.respond.input.parse(req.body);
+      
+      await storage.respondToLeadRequest(
+        Number(req.params.id),
+        req.user!.id,
+        status,
+        responseNotes,
+        leadsAssigned
+      );
+      
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to respond to request" });
+    }
+  });
+
+  // ==================== AGENT LEADS ====================
+
+  // Agent: Get my assigned leads
+  app.get(api.leads.list.path, requireAuth, async (req, res) => {
+    const leads = await storage.getLeadsByAgent(req.user!.id);
+    res.json(leads);
+  });
+
+  // Agent: Update lead status
+  app.patch(api.leads.updateStatus.path, requireAuth, async (req, res) => {
+    try {
+      const { status, notes } = api.leads.updateStatus.input.parse(req.body);
+      const leadId = Number(req.params.id);
+      
+      // Verify agent owns this lead
+      const lead = await storage.getLead(leadId);
+      if (!lead || lead.assignedAgentId !== req.user!.id) {
+        return res.status(403).json({ message: "Lead not assigned to you" });
+      }
+      
+      const updated = await storage.updateLeadStatus(leadId, status, notes);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update lead status" });
+    }
+  });
+
+  // Agent: Request AI followup for a lead
+  app.post(api.leads.requestAIFollowup.path, requireAuth, async (req, res) => {
+    const leadId = Number(req.params.id);
+    
+    // Verify agent owns this lead
+    const lead = await storage.getLead(leadId);
+    if (!lead || lead.assignedAgentId !== req.user!.id) {
+      return res.status(403).json({ message: "Lead not assigned to you" });
+    }
+    
+    const updated = await storage.requestAIFollowup(leadId);
+    res.json(updated);
+  });
+
+  // Agent: Request more leads
+  app.post(api.leads.requestMore.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.leads.requestMore.input.parse(req.body);
+      
+      const request = await storage.createLeadRequest({
+        agentId: req.user!.id,
+        requestedCount: input.requestedCount,
+        preferredIndustry: input.preferredIndustry || null,
+        preferredLocation: input.preferredLocation || null,
+        notes: input.notes || null,
+        status: 'pending',
+      });
+      
+      res.status(201).json(request);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to submit lead request" });
+    }
+  });
+
+  // Agent: Get my lead requests
+  app.get(api.leads.myRequests.path, requireAuth, async (req, res) => {
+    const requests = await storage.getLeadRequestsByAgent(req.user!.id);
+    res.json(requests);
+  });
+
   // Seed Data (dev only)
   if (process.env.NODE_ENV !== "production") {
     await seedDatabase();

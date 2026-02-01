@@ -856,6 +856,178 @@ export const api = {
         },
       },
     },
+
+    // Lead Management
+    leads: {
+      list: {
+        method: 'GET' as const,
+        path: '/api/admin/leads',
+        responses: {
+          200: z.object({
+            leads: z.array(z.any()),
+            total: z.number(),
+            page: z.number(),
+            pageSize: z.number(),
+          }),
+        },
+      },
+      stats: {
+        method: 'GET' as const,
+        path: '/api/admin/leads/stats',
+        responses: {
+          200: z.object({
+            total: z.number(),
+            unassigned: z.number(),
+            byStatus: z.record(z.number()),
+            aiFollowupPending: z.number(),
+          }),
+        },
+      },
+      upload: {
+        method: 'POST' as const,
+        path: '/api/admin/leads/upload',
+        input: z.object({
+          leads: z.array(z.object({
+            contactName: z.string(),
+            contactEmail: z.string().optional(),
+            contactPhone: z.string().optional(),
+            companyName: z.string().optional(),
+            companySize: z.string().optional(),
+            industry: z.string().optional(),
+            address: z.string().optional(),
+            city: z.string().optional(),
+            state: z.string().optional(),
+            zip: z.string().optional(),
+            source: z.string().optional(),
+          })),
+          batchId: z.string().optional(),
+        }),
+        responses: {
+          201: z.object({
+            created: z.number(),
+            batchId: z.string(),
+          }),
+        },
+      },
+      assign: {
+        method: 'POST' as const,
+        path: '/api/admin/leads/assign',
+        input: z.object({
+          leadIds: z.array(z.number()),
+          agentId: z.number(),
+        }),
+        responses: {
+          200: z.object({
+            assigned: z.number(),
+          }),
+        },
+      },
+      unassigned: {
+        method: 'GET' as const,
+        path: '/api/admin/leads/unassigned',
+        responses: {
+          200: z.array(z.any()),
+        },
+      },
+      aiQueue: {
+        method: 'GET' as const,
+        path: '/api/admin/leads/ai-queue',
+        responses: {
+          200: z.array(z.any()),
+        },
+      },
+      markAIProcessed: {
+        method: 'POST' as const,
+        path: '/api/admin/leads/:id/ai-processed',
+        responses: {
+          200: z.object({ success: z.boolean() }),
+        },
+      },
+    },
+
+    // Lead Requests
+    leadRequests: {
+      list: {
+        method: 'GET' as const,
+        path: '/api/admin/lead-requests',
+        responses: {
+          200: z.object({
+            requests: z.array(z.any()),
+            total: z.number(),
+            page: z.number(),
+            pageSize: z.number(),
+          }),
+        },
+      },
+      pending: {
+        method: 'GET' as const,
+        path: '/api/admin/lead-requests/pending',
+        responses: {
+          200: z.array(z.any()),
+        },
+      },
+      respond: {
+        method: 'POST' as const,
+        path: '/api/admin/lead-requests/:id/respond',
+        input: z.object({
+          status: z.enum(['approved', 'denied', 'fulfilled']),
+          responseNotes: z.string().optional(),
+          leadsAssigned: z.number().optional(),
+        }),
+        responses: {
+          200: z.object({ success: z.boolean() }),
+        },
+      },
+    },
+  },
+
+  // === LEADS (Agent Portal) ===
+  leads: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/leads',
+      responses: {
+        200: z.array(z.any()),
+      },
+    },
+    updateStatus: {
+      method: 'PATCH' as const,
+      path: '/api/leads/:id/status',
+      input: z.object({
+        status: z.enum(['new', 'contacted', 'warm', 'hot', 'qualified', 'submitted', 'closed_won', 'closed_lost', 'ai_followup']),
+        notes: z.string().optional(),
+      }),
+      responses: {
+        200: z.any(),
+      },
+    },
+    requestAIFollowup: {
+      method: 'POST' as const,
+      path: '/api/leads/:id/ai-followup',
+      responses: {
+        200: z.any(),
+      },
+    },
+    requestMore: {
+      method: 'POST' as const,
+      path: '/api/leads/request',
+      input: z.object({
+        requestedCount: z.number().min(1).max(100).default(10),
+        preferredIndustry: z.string().optional(),
+        preferredLocation: z.string().optional(),
+        notes: z.string().optional(),
+      }),
+      responses: {
+        201: z.any(),
+      },
+    },
+    myRequests: {
+      method: 'GET' as const,
+      path: '/api/leads/requests',
+      responses: {
+        200: z.array(z.any()),
+      },
+    },
   },
 };
 
