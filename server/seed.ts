@@ -4,6 +4,90 @@ import { promisify } from "util";
 
 const scryptAsync = promisify(scrypt);
 
+// Seed course modules independently (can run even if agents exist)
+async function seedCourseModules() {
+  try {
+    const existingModules = await storage.getCourseModules();
+    if (existingModules.length > 0) {
+      console.log(`Course modules already exist (${existingModules.length} modules)`);
+      return;
+    }
+
+    console.log("Seeding course modules...");
+
+    const courseModulesData = [
+      {
+        moduleNumber: 1,
+        title: "MCA Fundamentals",
+        description: "Understanding merchant cash advance - what it is, key terms, transaction flow, and how you earn commissions.",
+        videoUrl: "https://www.youtube.com/embed/V_yT4AVwAgU",
+        durationSeconds: 662,
+        slideCount: 16,
+        isPublished: true,
+        sortOrder: 1,
+      },
+      {
+        moduleNumber: 2,
+        title: "Finding Leads",
+        description: "How to find and attract MCA leads - warm markets, online marketing, referral systems, and UCC lead strategies.",
+        videoUrl: "https://www.youtube.com/embed/MhipHRWbC3s",
+        durationSeconds: 281,
+        slideCount: 9,
+        isPublished: true,
+        sortOrder: 2,
+      },
+      {
+        moduleNumber: 3,
+        title: "Qualifying Deals",
+        description: "How to qualify MCA deals - pre-screening questions, documentation requirements, and identifying deal-killers early.",
+        videoUrl: "https://www.youtube.com/embed/nVYX551fOKE",
+        durationSeconds: 376,
+        slideCount: 12,
+        isPublished: true,
+        sortOrder: 3,
+      },
+      {
+        moduleNumber: 4,
+        title: "Submission Process",
+        description: "Step-by-step guide to submitting MCA deals - portal walkthrough, document uploads, and getting quick approvals.",
+        videoUrl: "https://www.youtube.com/embed/MpJD_2DJC5I",
+        durationSeconds: 252,
+        slideCount: 8,
+        isPublished: true,
+        sortOrder: 4,
+      },
+      {
+        moduleNumber: 5,
+        title: "Managing Your Pipeline",
+        description: "Track and manage your deals from submission to funding - pipeline stages, follow-up strategies, and maximizing close rates.",
+        videoUrl: "https://www.youtube.com/embed/VOtLffd7gbs",
+        durationSeconds: 217,
+        slideCount: 7,
+        isPublished: true,
+        sortOrder: 5,
+      },
+      {
+        moduleNumber: 6,
+        title: "Scaling Your Business",
+        description: "Build a sustainable MCA business - recruiting partners, building systems, and creating passive income through team development.",
+        videoUrl: "https://www.youtube.com/embed/zAIoJ0x5A70",
+        durationSeconds: 242,
+        slideCount: 8,
+        isPublished: true,
+        sortOrder: 6,
+      },
+    ];
+
+    for (const module of courseModulesData) {
+      await storage.createCourseModule(module);
+    }
+
+    console.log("Course modules seeded successfully!");
+  } catch (error) {
+    console.error("Error seeding course modules:", error);
+  }
+}
+
 async function mockHash(password: string) {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
@@ -11,6 +95,9 @@ async function mockHash(password: string) {
 }
 
 export async function seedDatabase() {
+  // Always seed course modules if they don't exist
+  await seedCourseModules();
+  
   const agents = await storage.getAllAgents();
   if (agents.length > 0) return;
 
