@@ -2,8 +2,8 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'PSL Capital <noreply@pslcapital.com>';
-const APP_URL = process.env.APP_URL || 'https://pslcapital.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'PSL Capital <noreply@psl.capital>';
+const APP_URL = process.env.APP_URL || 'https://psl.capital';
 
 // Email templates
 const templates = {

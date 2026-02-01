@@ -438,7 +438,7 @@ export async function registerRoutes(
       await storage.updateAgent(agent.id, { referralCode });
     }
     
-    const baseUrl = process.env.APP_URL || 'https://pslcapital.com';
+    const baseUrl = process.env.APP_URL || 'https://psl.capital';
     const referralUrl = `${baseUrl}/join/${referralCode}`;
     
     res.json({ referralCode, referralUrl });
@@ -1052,7 +1052,7 @@ export async function registerRoutes(
       binaryBonusCaps: CONFIG.binaryBonus,
       companyInfo: {
         name: "PSL Capital",
-        supportEmail: "support@pslcapital.com",
+        supportEmail: "support@psl.capital",
       },
     });
   });

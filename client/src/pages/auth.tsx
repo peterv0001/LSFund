@@ -125,7 +125,7 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
         <Input 
           id="username" 
           type="email" 
-          placeholder="agent@capital.com" 
+          placeholder="agent@psl.capital" 
           className="h-12"
           {...form.register("username")} 
         />
