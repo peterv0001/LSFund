@@ -12,6 +12,7 @@ import { pool } from "./db";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
+import { emailService } from "./email";
 
 // Extend Express User type
 declare global {
@@ -217,6 +218,28 @@ export async function registerRoutes(
         isRead: false,
         emailSent: false,
       });
+      
+      // Send welcome email (async, don't wait)
+      emailService.sendWelcomeEmail(agent.email, agent.firstName).catch(console.error);
+      
+      // Notify sponsor of new team member
+      if (sponsorId) {
+        const sponsor = await storage.getAgent(sponsorId);
+        if (sponsor) {
+          await storage.createNotification({
+            agentId: sponsor.id,
+            type: 'team_signup',
+            title: 'New Team Member!',
+            message: `${agent.firstName} ${agent.lastName} just joined your team!`,
+            isRead: false,
+            emailSent: false,
+          });
+          emailService.sendTeamSignupEmail(sponsor.email, {
+            firstName: sponsor.firstName,
+            newMemberName: `${agent.firstName} ${agent.lastName}`,
+          }).catch(console.error);
+        }
+      }
       
       req.login(agent, (err) => {
         if (err) throw err;
@@ -477,6 +500,14 @@ export async function registerRoutes(
         isRead: false,
         emailSent: false,
       });
+      
+      // Send deal funded email (async, don't wait)
+      emailService.sendDealFundedEmail(agent!.email, {
+        firstName: agent!.firstName,
+        merchantName: deal.merchantName,
+        amount: Number(deal.loanAmount),
+        commission: commissionAmount,
+      }).catch(console.error);
       
       // Calculate generation overrides for upline
       const upline = await storage.getUpline(agentId);
