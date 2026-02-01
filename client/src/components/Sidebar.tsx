@@ -22,12 +22,13 @@ export function Sidebar() {
 
   const mainLinks = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/training", label: "Training", icon: BookOpen },
     { href: "/team", label: "My Team", icon: Users },
     { href: "/deals", label: "Deals", icon: Briefcase },
     { href: "/earnings", label: "Earnings", icon: DollarSign },
     { href: "/rank", label: "Rank Progress", icon: TrendingUp },
     { href: "/leaderboards", label: "Leaderboards", icon: Trophy },
-    { href: "/resources", label: "Resources", icon: BookOpen },
+    { href: "/resources", label: "Resources", icon: Briefcase },
   ];
 
   const settingsLinks = [

@@ -19,6 +19,7 @@ import SettingsPage from "@/pages/settings";
 import RankPage from "@/pages/rank";
 import LeaderboardsPage from "@/pages/leaderboards";
 import ResourcesPage from "@/pages/resources";
+import TrainingPage from "@/pages/training";
 import NotFound from "@/pages/not-found";
 
 // Admin Pages
@@ -101,6 +102,7 @@ function Router() {
       <Route path="/rank" component={() => <ProtectedRoute component={RankPage} />} />
       <Route path="/leaderboards" component={() => <ProtectedRoute component={LeaderboardsPage} />} />
       <Route path="/resources" component={() => <ProtectedRoute component={ResourcesPage} />} />
+      <Route path="/training" component={() => <ProtectedRoute component={TrainingPage} />} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={() => <AdminRoute component={AdminDashboard} />} />
