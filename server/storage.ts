@@ -45,6 +45,34 @@ export class DatabaseStorage {
     return agent;
   }
 
+  async getReferralStats(agentId: number): Promise<{
+    totalReferrals: number;
+    thisMonthReferrals: number;
+    activeReferrals: number;
+    recentReferrals: { id: number; firstName: string; lastName: string; createdAt: Date }[];
+  }> {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    // Get all direct referrals (sponsored by this agent)
+    const referrals = await db.select().from(agents)
+      .where(eq(agents.sponsorId, agentId))
+      .orderBy(desc(agents.createdAt));
+
+    const totalReferrals = referrals.length;
+    const thisMonthReferrals = referrals.filter(r => r.createdAt >= monthStart).length;
+    const activeReferrals = referrals.filter(r => r.status === 'active').length;
+    const recentReferrals = referrals.slice(0, 5).map(r => ({
+      id: r.id,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      createdAt: r.createdAt,
+    }));
+
+    return { totalReferrals, thisMonthReferrals, activeReferrals, recentReferrals };
+  }
+
   async createAgent(agent: InsertAgent): Promise<Agent> {
     // Generate referral code if not provided
     const referralCode = agent.referralCode || this.generateReferralCode(agent.firstName, agent.lastName);

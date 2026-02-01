@@ -89,6 +89,9 @@ function Router() {
       <Route path="/signup">
         {user ? <Redirect to="/dashboard" /> : <AuthPage />}
       </Route>
+      <Route path="/join/:code">
+        {(params) => user ? <Redirect to="/dashboard" /> : <Redirect to={`/signup?ref=${params.code}`} />}
+      </Route>
 
       {/* Public Landing Page */}
       <Route path="/">

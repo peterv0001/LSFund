@@ -403,6 +403,36 @@ export async function registerRoutes(
     });
   });
 
+  // Get referral link
+  app.get(api.agents.referralLink.path, requireAuth, async (req, res) => {
+    const agent = await storage.getAgent(req.user!.id);
+    if (!agent) return res.status(404).json({ message: "Agent not found" });
+    
+    // Generate code if missing
+    let referralCode = agent.referralCode;
+    if (!referralCode) {
+      referralCode = `${agent.firstName[0]}${agent.lastName[0]}${Math.random().toString(36).substring(2, 6)}`.toUpperCase();
+      await storage.updateAgent(agent.id, { referralCode });
+    }
+    
+    const baseUrl = process.env.APP_URL || 'https://pslcapital.com';
+    const referralUrl = `${baseUrl}/join/${referralCode}`;
+    
+    res.json({ referralCode, referralUrl });
+  });
+
+  // Get referral stats
+  app.get(api.agents.referralStats.path, requireAuth, async (req, res) => {
+    const stats = await storage.getReferralStats(req.user!.id);
+    res.json({
+      ...stats,
+      recentReferrals: stats.recentReferrals.map(r => ({
+        ...r,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    });
+  });
+
   // ==================== DEAL ROUTES ====================
 
   app.post(api.deals.create.path, requireAuth, async (req, res) => {

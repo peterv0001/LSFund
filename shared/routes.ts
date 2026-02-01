@@ -182,6 +182,33 @@ export const api = {
         }),
       },
     },
+    referralLink: {
+      method: 'GET' as const,
+      path: '/api/agents/referral-link',
+      responses: {
+        200: z.object({
+          referralCode: z.string(),
+          referralUrl: z.string(),
+        }),
+      },
+    },
+    referralStats: {
+      method: 'GET' as const,
+      path: '/api/agents/referral-stats',
+      responses: {
+        200: z.object({
+          totalReferrals: z.number(),
+          thisMonthReferrals: z.number(),
+          activeReferrals: z.number(),
+          recentReferrals: z.array(z.object({
+            id: z.number(),
+            firstName: z.string(),
+            lastName: z.string(),
+            createdAt: z.string(),
+          })),
+        }),
+      },
+    },
   },
 
   // === DEALS ===

@@ -1,5 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useCommissionStats } from "@/hooks/use-commissions";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@shared/routes";
 import { Sidebar } from "@/components/Sidebar";
 import { StatsCard } from "@/components/StatsCard";
 import { Button } from "@/components/ui/button";
@@ -10,7 +12,9 @@ import {
   Clock, 
   Plus, 
   Copy, 
-  ArrowRight
+  ArrowRight,
+  Share2,
+  UserPlus
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -20,12 +24,32 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useCommissionStats();
   const { toast } = useToast();
 
+  // Fetch referral link
+  const { data: referralData } = useQuery({
+    queryKey: ['referral-link'],
+    queryFn: async () => {
+      const res = await fetch(api.agents.referralLink.path, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch referral link');
+      return res.json() as Promise<{ referralCode: string; referralUrl: string }>;
+    },
+  });
+
+  // Fetch referral stats
+  const { data: referralStats } = useQuery({
+    queryKey: ['referral-stats'],
+    queryFn: async () => {
+      const res = await fetch(api.agents.referralStats.path, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch referral stats');
+      return res.json();
+    },
+  });
+
   const copyReferralLink = () => {
-    const link = `${window.location.origin}/signup?ref=${user?.id}`;
+    const link = referralData?.referralUrl || `${window.location.origin}/join/${user?.referralCode || user?.id}`;
     navigator.clipboard.writeText(link);
     toast({
-      title: "Link Copied",
-      description: "Referral link copied to clipboard",
+      title: "Link Copied! 🎉",
+      description: "Share this link to grow your team",
     });
   };
 
@@ -81,8 +105,10 @@ export default function Dashboard() {
           />
           <StatsCard 
             title="Team Size" 
-            value={user?.id ? "1" : "0"} // Placeholder until real team count
+            value={referralStats?.totalReferrals?.toString() ?? "0"}
             icon={<Users className="w-6 h-6" />}
+            trend={referralStats?.thisMonthReferrals ? `+${referralStats.thisMonthReferrals} this month` : undefined}
+            trendUp={referralStats?.thisMonthReferrals > 0}
           />
         </div>
 
@@ -147,6 +173,61 @@ export default function Dashboard() {
                   <span className="font-bold text-primary">$0</span>
                 </div>
               </div>
+            </div>
+
+            {/* Referral Link Card */}
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="flex items-center gap-2 mb-3">
+                <UserPlus className="w-5 h-5" />
+                <h3 className="font-bold text-lg">Grow Your Team</h3>
+              </div>
+              
+              <p className="text-white/80 text-sm mb-4">
+                Share your link and earn commissions when your recruits close deals.
+              </p>
+              
+              <div className="bg-white/10 backdrop-blur rounded-lg p-3 mb-4">
+                <div className="text-xs text-white/60 mb-1">Your Referral Link</div>
+                <div className="font-mono text-sm truncate">
+                  {referralData?.referralUrl || 'Loading...'}
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={copyReferralLink}
+                  className="flex-1 bg-white text-emerald-600 hover:bg-white/90"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Link
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10"
+                  onClick={() => {
+                    if (navigator.share && referralData?.referralUrl) {
+                      navigator.share({
+                        title: 'Join PSL Capital',
+                        text: 'Start earning with MCA deals!',
+                        url: referralData.referralUrl,
+                      });
+                    }
+                  }}
+                >
+                  <Share2 className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {referralStats?.totalReferrals > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/20">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/70">Total Referrals</span>
+                    <span className="font-bold">{referralStats.totalReferrals}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

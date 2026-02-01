@@ -174,6 +174,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
   const [sponsorSearch, setSponsorSearch] = useState("");
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorOption | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [referralLocked, setReferralLocked] = useState(!!referralCode);
 
   const form = useForm({
     resolver: zodResolver(api.auth.register.input),
@@ -188,6 +189,25 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
       password: "",
     }
   });
+
+  // Auto-lookup sponsor when referral code is provided via URL
+  useEffect(() => {
+    if (referralCode) {
+      fetch(`/api/sponsors/search?q=${encodeURIComponent(referralCode)}`)
+        .then(res => res.json())
+        .then((sponsors: SponsorOption[]) => {
+          // Find exact match by referralCode
+          const match = sponsors.find(s => s.referralCode === referralCode);
+          if (match) {
+            setSelectedSponsor(match);
+            form.setValue("sponsorId", match.id);
+            form.setValue("referralCode", "");
+            setReferralLocked(true);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [referralCode]);
 
   const { data: sponsors = [], isLoading: isLoadingSponsors } = useQuery<SponsorOption[]>({
     queryKey: ['/api/sponsors/search', sponsorSearch],
