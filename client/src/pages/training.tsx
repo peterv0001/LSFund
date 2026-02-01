@@ -1,16 +1,12 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Play, 
   CheckCircle2, 
-  Circle, 
   Lock,
   Clock,
   BookOpen,
   Trophy,
-  ChevronRight,
-  Loader2,
   Video,
   FileText,
   GraduationCap
@@ -54,6 +50,9 @@ type TrainingData = {
 };
 
 // Placeholder data - will be replaced with API calls
+// Video durations based on actual built videos:
+// Module 1: 11.0 min (660s), Module 2: 4.7 min (282s), Module 3: 6.3 min (378s)
+// Module 4: 4.2 min (252s), Module 5: 3.6 min (216s), Module 6: 4.0 min (240s)
 const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
   {
     id: 1,
@@ -61,7 +60,7 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
     title: "MCA Fundamentals",
     description: "Understanding the business - what MCA is, key terms, and how you make money",
     videoUrl: "/videos/module1_full.mp4",
-    durationSeconds: 660, // 11 min
+    durationSeconds: 660,
     slideCount: 16,
     isPublished: true,
     progress: { moduleId: 1, status: 'completed', currentSlide: 16, completedSlides: 16, quizScore: 90 }
@@ -72,7 +71,7 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
     title: "Your Ideal Client",
     description: "Finding the right businesses - who qualifies, best industries, and red flags",
     videoUrl: "/videos/module2_full.mp4",
-    durationSeconds: 540,
+    durationSeconds: 282,
     slideCount: 9,
     isPublished: true,
     progress: { moduleId: 2, status: 'in_progress', currentSlide: 5, completedSlides: 4, quizScore: null }
@@ -83,7 +82,7 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
     title: "The Sales Conversation",
     description: "From first contact to signed contract - scripts, objections, and closing",
     videoUrl: "/videos/module3_full.mp4",
-    durationSeconds: 900,
+    durationSeconds: 378,
     slideCount: 12,
     isPublished: true,
     progress: { moduleId: 3, status: 'not_started', currentSlide: 1, completedSlides: 0, quizScore: null }
@@ -94,7 +93,7 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
     title: "Systems & Organization",
     description: "Working like a pro - daily routines, CRM usage, and pipeline management",
     videoUrl: "/videos/module4_full.mp4",
-    durationSeconds: 480,
+    durationSeconds: 252,
     slideCount: 8,
     isPublished: true,
   },
@@ -104,7 +103,7 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
     title: "Follow-Up Mastery",
     description: "The fortune is in the follow-up - sequences, templates, and NL Pearl",
     videoUrl: "/videos/module5_full.mp4",
-    durationSeconds: 420,
+    durationSeconds: 216,
     slideCount: 7,
     isPublished: true,
   },
@@ -114,7 +113,7 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
     title: "Building Your Team",
     description: "From agent to leader - recruiting, onboarding, and the comp plan",
     videoUrl: "/videos/module6_full.mp4",
-    durationSeconds: 540,
+    durationSeconds: 240,
     slideCount: 8,
     isPublished: true,
   },
