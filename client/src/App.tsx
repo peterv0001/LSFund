@@ -27,6 +27,7 @@ import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin/index";
 import AdminAgents from "@/pages/admin/agents";
 import AdminCommissions from "@/pages/admin/commissions";
+import AdminPayouts from "@/pages/admin/payouts";
 
 // Protected Route Wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -113,6 +114,7 @@ function Router() {
       <Route path="/admin" component={() => <AdminRoute component={AdminDashboard} />} />
       <Route path="/admin/agents" component={() => <AdminRoute component={AdminAgents} />} />
       <Route path="/admin/commissions" component={() => <AdminRoute component={AdminCommissions} />} />
+      <Route path="/admin/payouts" component={() => <AdminRoute component={AdminPayouts} />} />
       
       {/* Placeholder admin routes - will redirect to main admin for now */}
       <Route path="/admin/deals" component={() => <AdminRoute component={AdminDashboard} />} />
