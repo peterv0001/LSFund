@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, 
@@ -10,7 +11,9 @@ import {
   BookOpen,
   Trophy,
   TrendingUp,
-  Shield
+  Shield,
+  Menu,
+  X
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -19,6 +22,31 @@ import { NotificationBell } from "./NotificationBell";
 export function Sidebar() {
   const [location] = useLocation();
   const { logout, user } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
+
+  // Close on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
 
   const mainLinks = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -35,8 +63,8 @@ export function Sidebar() {
     { href: "/settings", label: "Settings", icon: Settings },
   ];
 
-  return (
-    <aside className="w-64 bg-primary text-primary-foreground flex flex-col h-screen fixed left-0 top-0 z-50 shadow-2xl">
+  const SidebarContent = () => (
+    <>
       {/* Header */}
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center justify-between">
@@ -48,7 +76,16 @@ export function Sidebar() {
               <h1 className="font-display font-bold text-lg tracking-wide leading-none">PSL Capital</h1>
             </div>
           </div>
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            {/* Mobile close button */}
+            <button 
+              onClick={() => setMobileOpen(false)}
+              className="lg:hidden p-2 -mr-2 text-white/60 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -137,6 +174,55 @@ export function Sidebar() {
           Sign Out
         </button>
       </div>
-    </aside>
+    </>
   );
+
+  return (
+    <>
+      {/* Mobile Header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-primary text-white h-16 flex items-center justify-between px-4 shadow-lg">
+        <button 
+          onClick={() => setMobileOpen(true)}
+          className="p-2 -ml-2 text-white/80 hover:text-white"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+        
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+            <Building className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-display font-bold">PSL Capital</span>
+        </div>
+        
+        <NotificationBell />
+      </header>
+
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <aside className={cn(
+        "lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-primary text-primary-foreground flex flex-col z-50 shadow-2xl transition-transform duration-300 ease-in-out",
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <SidebarContent />
+      </aside>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 bg-primary text-primary-foreground flex-col h-screen fixed left-0 top-0 z-50 shadow-2xl">
+        <SidebarContent />
+      </aside>
+    </>
+  );
+}
+
+// Mobile spacer component to add padding for fixed header
+export function MobileHeaderSpacer() {
+  return <div className="h-16 lg:hidden" />;
 }

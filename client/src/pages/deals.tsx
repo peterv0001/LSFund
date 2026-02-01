@@ -29,7 +29,7 @@ export default function DealsPage() {
     <div className="flex min-h-screen bg-gray-50/50">
       <Sidebar />
       
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-display font-bold text-primary">Deals Management</h1>

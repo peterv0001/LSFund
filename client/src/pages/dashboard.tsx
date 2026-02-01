@@ -57,7 +57,7 @@ export default function Dashboard() {
     <div className="flex min-h-screen bg-gray-50/50">
       <Sidebar />
       
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
         {/* Welcome Header */}
         <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -69,13 +69,13 @@ export default function Dashboard() {
             </p>
           </div>
           
-          <div className="flex gap-3">
-            <Button variant="outline" className="gap-2" onClick={copyReferralLink}>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={copyReferralLink}>
               <Copy className="w-4 h-4" />
-              Copy Referral Link
+              <span className="hidden sm:inline">Copy </span>Referral Link
             </Button>
-            <Link href="/deals">
-              <Button className="gap-2 bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/25">
+            <Link href="/deals" className="flex-1 sm:flex-none">
+              <Button className="w-full gap-2 bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/25">
                 <Plus className="w-4 h-4" />
                 Log New Deal
               </Button>
