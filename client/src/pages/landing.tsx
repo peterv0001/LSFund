@@ -88,17 +88,18 @@ export default function LandingPage() {
               <div className="grid grid-cols-3 gap-6">
                 <div>
                   <p className="text-3xl font-bold text-primary">$450M+</p>
-                  <p className="text-sm text-muted-foreground">Funded Volume</p>
+                  <p className="text-sm text-muted-foreground">Funded Volume*</p>
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-primary">12k+</p>
-                  <p className="text-sm text-muted-foreground">Active Agents</p>
+                  <p className="text-sm text-muted-foreground">Active Agents*</p>
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-primary">60%</p>
-                  <p className="text-sm text-muted-foreground">Max Commission</p>
+                  <p className="text-sm text-muted-foreground">Max Commission*</p>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-4">*Individual results vary. Income depends on individual effort, market conditions, and other factors. See income disclosure below.</p>
             </div>
             
             <div className="relative hidden lg:block">
@@ -127,6 +128,7 @@ export default function LandingPage() {
                     Start Earning Now
                   </Button>
                 </Link>
+                <p className="text-xs text-white/40 mt-4 text-center">*Earnings are not guaranteed and depend on individual effort, skills, and market conditions.</p>
               </Card>
             </div>
           </div>
@@ -223,30 +225,31 @@ export default function LandingPage() {
             </div>
             
             <div className="bg-gradient-to-br from-muted to-muted/50 rounded-3xl p-8">
-              <h3 className="text-2xl font-bold text-primary mb-6">Income Examples</h3>
+              <h3 className="text-2xl font-bold text-primary mb-6">Income Examples*</h3>
               <div className="space-y-4">
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-primary">Part-Time Agent</span>
-                    <span className="text-2xl font-bold text-emerald-600">$3-5k/mo</span>
+                    <span className="text-2xl font-bold text-emerald-600">$3-5k/mo*</span>
                   </div>
                   <p className="text-sm text-muted-foreground">2-3 deals per month</p>
                 </div>
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-primary">Full-Time Builder</span>
-                    <span className="text-2xl font-bold text-emerald-600">$10-20k/mo</span>
+                    <span className="text-2xl font-bold text-emerald-600">$10-20k/mo*</span>
                   </div>
                   <p className="text-sm text-muted-foreground">5-8 deals + small team</p>
                 </div>
                 <div className="bg-white rounded-xl p-6 shadow-sm border-2 border-yellow-400">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-primary">Team Leader</span>
-                    <span className="text-2xl font-bold text-emerald-600">$50k+/mo</span>
+                    <span className="text-2xl font-bold text-emerald-600">$50k+/mo*</span>
                   </div>
                   <p className="text-sm text-muted-foreground">Active team + binary bonus</p>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-4">*These figures are examples only and are not guarantees of income. Your results will vary based on your effort, skills, experience, and market conditions. See full income disclosure below.</p>
             </div>
           </div>
         </div>
@@ -313,6 +316,8 @@ export default function LandingPage() {
               </Button>
             </Link>
           </div>
+          
+          <p className="text-xs text-white/40 text-center mt-8 max-w-3xl mx-auto">*Commission rates and bonus amounts shown represent maximum potential earnings and are subject to rank qualification requirements. Actual earnings depend on individual effort, deal volume, team performance, and market conditions. PSL Capital makes no guarantees regarding income.</p>
         </div>
       </section>
 
@@ -335,6 +340,45 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Legal Disclaimers Section */}
+      <section id="disclaimers" className="py-12 px-6 bg-muted/50 border-t border-border">
+        <div className="max-w-4xl mx-auto">
+          <h3 className="text-lg font-bold text-primary mb-4">Important Disclosures</h3>
+          
+          <div className="space-y-4 text-xs text-muted-foreground">
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">FTC Income Disclosure</h4>
+              <p>The income figures presented on this website are examples only and are not intended to represent or guarantee that anyone will achieve the same or similar results. Your individual results will vary and depend on many factors, including but not limited to your individual capacity, work ethic, business experience and knowledge, level of commitment, diligence in applying PSL Capital's training and sales system, and market conditions. PSL Capital does not guarantee any level of income or earnings to any agent.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">Independent Contractor Status</h4>
+              <p>PSL Capital agents are independent contractors, not employees. As an independent contractor, you are responsible for your own taxes, insurance, and business expenses. PSL Capital does not provide employment benefits, and agents are not entitled to minimum wage protections or overtime compensation.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">No Guaranteed Income</h4>
+              <p>There is no guarantee that you will earn any income as a PSL Capital agent. Success in network marketing requires consistent effort, effective sales techniques, and the ability to build and maintain a productive team. Many participants in network marketing businesses earn little to no income. Past performance does not guarantee future results.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">Business Opportunity Disclosure</h4>
+              <p>This is a business opportunity, not a job offer. Before joining PSL Capital, you should carefully review all materials and disclosures. Consult with a qualified financial or legal advisor if you have questions about the opportunity. Some states require additional disclosures for business opportunities. Please contact us for state-specific information.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">State and Federal Compliance</h4>
+              <p>PSL Capital operates in compliance with all applicable federal and state laws governing business opportunities and network marketing. Agents are required to comply with all applicable laws in their respective jurisdictions, including but not limited to FTC guidelines, state business opportunity laws, and securities regulations. The Merchant Cash Advance industry is regulated, and agents must comply with all applicable lending and financial services regulations.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">Results Disclaimer</h4>
+              <p>Testimonials and examples used on this website are exceptional results that are not typical and are not intended to be a representation, guarantee, or promise that others will achieve the same or similar results. Individual results will vary, and there is no assurance you will do as well. Each individual's success depends on their background, dedication, desire, and motivation.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-border bg-muted/30">
         <div className="max-w-7xl mx-auto">
@@ -350,13 +394,20 @@ export default function LandingPage() {
               <a href="#about-mca" className="hover:text-primary transition-colors">About MCA</a>
               <a href="#opportunity" className="hover:text-primary transition-colors">Opportunity</a>
               <a href="#compensation" className="hover:text-primary transition-colors">Compensation</a>
+              <a href="#disclaimers" className="hover:text-primary transition-colors">Disclosures</a>
               <Link href="/login">
                 <span className="hover:text-primary transition-colors cursor-pointer">Agent Portal</span>
               </Link>
             </div>
             
             <p className="text-sm text-muted-foreground">
-              © 2025 PSL Capital. All rights reserved.
+              © 2026 PSL Capital. All rights reserved.
+            </p>
+          </div>
+          
+          <div className="mt-8 pt-6 border-t border-border text-center">
+            <p className="text-xs text-muted-foreground max-w-3xl mx-auto">
+              PSL Capital is a network marketing company operating in the Merchant Cash Advance industry. Results vary by individual. This website and its content are for informational purposes only and do not constitute financial, legal, or tax advice. Please consult appropriate professionals before making any business decisions.
             </p>
           </div>
         </div>
