@@ -58,9 +58,9 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
     id: 1,
     moduleNumber: 1,
     title: "MCA Fundamentals",
-    description: "Understanding the business - what MCA is, key terms, and how you make money",
-    videoUrl: "/videos/module1_full.mp4",
-    durationSeconds: 660,
+    description: "Understanding merchant cash advance - what it is, key terms, transaction flow, and how you earn commissions.",
+    videoUrl: "https://www.youtube.com/embed/V_yT4AVwAgU",
+    durationSeconds: 662, // 11:02
     slideCount: 16,
     isPublished: true,
     progress: { moduleId: 1, status: 'completed', currentSlide: 16, completedSlides: 16, quizScore: 90 }
@@ -68,10 +68,10 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
   {
     id: 2,
     moduleNumber: 2,
-    title: "Your Ideal Client",
-    description: "Finding the right businesses - who qualifies, best industries, and red flags",
-    videoUrl: "/videos/module2_full.mp4",
-    durationSeconds: 282,
+    title: "Finding Leads",
+    description: "How to find and attract MCA leads - warm markets, online marketing, referral systems, and UCC lead strategies.",
+    videoUrl: "https://www.youtube.com/embed/MhipHRWbC3s",
+    durationSeconds: 281, // 4:41
     slideCount: 9,
     isPublished: true,
     progress: { moduleId: 2, status: 'in_progress', currentSlide: 5, completedSlides: 4, quizScore: null }
@@ -79,10 +79,10 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
   {
     id: 3,
     moduleNumber: 3,
-    title: "The Sales Conversation",
-    description: "From first contact to signed contract - scripts, objections, and closing",
-    videoUrl: "/videos/module3_full.mp4",
-    durationSeconds: 378,
+    title: "Qualifying Deals",
+    description: "How to qualify MCA deals - pre-screening questions, documentation requirements, and identifying deal-killers early.",
+    videoUrl: "https://www.youtube.com/embed/nVYX551fOKE",
+    durationSeconds: 376, // 6:16
     slideCount: 12,
     isPublished: true,
     progress: { moduleId: 3, status: 'not_started', currentSlide: 1, completedSlides: 0, quizScore: null }
@@ -90,30 +90,30 @@ const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
   {
     id: 4,
     moduleNumber: 4,
-    title: "Systems & Organization",
-    description: "Working like a pro - daily routines, CRM usage, and pipeline management",
-    videoUrl: "/videos/module4_full.mp4",
-    durationSeconds: 252,
+    title: "Submission Process",
+    description: "Step-by-step guide to submitting MCA deals - portal walkthrough, document uploads, and getting quick approvals.",
+    videoUrl: "https://www.youtube.com/embed/MpJD_2DJC5I",
+    durationSeconds: 252, // 4:12
     slideCount: 8,
     isPublished: true,
   },
   {
     id: 5,
     moduleNumber: 5,
-    title: "Follow-Up Mastery",
-    description: "The fortune is in the follow-up - sequences, templates, and NL Pearl",
-    videoUrl: "/videos/module5_full.mp4",
-    durationSeconds: 216,
+    title: "Managing Your Pipeline",
+    description: "Track and manage your deals from submission to funding - pipeline stages, follow-up strategies, and maximizing close rates.",
+    videoUrl: "https://www.youtube.com/embed/VOtLffd7gbs",
+    durationSeconds: 217, // 3:37
     slideCount: 7,
     isPublished: true,
   },
   {
     id: 6,
     moduleNumber: 6,
-    title: "Building Your Team",
-    description: "From agent to leader - recruiting, onboarding, and the comp plan",
-    videoUrl: "/videos/module6_full.mp4",
-    durationSeconds: 240,
+    title: "Scaling Your Business",
+    description: "Build a sustainable MCA business - recruiting partners, building systems, and creating passive income through team development.",
+    videoUrl: "https://www.youtube.com/embed/zAIoJ0x5A70",
+    durationSeconds: 242, // 4:02
     slideCount: 8,
     isPublished: true,
   },
@@ -247,18 +247,30 @@ function VideoPlayer({ module, onProgress }: {
   module: ModuleWithProgress;
   onProgress: (slideNumber: number) => void;
 }) {
+  const isYouTube = module.videoUrl?.includes('youtube.com/embed');
+  
   return (
     <div className="space-y-4">
       <div className="aspect-video bg-black rounded-lg overflow-hidden">
         {module.videoUrl ? (
-          <video 
-            controls 
-            className="w-full h-full"
-            poster={`/thumbnails/module${module.moduleNumber}.jpg`}
-          >
-            <source src={module.videoUrl} type="video/mp4" />
-            Your browser does not support video playback.
-          </video>
+          isYouTube ? (
+            <iframe
+              src={module.videoUrl}
+              title={`Module ${module.moduleNumber}: ${module.title}`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <video 
+              controls 
+              className="w-full h-full"
+              poster={`/thumbnails/module${module.moduleNumber}.jpg`}
+            >
+              <source src={module.videoUrl} type="video/mp4" />
+              Your browser does not support video playback.
+            </video>
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-white/50">
             <div className="text-center">
