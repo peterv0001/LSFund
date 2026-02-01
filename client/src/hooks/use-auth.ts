@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type InsertAgent } from "@shared/routes";
+import { api } from "@shared/routes";
 import { z } from "zod";
 import { useLocation } from "wouter";
 
@@ -7,7 +7,7 @@ export function useAuth() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  const { data: user, isLoading, error } = useQuery({
+  const { data: user, isLoading, error, refetch } = useQuery({
     queryKey: [api.auth.me.path],
     queryFn: async () => {
       const res = await fetch(api.auth.me.path, { credentials: "include" });
@@ -36,7 +36,7 @@ export function useAuth() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData([api.auth.me.path], data);
-      setLocation("/");
+      setLocation("/dashboard");
     },
   });
 
@@ -59,7 +59,7 @@ export function useAuth() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData([api.auth.me.path], data);
-      setLocation("/");
+      setLocation("/dashboard");
     },
   });
 
@@ -81,6 +81,7 @@ export function useAuth() {
     user,
     isLoading,
     error,
+    refetch,
     login: loginMutation.mutateAsync,
     isLoggingIn: loginMutation.isPending,
     register: registerMutation.mutateAsync,

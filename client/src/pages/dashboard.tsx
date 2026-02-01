@@ -105,7 +105,7 @@ export default function Dashboard() {
                 </div>
                 <p>No recent deals found.</p>
                 <Link href="/deals">
-                  <Button variant="link" className="mt-2">Log your first deal</Button>
+                  <Button variant="ghost" className="mt-2">Log your first deal</Button>
                 </Link>
               </div>
             </div>

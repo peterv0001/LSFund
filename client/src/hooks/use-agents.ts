@@ -28,16 +28,13 @@ export function useAgentTeam(id: number) {
   });
 }
 
-export function useSearchAgents(query: string) {
+export function useDashboard() {
   return useQuery({
-    queryKey: [api.agents.search.path, query],
+    queryKey: [api.agents.dashboard.path],
     queryFn: async () => {
-      if (!query) return [];
-      const url = `${api.agents.search.path}?query=${encodeURIComponent(query)}`;
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error("Search failed");
-      return api.agents.search.responses[200].parse(await res.json());
+      const res = await fetch(api.agents.dashboard.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch dashboard");
+      return await res.json();
     },
-    enabled: query.length > 2,
   });
 }

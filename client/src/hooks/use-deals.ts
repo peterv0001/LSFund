@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type InsertDeal } from "@shared/routes";
+import { api } from "@shared/routes";
 import { z } from "zod";
+
+type CreateDealInput = z.infer<typeof api.deals.create.input>;
 
 export function useDeals() {
   return useQuery({
@@ -16,7 +18,7 @@ export function useDeals() {
 export function useCreateDeal() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: InsertDeal) => {
+    mutationFn: async (data: CreateDealInput) => {
       // Ensure numbers are coerced properly before sending
       const validated = api.deals.create.input.parse({
         ...data,

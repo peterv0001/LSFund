@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, date, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, date, pgEnum, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -7,9 +7,13 @@ import { z } from "zod";
 export const rankEnum = pgEnum("rank", ['agent', 'builder', 'leader', 'director', 'partner']);
 export const legEnum = pgEnum("leg", ['left', 'right']);
 export const statusEnum = pgEnum("status", ['active', 'inactive', 'suspended']);
-export const commissionTypeEnum = pgEnum("commission_type", ['personal_deal', 'binary_bonus', 'generation_override', 'course_sale']);
-export const commissionStatusEnum = pgEnum("commission_status", ['pending', 'approved', 'paid']);
+export const commissionTypeEnum = pgEnum("commission_type", ['personal_deal', 'binary_bonus', 'generation_override', 'course_sale', 'fast_start', 'leadership_pool']);
+export const commissionStatusEnum = pgEnum("commission_status", ['pending', 'approved', 'paid', 'voided']);
 export const dealStatusEnum = pgEnum("deal_status", ['pending', 'funded', 'rejected']);
+export const payoutStatusEnum = pgEnum("payout_status", ['pending', 'processing', 'completed', 'failed']);
+export const notificationTypeEnum = pgEnum("notification_type", ['deal_funded', 'commission_earned', 'rank_advanced', 'team_signup', 'payout_sent', 'announcement', 'system']);
+export const resourceTypeEnum = pgEnum("resource_type", ['video', 'pdf', 'link', 'document']);
+export const announcementTargetEnum = pgEnum("announcement_target", ['all', 'agents_only', 'builders_plus', 'leaders_plus', 'directors_plus', 'partners_only']);
 
 // === TABLE DEFINITIONS ===
 
@@ -21,21 +25,55 @@ export const agents = pgTable("agents", {
   lastName: text("last_name").notNull(),
   phone: text("phone"),
   
+  // Profile
+  profileImageUrl: text("profile_image_url"),
+  bio: text("bio"),
+  
+  // Address
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zip: text("zip"),
+  country: text("country").default("US"),
+  
   // Tree structure
-  sponsorId: integer("sponsor_id"), // Who invited them
-  placementId: integer("placement_id"), // Who they are directly under in tree
+  sponsorId: integer("sponsor_id"), // Who invited them (sponsor tree)
+  placementId: integer("placement_id"), // Who they are directly under (binary tree)
   leg: legEnum("leg"), // Left or Right leg of placement parent
   
-  // Status
+  // Referral
+  referralCode: text("referral_code").unique(), // Human-readable code
+  
+  // Rank & Status
   currentRank: rankEnum("current_rank").default("agent").notNull(),
+  highestRank: rankEnum("highest_rank").default("agent").notNull(), // Highest rank ever achieved
+  qualifiedRank: rankEnum("qualified_rank").default("agent"), // Rank qualified for this period
+  paidAsRank: rankEnum("paid_as_rank").default("agent"), // Rank paid as (may differ from qualified)
   status: statusEnum("status").default("active").notNull(),
   
+  // Volume (denormalized for performance)
+  personalVolume: decimal("personal_volume", { precision: 12, scale: 2 }).default("0"),
+  leftLegVolume: decimal("left_leg_volume", { precision: 12, scale: 2 }).default("0"),
+  rightLegVolume: decimal("right_leg_volume", { precision: 12, scale: 2 }).default("0"),
+  carryoverLeft: decimal("carryover_left", { precision: 12, scale: 2 }).default("0"),
+  carryoverRight: decimal("carryover_right", { precision: 12, scale: 2 }).default("0"),
+  
   // Payment
+  payoutMethod: text("payout_method").default("pending"), // 'stripe', 'paypal', 'bank', 'pending'
   payoutEmail: text("payout_email"),
   stripeAccountId: text("stripe_account_id"),
+  bankAccountLast4: text("bank_account_last4"),
   
+  // Notification preferences
+  emailNotifications: boolean("email_notifications").default(true),
+  smsNotifications: boolean("sms_notifications").default(false),
+  
+  // Admin
   isAdmin: boolean("is_admin").default(false).notNull(),
+  isSuperAdmin: boolean("is_super_admin").default(false).notNull(),
   
+  // Timestamps
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -45,12 +83,19 @@ export const deals = pgTable("deals", {
   agentId: integer("agent_id").notNull(),
   
   merchantName: text("merchant_name").notNull(),
-  loanAmount: decimal("loan_amount", { precision: 10, scale: 2 }).notNull(),
+  merchantEmail: text("merchant_email"),
+  merchantPhone: text("merchant_phone"),
+  loanAmount: decimal("loan_amount", { precision: 12, scale: 2 }).notNull(),
   companyRevenue: decimal("company_revenue", { precision: 10, scale: 2 }).notNull(), // 10% of loan
   status: dealStatusEnum("status").default("funded").notNull(),
-  fundedAt: timestamp("funded_at").defaultNow().notNull(),
   
+  // For admin tracking
+  notes: text("notes"),
+  approvedById: integer("approved_by_id"),
+  
+  fundedAt: timestamp("funded_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const commissions = pgTable("commissions", {
@@ -60,13 +105,152 @@ export const commissions = pgTable("commissions", {
   type: commissionTypeEnum("type").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   
-  dealId: integer("deal_id"), // Optional link to deal
+  // Source tracking
+  dealId: integer("deal_id"),
+  sourceAgentId: integer("source_agent_id"), // Who generated this commission (for overrides)
   
+  // Period tracking
   periodDate: date("period_date").notNull(), // For weekly grouping
+  periodWeekStart: timestamp("period_week_start"), // Explicit week start
+  
   status: commissionStatusEnum("status").default("pending").notNull(),
+  
+  // Admin actions
+  approvedById: integer("approved_by_id"),
+  approvedAt: timestamp("approved_at"),
+  voidedById: integer("voided_by_id"),
+  voidedAt: timestamp("voided_at"),
+  voidReason: text("void_reason"),
+  
+  // Payout tracking
+  payoutId: integer("payout_id"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   paidAt: timestamp("paid_at"),
+});
+
+export const payouts = pgTable("payouts", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  method: text("method").notNull(), // 'stripe', 'paypal', 'bank', 'check'
+  status: payoutStatusEnum("status").default("pending").notNull(),
+  
+  // External reference
+  externalId: text("external_id"), // Stripe transfer ID, etc.
+  externalStatus: text("external_status"),
+  
+  // Period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Admin
+  processedById: integer("processed_by_id"),
+  processedAt: timestamp("processed_at"),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  
+  // Related entities
+  dealId: integer("deal_id"),
+  commissionId: integer("commission_id"),
+  announcementId: integer("announcement_id"),
+  
+  // Status
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  
+  // Delivery
+  emailSent: boolean("email_sent").default(false),
+  emailSentAt: timestamp("email_sent_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  
+  target: announcementTargetEnum("target").default("all").notNull(),
+  isPinned: boolean("is_pinned").default(false).notNull(),
+  isPublished: boolean("is_published").default(false).notNull(),
+  
+  publishAt: timestamp("publish_at"),
+  expiresAt: timestamp("expires_at"),
+  
+  createdById: integer("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const resources = pgTable("resources", {
+  id: serial("id").primaryKey(),
+  
+  title: text("title").notNull(),
+  description: text("description"),
+  type: resourceTypeEnum("type").notNull(),
+  url: text("url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  
+  category: text("category").default("general"), // 'training', 'marketing', 'compliance', 'general'
+  sortOrder: integer("sort_order").default(0),
+  
+  isPublished: boolean("is_published").default(true).notNull(),
+  
+  createdById: integer("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const rankQualifications = pgTable("rank_qualifications", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  rank: rankEnum("rank").notNull(),
+  
+  // Qualification metrics
+  personalVolume: decimal("personal_volume", { precision: 12, scale: 2 }).notNull(),
+  leftLegVolume: decimal("left_leg_volume", { precision: 12, scale: 2 }).notNull(),
+  rightLegVolume: decimal("right_leg_volume", { precision: 12, scale: 2 }).notNull(),
+  leftLegLeaders: integer("left_leg_leaders").default(0),
+  rightLegLeaders: integer("right_leg_leaders").default(0),
+  
+  isQualified: boolean("is_qualified").default(false).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const activityLog = pgTable("activity_log", {
+  id: serial("id").primaryKey(),
+  
+  actorId: integer("actor_id").notNull(), // Who performed the action
+  actorType: text("actor_type").notNull(), // 'agent', 'admin', 'system'
+  
+  action: text("action").notNull(), // 'create', 'update', 'delete', 'approve', 'void', etc.
+  entityType: text("entity_type").notNull(), // 'agent', 'deal', 'commission', 'payout'
+  entityId: integer("entity_id").notNull(),
+  
+  details: jsonb("details"), // JSON with before/after or additional context
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // === RELATIONS ===
@@ -88,11 +272,18 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
   
   deals: many(deals),
   commissions: many(commissions),
+  payouts: many(payouts),
+  notifications: many(notifications),
+  rankQualifications: many(rankQualifications),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
   agent: one(agents, {
     fields: [deals.agentId],
+    references: [agents.id],
+  }),
+  approvedBy: one(agents, {
+    fields: [deals.approvedById],
     references: [agents.id],
   }),
   commissions: many(commissions),
@@ -107,6 +298,66 @@ export const commissionsRelations = relations(commissions, ({ one }) => ({
     fields: [commissions.dealId],
     references: [deals.id],
   }),
+  sourceAgent: one(agents, {
+    fields: [commissions.sourceAgentId],
+    references: [agents.id],
+  }),
+  payout: one(payouts, {
+    fields: [commissions.payoutId],
+    references: [payouts.id],
+  }),
+}));
+
+export const payoutsRelations = relations(payouts, ({ one, many }) => ({
+  agent: one(agents, {
+    fields: [payouts.agentId],
+    references: [agents.id],
+  }),
+  processedBy: one(agents, {
+    fields: [payouts.processedById],
+    references: [agents.id],
+  }),
+  commissions: many(commissions),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  agent: one(agents, {
+    fields: [notifications.agentId],
+    references: [agents.id],
+  }),
+  deal: one(deals, {
+    fields: [notifications.dealId],
+    references: [deals.id],
+  }),
+  commission: one(commissions, {
+    fields: [notifications.commissionId],
+    references: [commissions.id],
+  }),
+  announcement: one(announcements, {
+    fields: [notifications.announcementId],
+    references: [announcements.id],
+  }),
+}));
+
+export const announcementsRelations = relations(announcements, ({ one }) => ({
+  createdBy: one(agents, {
+    fields: [announcements.createdById],
+    references: [agents.id],
+  }),
+}));
+
+export const resourcesRelations = relations(resources, ({ one }) => ({
+  createdBy: one(agents, {
+    fields: [resources.createdById],
+    references: [agents.id],
+  }),
+}));
+
+export const rankQualificationsRelations = relations(rankQualifications, ({ one }) => ({
+  agent: one(agents, {
+    fields: [rankQualifications.agentId],
+    references: [agents.id],
+  }),
 }));
 
 // === ZOD SCHEMAS ===
@@ -114,23 +365,87 @@ export const commissionsRelations = relations(commissions, ({ one }) => ({
 export const insertAgentSchema = createInsertSchema(agents).omit({ 
   id: true, 
   createdAt: true, 
-  updatedAt: true 
+  updatedAt: true,
+  lastLoginAt: true,
+  personalVolume: true,
+  leftLegVolume: true,
+  rightLegVolume: true,
+  carryoverLeft: true,
+  carryoverRight: true,
+});
+
+export const updateAgentProfileSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
+  country: z.string().optional(),
+  bio: z.string().optional(),
+  profileImageUrl: z.string().url().optional(),
+});
+
+export const updatePayoutMethodSchema = z.object({
+  payoutMethod: z.enum(['stripe', 'paypal', 'bank', 'pending']),
+  payoutEmail: z.string().email().optional(),
 });
 
 export const insertDealSchema = createInsertSchema(deals).omit({ 
   id: true, 
   createdAt: true,
-  status: true, // Default to funded for now as per prompt
-  companyRevenue: true, // Calculated on backend
-  fundedAt: true // Default to now
+  updatedAt: true,
+  status: true,
+  companyRevenue: true,
+  fundedAt: true,
+  approvedById: true,
 }).extend({
   loanAmount: z.coerce.number().min(0, "Amount must be positive"),
+  fundedAt: z.coerce.date().optional(),
 });
 
 export const insertCommissionSchema = createInsertSchema(commissions).omit({
   id: true,
   createdAt: true,
-  paidAt: true
+  paidAt: true,
+  approvedAt: true,
+  approvedById: true,
+  voidedAt: true,
+  voidedById: true,
+  voidReason: true,
+  payoutId: true,
+});
+
+export const insertPayoutSchema = createInsertSchema(payouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  processedAt: true,
+  processedById: true,
+  externalId: true,
+  externalStatus: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+  readAt: true,
+  emailSentAt: true,
+});
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdById: true,
+});
+
+export const insertResourceSchema = createInsertSchema(resources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdById: true,
 });
 
 // === EXPLICIT TYPES ===
@@ -142,6 +457,22 @@ export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 
 export type Commission = typeof commissions.$inferSelect;
+export type InsertCommission = z.infer<typeof insertCommissionSchema>;
+
+export type Payout = typeof payouts.$inferSelect;
+export type InsertPayout = z.infer<typeof insertPayoutSchema>;
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+
+export type Resource = typeof resources.$inferSelect;
+export type InsertResource = z.infer<typeof insertResourceSchema>;
+
+export type RankQualification = typeof rankQualifications.$inferSelect;
+export type ActivityLog = typeof activityLog.$inferSelect;
 
 // Request types
 export type CreateDealRequest = InsertDeal;
@@ -151,4 +482,47 @@ export type CreateAgentRequest = InsertAgent & { referralCode?: string, placemen
 export type AgentWithTeam = Agent & {
   children?: AgentWithTeam[];
   volume?: { left: number, right: number };
+  teamSize?: number;
+};
+
+export type AgentPublic = Pick<Agent, 'id' | 'firstName' | 'lastName' | 'currentRank' | 'profileImageUrl' | 'createdAt'>;
+
+export type DashboardStats = {
+  totalEarned: number;
+  thisWeek: number;
+  thisMonth: number;
+  pending: number;
+  teamSize: number;
+  personalVolume: number;
+  leftLegVolume: number;
+  rightLegVolume: number;
+  currentRank: string;
+  nextRank: string | null;
+  rankProgress: number;
+};
+
+export type AdminStats = {
+  totalAgents: number;
+  activeAgents: number;
+  newAgentsThisWeek: number;
+  totalDeals: number;
+  dealsThisWeek: number;
+  totalVolume: number;
+  volumeThisWeek: number;
+  totalCommissions: number;
+  pendingCommissions: number;
+  pendingPayouts: number;
+};
+
+// Commission config type
+export type CommissionConfig = {
+  personalCommission: Record<string, number>;
+  binaryBonus: Record<string, { rate: number; max: number }>;
+  generationOverride: Record<string, Record<number, number>>;
+  rankRequirements: Record<string, {
+    personalVolume: number;
+    weakLegVolume: number;
+    strongLegVolume?: number;
+    qualifiedLegs?: { left: number; right: number };
+  }>;
 };

@@ -1,0 +1,411 @@
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { Sidebar } from "@/components/Sidebar";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@shared/routes";
+import { 
+  User, 
+  Lock, 
+  CreditCard, 
+  Bell,
+  Save,
+  Loader2,
+  Copy,
+  ExternalLink
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+
+export default function SettingsPage() {
+  const { user, refetch } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Profile form state
+  const [profile, setProfile] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    phone: user?.phone || '',
+    address: user?.address || '',
+    city: user?.city || '',
+    state: user?.state || '',
+    zip: user?.zip || '',
+    bio: user?.bio || '',
+  });
+
+  // Password form state
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  // Payout form state
+  const [payout, setPayout] = useState({
+    payoutMethod: user?.payoutMethod || 'pending',
+    payoutEmail: user?.payoutEmail || '',
+  });
+
+  // Mutations
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: typeof profile) => {
+      const res = await fetch(api.agents.updateProfile.path, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to update profile');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Success", description: "Profile updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const res = await fetch(api.auth.changePassword.path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to change password');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      toast({ title: "Success", description: "Password changed successfully" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updatePayoutMutation = useMutation({
+    mutationFn: async (data: typeof payout) => {
+      const res = await fetch(api.agents.updatePayoutMethod.path, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to update payout method');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Success", description: "Payout method updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update payout method", variant: "destructive" });
+    },
+  });
+
+  const handlePasswordChange = () => {
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      toast({ title: "Error", description: "Passwords don't match", variant: "destructive" });
+      return;
+    }
+    if (passwords.newPassword.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+    changePasswordMutation.mutate({
+      currentPassword: passwords.currentPassword,
+      newPassword: passwords.newPassword,
+    });
+  };
+
+  const copyReferralLink = () => {
+    const link = `${window.location.origin}/signup?ref=${user?.referralCode || user?.id}`;
+    navigator.clipboard.writeText(link);
+    toast({ title: "Copied!", description: "Referral link copied to clipboard" });
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-50/50">
+      <Sidebar />
+      
+      <main className="flex-1 ml-64 p-8">
+        <header className="mb-8">
+          <h1 className="text-3xl font-display font-bold text-primary">Settings</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage your account settings and preferences.
+          </p>
+        </header>
+
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="bg-white border">
+            <TabsTrigger value="profile" className="gap-2">
+              <User className="w-4 h-4" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-2">
+              <Lock className="w-4 h-4" />
+              Security
+            </TabsTrigger>
+            <TabsTrigger value="payout" className="gap-2">
+              <CreditCard className="w-4 h-4" />
+              Payout
+            </TabsTrigger>
+            <TabsTrigger value="referral" className="gap-2">
+              <ExternalLink className="w-4 h-4" />
+              Referral
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Information</CardTitle>
+                <CardDescription>Update your personal details and contact information.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>First Name</Label>
+                    <Input 
+                      value={profile.firstName}
+                      onChange={(e) => setProfile(p => ({ ...p, firstName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Last Name</Label>
+                    <Input 
+                      value={profile.lastName}
+                      onChange={(e) => setProfile(p => ({ ...p, lastName: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input 
+                    value={profile.phone}
+                    onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Street Address</Label>
+                  <Input 
+                    value={profile.address}
+                    onChange={(e) => setProfile(p => ({ ...p, address: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>City</Label>
+                    <Input 
+                      value={profile.city}
+                      onChange={(e) => setProfile(p => ({ ...p, city: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>State</Label>
+                    <Input 
+                      value={profile.state}
+                      onChange={(e) => setProfile(p => ({ ...p, state: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ZIP Code</Label>
+                    <Input 
+                      value={profile.zip}
+                      onChange={(e) => setProfile(p => ({ ...p, zip: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bio</Label>
+                  <Textarea 
+                    value={profile.bio}
+                    onChange={(e) => setProfile(p => ({ ...p, bio: e.target.value }))}
+                    placeholder="Tell your team a little about yourself..."
+                    rows={3}
+                  />
+                </div>
+
+                <Button 
+                  onClick={() => updateProfileMutation.mutate(profile)}
+                  disabled={updateProfileMutation.isPending}
+                >
+                  {updateProfileMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Security Tab */}
+          <TabsContent value="security">
+            <Card>
+              <CardHeader>
+                <CardTitle>Change Password</CardTitle>
+                <CardDescription>Update your password to keep your account secure.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 max-w-md">
+                <div className="space-y-2">
+                  <Label>Current Password</Label>
+                  <Input 
+                    type="password"
+                    value={passwords.currentPassword}
+                    onChange={(e) => setPasswords(p => ({ ...p, currentPassword: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>New Password</Label>
+                  <Input 
+                    type="password"
+                    value={passwords.newPassword}
+                    onChange={(e) => setPasswords(p => ({ ...p, newPassword: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirm New Password</Label>
+                  <Input 
+                    type="password"
+                    value={passwords.confirmPassword}
+                    onChange={(e) => setPasswords(p => ({ ...p, confirmPassword: e.target.value }))}
+                  />
+                </div>
+                <Button 
+                  onClick={handlePasswordChange}
+                  disabled={changePasswordMutation.isPending}
+                >
+                  {changePasswordMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Update Password
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Payout Tab */}
+          <TabsContent value="payout">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payout Settings</CardTitle>
+                <CardDescription>Configure how you receive your commissions.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 max-w-md">
+                <div className="space-y-2">
+                  <Label>Payout Method</Label>
+                  <Select 
+                    value={payout.payoutMethod} 
+                    onValueChange={(v) => setPayout(p => ({ ...p, payoutMethod: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Not Set Up</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                      <SelectItem value="bank">Bank Transfer (ACH)</SelectItem>
+                      <SelectItem value="stripe">Stripe</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(payout.payoutMethod === 'paypal' || payout.payoutMethod === 'stripe') && (
+                  <div className="space-y-2">
+                    <Label>Payout Email</Label>
+                    <Input 
+                      type="email"
+                      value={payout.payoutEmail}
+                      onChange={(e) => setPayout(p => ({ ...p, payoutEmail: e.target.value }))}
+                      placeholder="your@email.com"
+                    />
+                  </div>
+                )}
+
+                {payout.payoutMethod === 'bank' && (
+                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
+                    <p className="text-sm text-amber-800">
+                      <strong>Note:</strong> Bank transfer setup requires additional verification. 
+                      Please contact support to complete your bank account setup.
+                    </p>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={() => updatePayoutMutation.mutate(payout)}
+                  disabled={updatePayoutMutation.isPending}
+                >
+                  {updatePayoutMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Payout Settings
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Referral Tab */}
+          <TabsContent value="referral">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Referral Link</CardTitle>
+                <CardDescription>Share this link with prospects to grow your team.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 bg-gray-50 rounded-lg border">
+                  <Label className="text-xs text-muted-foreground mb-2 block">Your Referral Code</Label>
+                  <p className="text-2xl font-bold text-primary">{user?.referralCode || user?.id}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Referral Link</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      readOnly
+                      value={`${window.location.origin}/signup?ref=${user?.referralCode || user?.id}`}
+                      className="bg-gray-50"
+                    />
+                    <Button variant="outline" onClick={copyReferralLink}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                  <h4 className="font-medium text-primary mb-2">How It Works</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Share your referral link with potential agents</li>
+                    <li>• When they sign up, they'll be placed in your team</li>
+                    <li>• Earn generation overrides on their deals</li>
+                    <li>• Build your binary tree to earn binary bonuses</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+}

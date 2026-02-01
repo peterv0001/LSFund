@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { api, type InsertAgent } from "@shared/routes";
+import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Building, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";

@@ -18,21 +18,22 @@ export function useCommissionStats() {
     queryFn: async () => {
       const res = await fetch(api.commissions.stats.path, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch stats");
-      return api.commissions.stats.responses[200].parse(await res.json());
+      return await res.json();
     },
   });
 }
 
+// Admin-only: Calculate binary commissions
 export function useCalculateCommissions() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const res = await fetch(api.commissions.calculate.path, {
-        method: api.commissions.calculate.method,
+      const res = await fetch(api.admin.commissions.calculate.path, {
+        method: 'POST',
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to calculate commissions");
-      return api.commissions.calculate.responses[200].parse(await res.json());
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.commissions.list.path] });
