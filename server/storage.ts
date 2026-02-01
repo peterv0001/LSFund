@@ -1,9 +1,10 @@
 import { db } from "./db";
 import { 
   agents, deals, commissions, payouts, notifications, announcements, resources, rankQualifications, activityLog,
-  courseModules, courseProgress,
+  courseModules, courseProgress, leads, leadRequests,
   type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource,
-  type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress
+  type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress,
+  type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest
 } from "@shared/schema";
 import { eq, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum } from "drizzle-orm";
 
@@ -975,6 +976,244 @@ export class DatabaseStorage {
       .offset(offset);
     
     return { logs, total: totalResult.count };
+  }
+
+  // ==================== LEADS ====================
+
+  async createLead(lead: InsertLead): Promise<Lead> {
+    const [newLead] = await db.insert(leads).values(lead).returning();
+    return newLead;
+  }
+
+  async createLeadsBulk(leadsData: InsertLead[]): Promise<Lead[]> {
+    if (leadsData.length === 0) return [];
+    const newLeads = await db.insert(leads).values(leadsData).returning();
+    return newLeads;
+  }
+
+  async getLead(id: number): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    return lead;
+  }
+
+  async updateLead(id: number, data: Partial<Lead>): Promise<Lead> {
+    const [updated] = await db.update(leads)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(leads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateLeadStatus(id: number, status: Lead['status'], notes?: string): Promise<Lead> {
+    const [updated] = await db.update(leads)
+      .set({ 
+        status, 
+        notes: notes || undefined,
+        statusUpdatedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(leads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async requestAIFollowup(id: number): Promise<Lead> {
+    const [updated] = await db.update(leads)
+      .set({ 
+        aiFollowupRequested: true,
+        aiFollowupRequestedAt: new Date(),
+        status: 'ai_followup',
+        statusUpdatedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(leads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markAIFollowupProcessed(id: number): Promise<Lead> {
+    const [updated] = await db.update(leads)
+      .set({ 
+        aiFollowupProcessed: true,
+        aiFollowupProcessedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(leads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getLeadsByAgent(agentId: number): Promise<Lead[]> {
+    return await db.select().from(leads)
+      .where(eq(leads.assignedAgentId, agentId))
+      .orderBy(desc(leads.createdAt));
+  }
+
+  async getUnassignedLeads(): Promise<Lead[]> {
+    return await db.select().from(leads)
+      .where(isNull(leads.assignedAgentId))
+      .orderBy(desc(leads.createdAt));
+  }
+
+  async getAllLeads(page: number = 1, pageSize: number = 50, filters?: {
+    status?: string;
+    assignedAgentId?: number;
+    unassigned?: boolean;
+    aiFollowupRequested?: boolean;
+  }): Promise<{ leads: Lead[]; total: number }> {
+    const offset = (page - 1) * pageSize;
+    
+    let conditions: any[] = [];
+    
+    if (filters?.status) {
+      conditions.push(eq(leads.status, filters.status as any));
+    }
+    if (filters?.assignedAgentId) {
+      conditions.push(eq(leads.assignedAgentId, filters.assignedAgentId));
+    }
+    if (filters?.unassigned) {
+      conditions.push(isNull(leads.assignedAgentId));
+    }
+    if (filters?.aiFollowupRequested) {
+      conditions.push(eq(leads.aiFollowupRequested, true));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [totalResult] = await db.select({ count: count() })
+      .from(leads)
+      .where(whereClause);
+    
+    const results = await db.select()
+      .from(leads)
+      .where(whereClause)
+      .orderBy(desc(leads.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+    
+    return { leads: results, total: totalResult.count };
+  }
+
+  async getAIFollowupQueue(): Promise<(Lead & { agent?: Agent })[]> {
+    const results = await db.select({
+      lead: leads,
+      agent: agents,
+    })
+      .from(leads)
+      .leftJoin(agents, eq(leads.assignedAgentId, agents.id))
+      .where(and(
+        eq(leads.aiFollowupRequested, true),
+        eq(leads.aiFollowupProcessed, false)
+      ))
+      .orderBy(asc(leads.aiFollowupRequestedAt));
+    
+    return results.map(r => ({ ...r.lead, agent: r.agent || undefined }));
+  }
+
+  async assignLeadsToAgent(leadIds: number[], agentId: number, assignedById: number): Promise<Lead[]> {
+    const updated = await db.update(leads)
+      .set({ 
+        assignedAgentId: agentId,
+        assignedById,
+        assignedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(inArray(leads.id, leadIds))
+      .returning();
+    return updated;
+  }
+
+  async getLeadStats(): Promise<{
+    total: number;
+    unassigned: number;
+    byStatus: Record<string, number>;
+    aiFollowupPending: number;
+  }> {
+    const [totalResult] = await db.select({ count: count() }).from(leads);
+    const [unassignedResult] = await db.select({ count: count() })
+      .from(leads).where(isNull(leads.assignedAgentId));
+    const [aiFollowupResult] = await db.select({ count: count() })
+      .from(leads).where(and(eq(leads.aiFollowupRequested, true), eq(leads.aiFollowupProcessed, false)));
+    
+    const allLeads = await db.select().from(leads);
+    const byStatus: Record<string, number> = {};
+    for (const lead of allLeads) {
+      byStatus[lead.status] = (byStatus[lead.status] || 0) + 1;
+    }
+    
+    return {
+      total: totalResult.count,
+      unassigned: unassignedResult.count,
+      byStatus,
+      aiFollowupPending: aiFollowupResult.count,
+    };
+  }
+
+  // ==================== LEAD REQUESTS ====================
+
+  async createLeadRequest(request: InsertLeadRequest): Promise<LeadRequest> {
+    const [newRequest] = await db.insert(leadRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async getLeadRequest(id: number): Promise<LeadRequest | undefined> {
+    const [request] = await db.select().from(leadRequests).where(eq(leadRequests.id, id));
+    return request;
+  }
+
+  async getLeadRequestsByAgent(agentId: number): Promise<LeadRequest[]> {
+    return await db.select().from(leadRequests)
+      .where(eq(leadRequests.agentId, agentId))
+      .orderBy(desc(leadRequests.createdAt));
+  }
+
+  async getPendingLeadRequests(): Promise<(LeadRequest & { agent: Agent })[]> {
+    const results = await db.select({
+      request: leadRequests,
+      agent: agents,
+    })
+      .from(leadRequests)
+      .leftJoin(agents, eq(leadRequests.agentId, agents.id))
+      .where(eq(leadRequests.status, 'pending'))
+      .orderBy(asc(leadRequests.createdAt));
+    
+    return results.map(r => ({ ...r.request, agent: r.agent! }));
+  }
+
+  async getAllLeadRequests(page: number = 1, pageSize: number = 50): Promise<{ requests: (LeadRequest & { agent: Agent })[]; total: number }> {
+    const offset = (page - 1) * pageSize;
+    
+    const [totalResult] = await db.select({ count: count() }).from(leadRequests);
+    
+    const results = await db.select({
+      request: leadRequests,
+      agent: agents,
+    })
+      .from(leadRequests)
+      .leftJoin(agents, eq(leadRequests.agentId, agents.id))
+      .orderBy(desc(leadRequests.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+    
+    return {
+      requests: results.map(r => ({ ...r.request, agent: r.agent! })),
+      total: totalResult.count,
+    };
+  }
+
+  async respondToLeadRequest(id: number, respondedById: number, status: 'approved' | 'denied' | 'fulfilled', responseNotes?: string, leadsAssigned?: number): Promise<LeadRequest> {
+    const [updated] = await db.update(leadRequests)
+      .set({ 
+        status,
+        respondedById,
+        respondedAt: new Date(),
+        responseNotes: responseNotes || null,
+        leadsAssigned: leadsAssigned || 0,
+        updatedAt: new Date() 
+      })
+      .where(eq(leadRequests.id, id))
+      .returning();
+    return updated;
   }
 }
 
