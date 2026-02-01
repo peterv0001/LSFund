@@ -148,6 +148,51 @@ export class DatabaseStorage {
     return await db.select().from(agents).where(eq(agents.sponsorId, agentId));
   }
 
+  async searchAgentsForSponsor(query: string): Promise<{ id: number; firstName: string; lastName: string; maskedEmail: string; referralCode: string | null }[]> {
+    // Require minimum 2 characters to prevent enumeration
+    if (!query || query.length < 2) {
+      return [];
+    }
+    
+    const searchTerm = `%${query.toLowerCase()}%`;
+    const results = await db.select({
+      id: agents.id,
+      firstName: agents.firstName,
+      lastName: agents.lastName,
+      email: agents.email,
+      referralCode: agents.referralCode,
+    }).from(agents)
+      .where(and(
+        eq(agents.status, 'active'),
+        or(
+          sql`LOWER(${agents.firstName}) LIKE ${searchTerm}`,
+          sql`LOWER(${agents.lastName}) LIKE ${searchTerm}`,
+          sql`LOWER(${agents.email}) LIKE ${searchTerm}`,
+          sql`LOWER(CONCAT(${agents.firstName}, ' ', ${agents.lastName})) LIKE ${searchTerm}`
+        )
+      ))
+      .orderBy(asc(agents.firstName))
+      .limit(20);
+    
+    // Mask emails for privacy (show first 2 chars + domain)
+    return results.map(agent => ({
+      id: agent.id,
+      firstName: agent.firstName,
+      lastName: agent.lastName,
+      maskedEmail: this.maskEmail(agent.email),
+      referralCode: agent.referralCode,
+    }));
+  }
+
+  private maskEmail(email: string): string {
+    const [local, domain] = email.split('@');
+    if (!domain) return '***@***';
+    const maskedLocal = local.length > 2 
+      ? local.substring(0, 2) + '***' 
+      : local + '***';
+    return `${maskedLocal}@${domain}`;
+  }
+
   // ==================== TREE / TEAM ====================
 
   async findPlacement(sponsorId: number, strategy: 'left' | 'right' | 'auto'): Promise<{ placementId: number, leg: 'left' | 'right' }> {

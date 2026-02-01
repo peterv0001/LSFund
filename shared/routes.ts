@@ -43,11 +43,25 @@ export const api = {
       path: '/api/register',
       input: insertAgentSchema.extend({
         referralCode: z.string().optional(),
+        sponsorId: z.number().optional(),
         placementLeg: z.enum(['left', 'right', 'auto']).default('auto'),
       }),
       responses: {
         201: z.custom<typeof agents.$inferSelect>(),
         400: errorSchemas.validation,
+      },
+    },
+    searchSponsors: {
+      method: 'GET' as const,
+      path: '/api/sponsors/search',
+      responses: {
+        200: z.array(z.object({
+          id: z.number(),
+          firstName: z.string(),
+          lastName: z.string(),
+          maskedEmail: z.string(),
+          referralCode: z.string().nullable(),
+        })),
       },
     },
     login: {

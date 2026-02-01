@@ -147,6 +147,17 @@ export async function registerRoutes(
 
   // ==================== AUTH ROUTES ====================
 
+  // Sponsor search endpoint (public - for registration dropdown)
+  app.get(api.auth.searchSponsors.path, async (req, res) => {
+    try {
+      const query = (req.query.q as string) || '';
+      const results = await storage.searchAgentsForSponsor(query);
+      res.json(results);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const input = api.auth.register.input.parse(req.body);
@@ -157,9 +168,22 @@ export async function registerRoutes(
       }
       
       let sponsorId: number | undefined;
-      if (input.referralCode) {
+      
+      // First check if sponsorId was provided directly
+      if (input.sponsorId) {
+        const sponsor = await storage.getAgent(input.sponsorId);
+        // Validate sponsor is active
+        if (sponsor && sponsor.status === 'active') {
+          sponsorId = sponsor.id;
+        }
+      }
+      // Fall back to referral code if no sponsorId
+      else if (input.referralCode) {
         const sponsor = await storage.getAgentByReferralCode(input.referralCode);
-        sponsorId = sponsor?.id;
+        // Validate sponsor is active
+        if (sponsor && sponsor.status === 'active') {
+          sponsorId = sponsor.id;
+        }
       }
       
       let placementId: number | undefined;

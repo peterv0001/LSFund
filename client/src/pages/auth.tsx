@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Building, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Building, ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+
+type SponsorOption = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  maskedEmail: string;
+  referralCode: string | null;
+};
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -162,10 +171,15 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
   onToggle: () => void,
   referralCode?: string | null
 }) {
+  const [sponsorSearch, setSponsorSearch] = useState("");
+  const [selectedSponsor, setSelectedSponsor] = useState<SponsorOption | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+
   const form = useForm({
     resolver: zodResolver(api.auth.register.input),
     defaultValues: {
       referralCode: referralCode || "",
+      sponsorId: undefined as number | undefined,
       placementLeg: "auto" as const,
       firstName: "",
       lastName: "",
@@ -174,6 +188,30 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
       password: "",
     }
   });
+
+  const { data: sponsors = [], isLoading: isLoadingSponsors } = useQuery<SponsorOption[]>({
+    queryKey: ['/api/sponsors/search', sponsorSearch],
+    queryFn: async () => {
+      const response = await fetch(`/api/sponsors/search?q=${encodeURIComponent(sponsorSearch)}`);
+      if (!response.ok) throw new Error('Failed to fetch sponsors');
+      return response.json();
+    },
+    enabled: showDropdown,
+  });
+
+  const handleSelectSponsor = (sponsor: SponsorOption) => {
+    setSelectedSponsor(sponsor);
+    form.setValue("sponsorId", sponsor.id);
+    form.setValue("referralCode", "");
+    setShowDropdown(false);
+    setSponsorSearch("");
+  };
+
+  const handleClearSponsor = () => {
+    setSelectedSponsor(null);
+    form.setValue("sponsorId", undefined);
+    setSponsorSearch("");
+  };
 
   return (
     <motion.form 
@@ -186,61 +224,137 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>First Name</Label>
-          <Input {...form.register("firstName")} />
+          <Input {...form.register("firstName")} data-testid="input-first-name" />
         </div>
         <div className="space-y-2">
           <Label>Last Name</Label>
-          <Input {...form.register("lastName")} />
+          <Input {...form.register("lastName")} data-testid="input-last-name" />
         </div>
       </div>
 
       <div className="space-y-2">
         <Label>Email</Label>
-        <Input type="email" {...form.register("email")} />
+        <Input type="email" {...form.register("email")} data-testid="input-email" />
       </div>
       
       <div className="space-y-2">
         <Label>Phone</Label>
-        <Input type="tel" {...form.register("phone")} />
+        <Input type="tel" {...form.register("phone")} data-testid="input-phone" />
       </div>
 
       <div className="space-y-2">
         <Label>Password</Label>
-        <Input type="password" {...form.register("password")} />
+        <Input type="password" {...form.register("password")} data-testid="input-password" />
       </div>
 
       <div className="pt-2 border-t border-border">
-        <h4 className="text-sm font-medium mb-3">Placement Preference</h4>
+        <h4 className="text-sm font-medium mb-3">Who Referred You?</h4>
         <div className="space-y-3">
-          {referralCode && (
+          {selectedSponsor ? (
+            <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg text-sm border border-primary/20">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span className="text-primary">
+                  <strong>{selectedSponsor.firstName} {selectedSponsor.lastName}</strong>
+                  <span className="text-muted-foreground ml-2">({selectedSponsor.maskedEmail})</span>
+                </span>
+              </div>
+              <button 
+                type="button" 
+                onClick={handleClearSponsor}
+                className="text-muted-foreground hover:text-foreground"
+                data-testid="button-clear-sponsor"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : referralCode ? (
             <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg text-sm text-primary">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Sponsor Code Applied: <strong>{referralCode}</strong></span>
             </div>
+          ) : (
+            <div className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search for your referring agent..."
+                  value={sponsorSearch}
+                  onChange={(e) => setSponsorSearch(e.target.value)}
+                  onFocus={() => setShowDropdown(true)}
+                  className="pl-9 pr-9"
+                  data-testid="input-sponsor-search"
+                />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              </div>
+              
+              {showDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+                  {isLoadingSponsors ? (
+                    <div className="p-3 text-center text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                      Loading agents...
+                    </div>
+                  ) : sponsors.length === 0 ? (
+                    <div className="p-3 text-center text-sm text-muted-foreground">
+                      No agents found. Try a different search.
+                    </div>
+                  ) : (
+                    sponsors.map((sponsor) => (
+                      <button
+                        key={sponsor.id}
+                        type="button"
+                        onClick={() => handleSelectSponsor(sponsor)}
+                        className="w-full text-left px-3 py-2 hover:bg-muted transition-colors border-b border-border last:border-0"
+                        data-testid={`sponsor-option-${sponsor.id}`}
+                      >
+                        <div className="font-medium text-sm">
+                          {sponsor.firstName} {sponsor.lastName}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {sponsor.maskedEmail}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowDropdown(false)}
+                    className="w-full text-center py-2 text-xs text-muted-foreground hover:bg-muted border-t border-border"
+                    data-testid="button-close-dropdown"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-          
-          <RadioGroup 
-            defaultValue="auto" 
-            onValueChange={(val) => form.setValue("placementLeg", val as any)}
-            className="flex gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="auto" id="auto" />
-              <Label htmlFor="auto" className="font-normal">Auto-Balance</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="left" id="left" />
-              <Label htmlFor="left" className="font-normal">Left Leg</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="right" id="right" />
-              <Label htmlFor="right" className="font-normal">Right Leg</Label>
-            </div>
-          </RadioGroup>
         </div>
       </div>
 
-      <Button type="submit" className="w-full h-12 text-base font-semibold mt-4" disabled={isLoading}>
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium">Placement Preference</h4>
+        <RadioGroup 
+          defaultValue="auto" 
+          onValueChange={(val) => form.setValue("placementLeg", val as any)}
+          className="flex gap-4"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="auto" id="auto" />
+            <Label htmlFor="auto" className="font-normal">Auto-Balance</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="left" id="left" />
+            <Label htmlFor="left" className="font-normal">Left Leg</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="right" id="right" />
+            <Label htmlFor="right" className="font-normal">Right Leg</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <Button type="submit" className="w-full h-12 text-base font-semibold mt-4" disabled={isLoading} data-testid="button-create-account">
         {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
         Create Account
       </Button>
