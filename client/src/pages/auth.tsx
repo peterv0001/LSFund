@@ -34,7 +34,7 @@ export default function AuthPage() {
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
               <Building className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-display font-bold text-white tracking-wide">Capital Partners</h1>
+            <h1 className="text-2xl font-display font-bold text-white tracking-wide">PSL Capital</h1>
           </div>
 
           <h2 className="text-5xl font-display font-bold text-white leading-tight mb-6">
@@ -69,7 +69,7 @@ export default function AuthPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               {isLogin 
                 ? "Enter your credentials to access your dashboard" 
-                : "Start your journey with Capital Partners today"}
+                : "Start your journey with PSL Capital today"}
             </p>
           </div>
 

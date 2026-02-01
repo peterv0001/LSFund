@@ -44,8 +44,7 @@ export function Sidebar() {
               <Building className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-lg tracking-wide leading-none">Capital</h1>
-              <h2 className="text-xs text-white/50 tracking-widest uppercase mt-1">Partners</h2>
+              <h1 className="font-display font-bold text-lg tracking-wide leading-none">PSL Capital</h1>
             </div>
           </div>
           <NotificationBell />

@@ -188,7 +188,7 @@ export async function registerRoutes(
       await storage.createNotification({
         agentId: agent.id,
         type: 'system',
-        title: 'Welcome to Capital Partners!',
+        title: 'Welcome to PSL Capital!',
         message: 'Your account has been created. Start by completing your profile and exploring the platform.',
         isRead: false,
         emailSent: false,
@@ -905,8 +905,8 @@ export async function registerRoutes(
       rankRequirements: CONFIG.rankRequirements,
       binaryBonusCaps: CONFIG.binaryBonus,
       companyInfo: {
-        name: "Capital Partners",
-        supportEmail: "support@capitalpartners.com",
+        name: "PSL Capital",
+        supportEmail: "support@pslcapital.com",
       },
     });
   });

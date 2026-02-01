@@ -1,8 +1,8 @@
-# Capital Partners - MCA Back Office Platform
+# PSL Capital - MCA Back Office Platform
 
 ## Overview
 
-Capital Partners is a full-stack network marketing (MLM) platform designed for Merchant Cash Advance (MCA) lending operations. The system enables agents to sign up via referral links, log funded deals, and receive multi-tier commissions through a binary tree structure. The platform includes both an agent portal for managing personal business and an admin portal for company-wide operations.
+PSL Capital is a full-stack network marketing (MLM) platform designed for Merchant Cash Advance (MCA) lending operations. The system enables agents to sign up via referral links, log funded deals, and receive multi-tier commissions through a binary tree structure. The platform includes both an agent portal for managing personal business, an admin portal for company-wide operations, and a public marketing website for agent recruitment.
 
 **Core Business Logic:**
 - Binary tree placement for agent hierarchy

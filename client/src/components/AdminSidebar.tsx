@@ -38,10 +38,10 @@ export function AdminSidebar() {
       <div className="p-6 border-b border-slate-700">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-bold text-slate-900">
-            CP
+            PSL
           </div>
           <div>
-            <h1 className="font-bold text-lg">Capital Partners</h1>
+            <h1 className="font-bold text-lg">PSL Capital</h1>
             <p className="text-xs text-slate-400">Admin Portal</p>
           </div>
         </div>

@@ -6,6 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 
+// Public Pages
+import LandingPage from "@/pages/landing";
+
 // Agent Portal Pages
 import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
@@ -86,9 +89,9 @@ function Router() {
         {user ? <Redirect to="/dashboard" /> : <AuthPage />}
       </Route>
 
-      {/* Agent Portal Routes */}
+      {/* Public Landing Page */}
       <Route path="/">
-        {user ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
+        {user ? <Redirect to="/dashboard" /> : <LandingPage />}
       </Route>
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/team" component={() => <ProtectedRoute component={TeamPage} />} />
