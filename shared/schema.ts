@@ -15,6 +15,10 @@ export const notificationTypeEnum = pgEnum("notification_type", ['deal_funded', 
 export const resourceTypeEnum = pgEnum("resource_type", ['video', 'pdf', 'link', 'document']);
 export const announcementTargetEnum = pgEnum("announcement_target", ['all', 'agents_only', 'builders_plus', 'leaders_plus', 'directors_plus', 'partners_only']);
 
+// Lead status enum
+export const leadStatusEnum = pgEnum("lead_status", ['new', 'contacted', 'warm', 'hot', 'qualified', 'submitted', 'closed_won', 'closed_lost', 'ai_followup']);
+export const leadRequestStatusEnum = pgEnum("lead_request_status", ['pending', 'approved', 'denied', 'fulfilled']);
+
 // === TABLE DEFINITIONS ===
 
 export const agents = pgTable("agents", {
@@ -294,6 +298,80 @@ export const activityLog = pgTable("activity_log", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// === LEADS TABLES ===
+
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  
+  // Contact info
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  
+  // Company info
+  companyName: text("company_name"),
+  companySize: text("company_size"), // '1-10', '11-50', '51-200', '201-500', '500+'
+  industry: text("industry"),
+  
+  // Address
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zip: text("zip"),
+  
+  // Enrichment data (flexible JSON for any additional data)
+  enrichmentData: jsonb("enrichment_data"),
+  
+  // Assignment
+  assignedAgentId: integer("assigned_agent_id"),
+  assignedAt: timestamp("assigned_at"),
+  assignedById: integer("assigned_by_id"),
+  
+  // Status tracking
+  status: leadStatusEnum("status").default("new").notNull(),
+  statusUpdatedAt: timestamp("status_updated_at"),
+  
+  // AI follow-up
+  aiFollowupRequested: boolean("ai_followup_requested").default(false),
+  aiFollowupRequestedAt: timestamp("ai_followup_requested_at"),
+  aiFollowupProcessed: boolean("ai_followup_processed").default(false),
+  aiFollowupProcessedAt: timestamp("ai_followup_processed_at"),
+  
+  // Notes
+  notes: text("notes"),
+  
+  // Source tracking
+  source: text("source"), // 'excel_import', 'manual', etc.
+  batchId: text("batch_id"), // For grouping imports
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const leadRequests = pgTable("lead_requests", {
+  id: serial("id").primaryKey(),
+  
+  agentId: integer("agent_id").notNull(),
+  
+  // Request details
+  requestedCount: integer("requested_count").notNull().default(10),
+  preferredIndustry: text("preferred_industry"),
+  preferredLocation: text("preferred_location"),
+  notes: text("notes"),
+  
+  // Status
+  status: leadRequestStatusEnum("status").default("pending").notNull(),
+  
+  // Admin response
+  respondedById: integer("responded_by_id"),
+  respondedAt: timestamp("responded_at"),
+  responseNotes: text("response_notes"),
+  leadsAssigned: integer("leads_assigned").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // === RELATIONS ===
 
 export const agentsRelations = relations(agents, ({ one, many }) => ({
@@ -416,6 +494,28 @@ export const rankQualificationsRelations = relations(rankQualifications, ({ one 
   }),
 }));
 
+export const leadsRelations = relations(leads, ({ one }) => ({
+  assignedAgent: one(agents, {
+    fields: [leads.assignedAgentId],
+    references: [agents.id],
+  }),
+  assignedBy: one(agents, {
+    fields: [leads.assignedById],
+    references: [agents.id],
+  }),
+}));
+
+export const leadRequestsRelations = relations(leadRequests, ({ one }) => ({
+  agent: one(agents, {
+    fields: [leadRequests.agentId],
+    references: [agents.id],
+  }),
+  respondedBy: one(agents, {
+    fields: [leadRequests.respondedById],
+    references: [agents.id],
+  }),
+}));
+
 // === ZOD SCHEMAS ===
 
 export const insertAgentSchema = createInsertSchema(agents).omit({ 
@@ -516,6 +616,31 @@ export const insertCourseProgressSchema = createInsertSchema(courseProgress).omi
   updatedAt: true,
 });
 
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  assignedAt: true,
+  statusUpdatedAt: true,
+  aiFollowupRequestedAt: true,
+  aiFollowupProcessedAt: true,
+});
+
+export const insertLeadRequestSchema = createInsertSchema(leadRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  respondedAt: true,
+  respondedById: true,
+  responseNotes: true,
+  leadsAssigned: true,
+});
+
+export const updateLeadStatusSchema = z.object({
+  status: z.enum(['new', 'contacted', 'warm', 'hot', 'qualified', 'submitted', 'closed_won', 'closed_lost', 'ai_followup']),
+  notes: z.string().optional(),
+});
+
 // === EXPLICIT TYPES ===
 
 export type Agent = typeof agents.$inferSelect;
@@ -547,6 +672,12 @@ export type InsertCourseProgress = z.infer<typeof insertCourseProgressSchema>;
 
 export type RankQualification = typeof rankQualifications.$inferSelect;
 export type ActivityLog = typeof activityLog.$inferSelect;
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+
+export type LeadRequest = typeof leadRequests.$inferSelect;
+export type InsertLeadRequest = z.infer<typeof insertLeadRequestSchema>;
 
 // Request types
 export type CreateDealRequest = InsertDeal;
