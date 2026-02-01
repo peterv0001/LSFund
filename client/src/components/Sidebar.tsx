@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Shield,
   Menu,
-  X
+  X,
+  BarChart3
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,7 @@ export function Sidebar() {
     { href: "/team", label: "My Team", icon: Users },
     { href: "/deals", label: "Deals", icon: Briefcase },
     { href: "/earnings", label: "Earnings", icon: DollarSign },
+    { href: "/reports", label: "Reports", icon: BarChart3 },
     { href: "/rank", label: "Rank Progress", icon: TrendingUp },
     { href: "/leaderboards", label: "Leaderboards", icon: Trophy },
     { href: "/resources", label: "Resources", icon: Briefcase },
