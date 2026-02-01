@@ -1,7 +1,9 @@
 import { db } from "./db";
 import { 
   agents, deals, commissions, payouts, notifications, announcements, resources, rankQualifications, activityLog,
-  type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource
+  courseModules, courseProgress,
+  type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource,
+  type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress
 } from "@shared/schema";
 import { eq, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum } from "drizzle-orm";
 
@@ -697,6 +699,86 @@ export class DatabaseStorage {
 
   async deleteResource(id: number): Promise<void> {
     await db.delete(resources).where(eq(resources.id, id));
+  }
+
+  // ==================== COURSE MODULES ====================
+
+  async getCourseModules(): Promise<CourseModule[]> {
+    return db.select().from(courseModules)
+      .where(eq(courseModules.isPublished, true))
+      .orderBy(courseModules.sortOrder, courseModules.moduleNumber);
+  }
+
+  async getCourseModuleById(id: number): Promise<CourseModule | undefined> {
+    const [module] = await db.select().from(courseModules).where(eq(courseModules.id, id));
+    return module;
+  }
+
+  async createCourseModule(data: InsertCourseModule): Promise<CourseModule> {
+    const [module] = await db.insert(courseModules).values(data).returning();
+    return module;
+  }
+
+  async updateCourseModule(id: number, data: Partial<CourseModule>): Promise<CourseModule> {
+    const [updated] = await db.update(courseModules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(courseModules.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ==================== COURSE PROGRESS ====================
+
+  async getAgentCourseProgress(agentId: number): Promise<CourseProgress[]> {
+    return db.select().from(courseProgress).where(eq(courseProgress.agentId, agentId));
+  }
+
+  async getModuleProgress(agentId: number, moduleId: number): Promise<CourseProgress | undefined> {
+    const [progress] = await db.select().from(courseProgress)
+      .where(and(
+        eq(courseProgress.agentId, agentId),
+        eq(courseProgress.moduleId, moduleId)
+      ));
+    return progress;
+  }
+
+  async upsertCourseProgress(agentId: number, moduleId: number, data: Partial<InsertCourseProgress>): Promise<CourseProgress> {
+    const existing = await this.getModuleProgress(agentId, moduleId);
+    
+    if (existing) {
+      const [updated] = await db.update(courseProgress)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(courseProgress.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(courseProgress)
+        .values({ 
+          agentId, 
+          moduleId, 
+          ...data,
+          startedAt: new Date(),
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async getAgentTrainingStats(agentId: number): Promise<{
+    totalModules: number;
+    completedModules: number;
+    overallProgress: number;
+  }> {
+    const modules = await this.getCourseModules();
+    const progress = await this.getAgentCourseProgress(agentId);
+    
+    const completedCount = progress.filter(p => p.status === 'completed').length;
+    
+    return {
+      totalModules: modules.length,
+      completedModules: completedCount,
+      overallProgress: modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0,
+    };
   }
 
   // ==================== ADMIN STATS ====================

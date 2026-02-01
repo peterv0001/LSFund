@@ -590,6 +590,67 @@ export async function registerRoutes(
     res.json(resources);
   });
 
+  // ==================== TRAINING ROUTES ====================
+
+  // Get all published course modules
+  app.get(api.training.modules.path, requireAuth, async (req, res) => {
+    const modules = await storage.getCourseModules();
+    res.json(modules);
+  });
+
+  // Get modules with agent's progress
+  app.get(api.training.progress.path, requireAuth, async (req, res) => {
+    const agentId = req.user!.id;
+    const modules = await storage.getCourseModules();
+    const progressList = await storage.getAgentCourseProgress(agentId);
+    const stats = await storage.getAgentTrainingStats(agentId);
+    
+    // Merge modules with progress
+    const modulesWithProgress = modules.map(module => {
+      const progress = progressList.find(p => p.moduleId === module.id);
+      return {
+        ...module,
+        progress: progress ? {
+          moduleId: progress.moduleId,
+          status: progress.status,
+          currentSlide: progress.currentSlide ?? 1,
+          completedSlides: progress.completedSlides ?? 0,
+          quizScore: progress.quizScore,
+        } : null,
+      };
+    });
+    
+    res.json({
+      modules: modulesWithProgress,
+      overallProgress: stats.overallProgress,
+      completedModules: stats.completedModules,
+      totalModules: stats.totalModules,
+    });
+  });
+
+  // Update progress for a module
+  app.post(api.training.updateProgress.path, requireAuth, async (req, res) => {
+    const agentId = req.user!.id;
+    const moduleId = parseInt(req.params.moduleId as string);
+    
+    const module = await storage.getCourseModuleById(moduleId);
+    if (!module) {
+      return res.status(404).json({ message: 'Module not found' });
+    }
+    
+    const { status, currentSlide, completedSlides, quizScore } = req.body;
+    
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (currentSlide !== undefined) updateData.currentSlide = currentSlide;
+    if (completedSlides !== undefined) updateData.completedSlides = completedSlides;
+    if (quizScore !== undefined) updateData.quizScore = quizScore;
+    if (status === 'completed') updateData.completedAt = new Date();
+    
+    const progress = await storage.upsertCourseProgress(agentId, moduleId, updateData);
+    res.json(progress);
+  });
+
   // ==================== LEADERBOARD ROUTES ====================
 
   app.get(api.leaderboards.topEarners.path, requireAuth, async (req, res) => {

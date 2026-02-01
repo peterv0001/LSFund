@@ -215,6 +215,47 @@ export const resources = pgTable("resources", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// === COURSE/TRAINING TABLES ===
+export const courseModuleStatusEnum = pgEnum("course_module_status", ['not_started', 'in_progress', 'completed']);
+
+export const courseModules = pgTable("course_modules", {
+  id: serial("id").primaryKey(),
+  
+  moduleNumber: integer("module_number").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description"),
+  
+  videoUrl: text("video_url"), // YouTube embed URL
+  durationSeconds: integer("duration_seconds"),
+  slideCount: integer("slide_count").default(0),
+  
+  isPublished: boolean("is_published").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const courseProgress = pgTable("course_progress", {
+  id: serial("id").primaryKey(),
+  
+  agentId: integer("agent_id").notNull(),
+  moduleId: integer("module_id").notNull(),
+  
+  status: courseModuleStatusEnum("status").default("not_started").notNull(),
+  currentSlide: integer("current_slide").default(1),
+  completedSlides: integer("completed_slides").default(0),
+  quizScore: integer("quiz_score"), // null = not taken, 0-100 = score
+  
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  agentModuleUnique: uniqueIndex("agent_module_unique").on(table.agentId, table.moduleId),
+}));
+
 export const rankQualifications = pgTable("rank_qualifications", {
   id: serial("id").primaryKey(),
   agentId: integer("agent_id").notNull(),
@@ -353,6 +394,21 @@ export const resourcesRelations = relations(resources, ({ one }) => ({
   }),
 }));
 
+export const courseModulesRelations = relations(courseModules, ({ many }) => ({
+  progress: many(courseProgress),
+}));
+
+export const courseProgressRelations = relations(courseProgress, ({ one }) => ({
+  agent: one(agents, {
+    fields: [courseProgress.agentId],
+    references: [agents.id],
+  }),
+  module: one(courseModules, {
+    fields: [courseProgress.moduleId],
+    references: [courseModules.id],
+  }),
+}));
+
 export const rankQualificationsRelations = relations(rankQualifications, ({ one }) => ({
   agent: one(agents, {
     fields: [rankQualifications.agentId],
@@ -448,6 +504,18 @@ export const insertResourceSchema = createInsertSchema(resources).omit({
   createdById: true,
 });
 
+export const insertCourseModuleSchema = createInsertSchema(courseModules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCourseProgressSchema = createInsertSchema(courseProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // === EXPLICIT TYPES ===
 
 export type Agent = typeof agents.$inferSelect;
@@ -470,6 +538,12 @@ export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 
 export type Resource = typeof resources.$inferSelect;
 export type InsertResource = z.infer<typeof insertResourceSchema>;
+
+export type CourseModule = typeof courseModules.$inferSelect;
+export type InsertCourseModule = z.infer<typeof insertCourseModuleSchema>;
+
+export type CourseProgress = typeof courseProgress.$inferSelect;
+export type InsertCourseProgress = z.infer<typeof insertCourseProgressSchema>;
 
 export type RankQualification = typeof rankQualifications.$inferSelect;
 export type ActivityLog = typeof activityLog.$inferSelect;

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@shared/routes";
 import { 
   Play, 
   CheckCircle2, 
@@ -9,7 +11,8 @@ import {
   Trophy,
   Video,
   FileText,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -48,76 +51,6 @@ type TrainingData = {
   completedModules: number;
   totalModules: number;
 };
-
-// Placeholder data - will be replaced with API calls
-// Video durations based on actual built videos:
-// Module 1: 11.0 min (660s), Module 2: 4.7 min (282s), Module 3: 6.3 min (378s)
-// Module 4: 4.2 min (252s), Module 5: 3.6 min (216s), Module 6: 4.0 min (240s)
-const PLACEHOLDER_MODULES: ModuleWithProgress[] = [
-  {
-    id: 1,
-    moduleNumber: 1,
-    title: "MCA Fundamentals",
-    description: "Understanding merchant cash advance - what it is, key terms, transaction flow, and how you earn commissions.",
-    videoUrl: "https://www.youtube.com/embed/V_yT4AVwAgU",
-    durationSeconds: 662, // 11:02
-    slideCount: 16,
-    isPublished: true,
-    progress: { moduleId: 1, status: 'completed', currentSlide: 16, completedSlides: 16, quizScore: 90 }
-  },
-  {
-    id: 2,
-    moduleNumber: 2,
-    title: "Finding Leads",
-    description: "How to find and attract MCA leads - warm markets, online marketing, referral systems, and UCC lead strategies.",
-    videoUrl: "https://www.youtube.com/embed/MhipHRWbC3s",
-    durationSeconds: 281, // 4:41
-    slideCount: 9,
-    isPublished: true,
-    progress: { moduleId: 2, status: 'in_progress', currentSlide: 5, completedSlides: 4, quizScore: null }
-  },
-  {
-    id: 3,
-    moduleNumber: 3,
-    title: "Qualifying Deals",
-    description: "How to qualify MCA deals - pre-screening questions, documentation requirements, and identifying deal-killers early.",
-    videoUrl: "https://www.youtube.com/embed/nVYX551fOKE",
-    durationSeconds: 376, // 6:16
-    slideCount: 12,
-    isPublished: true,
-    progress: { moduleId: 3, status: 'not_started', currentSlide: 1, completedSlides: 0, quizScore: null }
-  },
-  {
-    id: 4,
-    moduleNumber: 4,
-    title: "Submission Process",
-    description: "Step-by-step guide to submitting MCA deals - portal walkthrough, document uploads, and getting quick approvals.",
-    videoUrl: "https://www.youtube.com/embed/MpJD_2DJC5I",
-    durationSeconds: 252, // 4:12
-    slideCount: 8,
-    isPublished: true,
-  },
-  {
-    id: 5,
-    moduleNumber: 5,
-    title: "Managing Your Pipeline",
-    description: "Track and manage your deals from submission to funding - pipeline stages, follow-up strategies, and maximizing close rates.",
-    videoUrl: "https://www.youtube.com/embed/VOtLffd7gbs",
-    durationSeconds: 217, // 3:37
-    slideCount: 7,
-    isPublished: true,
-  },
-  {
-    id: 6,
-    moduleNumber: 6,
-    title: "Scaling Your Business",
-    description: "Build a sustainable MCA business - recruiting partners, building systems, and creating passive income through team development.",
-    videoUrl: "https://www.youtube.com/embed/zAIoJ0x5A70",
-    durationSeconds: 242, // 4:02
-    slideCount: 8,
-    isPublished: true,
-  },
-];
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "--";
@@ -298,15 +231,67 @@ function VideoPlayer({ module, onProgress }: {
 export default function TrainingPage() {
   const [selectedModule, setSelectedModule] = useState<ModuleWithProgress | null>(null);
   const [activeTab, setActiveTab] = useState<'course' | 'resources'>('course');
+  const queryClient = useQueryClient();
   
-  // TODO: Replace with actual API call
-  const modules = PLACEHOLDER_MODULES;
-  const completedCount = modules.filter(m => m.progress?.status === 'completed').length;
-  const overallProgress = Math.round((completedCount / modules.length) * 100);
+  // Fetch training data from API
+  const { data: trainingData, isLoading, error } = useQuery({
+    queryKey: ['training-progress'],
+    queryFn: async () => {
+      const res = await fetch(api.training.progress.path, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch training data');
+      return res.json() as Promise<TrainingData>;
+    },
+  });
+
+  // Mutation to update progress
+  const updateProgressMutation = useMutation({
+    mutationFn: async ({ moduleId, data }: { moduleId: number; data: any }) => {
+      const res = await fetch(api.training.updateProgress.path.replace(':moduleId', String(moduleId)), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to update progress');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['training-progress'] });
+    },
+  });
+
+  const modules = trainingData?.modules ?? [];
+  const completedCount = trainingData?.completedModules ?? 0;
+  const overallProgress = trainingData?.overallProgress ?? 0;
 
   const handleStartModule = (module: ModuleWithProgress) => {
+    // Mark as in_progress when starting
+    if (!module.progress || module.progress.status === 'not_started') {
+      updateProgressMutation.mutate({ 
+        moduleId: module.id, 
+        data: { status: 'in_progress' } 
+      });
+    }
     setSelectedModule(module);
   };
+
+  const handleMarkComplete = (moduleId: number) => {
+    updateProgressMutation.mutate({ 
+      moduleId, 
+      data: { status: 'completed' } 
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50/50">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </main>
+      </div>
+    );
+  }
 
   if (selectedModule) {
     return (
@@ -324,8 +309,26 @@ export default function TrainingPage() {
           
           <VideoPlayer 
             module={selectedModule} 
-            onProgress={(slide) => console.log('Progress:', slide)} 
+            onProgress={(slide) => {
+              updateProgressMutation.mutate({ 
+                moduleId: selectedModule.id, 
+                data: { currentSlide: slide, completedSlides: slide } 
+              });
+            }} 
           />
+          
+          {/* Mark as Complete button */}
+          {selectedModule.progress?.status !== 'completed' && (
+            <div className="mt-4 flex justify-end">
+              <Button 
+                onClick={() => handleMarkComplete(selectedModule.id)}
+                disabled={updateProgressMutation.isPending}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Mark as Complete
+              </Button>
+            </div>
+          )}
           
           {/* Module content/notes section */}
           <Card className="mt-6">

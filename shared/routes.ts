@@ -345,6 +345,76 @@ export const api = {
     },
   },
 
+  // === TRAINING / COURSES ===
+  training: {
+    modules: {
+      method: 'GET' as const,
+      path: '/api/training/modules',
+      responses: {
+        200: z.array(z.object({
+          id: z.number(),
+          moduleNumber: z.number(),
+          title: z.string(),
+          description: z.string().nullable(),
+          videoUrl: z.string().nullable(),
+          durationSeconds: z.number().nullable(),
+          slideCount: z.number(),
+          isPublished: z.boolean(),
+        })),
+      },
+    },
+    progress: {
+      method: 'GET' as const,
+      path: '/api/training/progress',
+      responses: {
+        200: z.object({
+          modules: z.array(z.object({
+            id: z.number(),
+            moduleNumber: z.number(),
+            title: z.string(),
+            description: z.string().nullable(),
+            videoUrl: z.string().nullable(),
+            durationSeconds: z.number().nullable(),
+            slideCount: z.number(),
+            isPublished: z.boolean(),
+            progress: z.object({
+              moduleId: z.number(),
+              status: z.enum(['not_started', 'in_progress', 'completed']),
+              currentSlide: z.number(),
+              completedSlides: z.number(),
+              quizScore: z.number().nullable(),
+            }).nullable(),
+          })),
+          overallProgress: z.number(),
+          completedModules: z.number(),
+          totalModules: z.number(),
+        }),
+      },
+    },
+    updateProgress: {
+      method: 'POST' as const,
+      path: '/api/training/progress/:moduleId',
+      input: z.object({
+        status: z.enum(['not_started', 'in_progress', 'completed']).optional(),
+        currentSlide: z.number().optional(),
+        completedSlides: z.number().optional(),
+        quizScore: z.number().min(0).max(100).optional(),
+      }),
+      responses: {
+        200: z.object({
+          id: z.number(),
+          agentId: z.number(),
+          moduleId: z.number(),
+          status: z.string(),
+          currentSlide: z.number().nullable(),
+          completedSlides: z.number().nullable(),
+          quizScore: z.number().nullable(),
+        }),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+
   // === LEADERBOARDS ===
   leaderboards: {
     topEarners: {

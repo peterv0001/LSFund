@@ -234,5 +234,73 @@ export async function seedDatabase() {
     await storage.createResource(video);
   }
 
+  // 9. Seed Course Modules (for progress tracking)
+  const courseModulesData = [
+    {
+      moduleNumber: 1,
+      title: "MCA Fundamentals",
+      description: "Understanding merchant cash advance - what it is, key terms, transaction flow, and how you earn commissions.",
+      videoUrl: "https://www.youtube.com/embed/V_yT4AVwAgU",
+      durationSeconds: 662, // 11:02
+      slideCount: 16,
+      isPublished: true,
+      sortOrder: 1,
+    },
+    {
+      moduleNumber: 2,
+      title: "Finding Leads",
+      description: "How to find and attract MCA leads - warm markets, online marketing, referral systems, and UCC lead strategies.",
+      videoUrl: "https://www.youtube.com/embed/MhipHRWbC3s",
+      durationSeconds: 281, // 4:41
+      slideCount: 9,
+      isPublished: true,
+      sortOrder: 2,
+    },
+    {
+      moduleNumber: 3,
+      title: "Qualifying Deals",
+      description: "How to qualify MCA deals - pre-screening questions, documentation requirements, and identifying deal-killers early.",
+      videoUrl: "https://www.youtube.com/embed/nVYX551fOKE",
+      durationSeconds: 376, // 6:16
+      slideCount: 12,
+      isPublished: true,
+      sortOrder: 3,
+    },
+    {
+      moduleNumber: 4,
+      title: "Submission Process",
+      description: "Step-by-step guide to submitting MCA deals - portal walkthrough, document uploads, and getting quick approvals.",
+      videoUrl: "https://www.youtube.com/embed/MpJD_2DJC5I",
+      durationSeconds: 252, // 4:12
+      slideCount: 8,
+      isPublished: true,
+      sortOrder: 4,
+    },
+    {
+      moduleNumber: 5,
+      title: "Managing Your Pipeline",
+      description: "Track and manage your deals from submission to funding - pipeline stages, follow-up strategies, and maximizing close rates.",
+      videoUrl: "https://www.youtube.com/embed/VOtLffd7gbs",
+      durationSeconds: 217, // 3:37
+      slideCount: 7,
+      isPublished: true,
+      sortOrder: 5,
+    },
+    {
+      moduleNumber: 6,
+      title: "Scaling Your Business",
+      description: "Build a sustainable MCA business - recruiting partners, building systems, and creating passive income through team development.",
+      videoUrl: "https://www.youtube.com/embed/zAIoJ0x5A70",
+      durationSeconds: 242, // 4:02
+      slideCount: 8,
+      isPublished: true,
+      sortOrder: 6,
+    },
+  ];
+
+  for (const module of courseModulesData) {
+    await storage.createCourseModule(module);
+  }
+
   console.log("Database seeded with sample data!");
 }
