@@ -31,6 +31,7 @@ import AdminCommissions from "@/pages/admin/commissions";
 import AdminPayouts from "@/pages/admin/payouts";
 import AdminLeads from "@/pages/admin/leads";
 import AdminAIQueue from "@/pages/admin/ai-queue";
+import AdminDeals from "@/pages/admin/deals";
 
 // Protected Route Wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -122,9 +123,10 @@ function Router() {
       <Route path="/admin/leads" component={() => <AdminRoute component={AdminLeads} />} />
       <Route path="/admin/ai-queue" component={() => <AdminRoute component={AdminAIQueue} />} />
       
+      <Route path="/admin/deals" component={() => <AdminRoute component={AdminDeals} />} />
+      
       {/* Placeholder admin routes - will redirect to main admin for now */}
-      <Route path="/admin/deals" component={() => <AdminRoute component={AdminDashboard} />} />
-      <Route path="/admin/payouts" component={() => <AdminRoute component={AdminDashboard} />} />
+      <Route path="/admin/subscriptions" component={() => <AdminRoute component={AdminCommissions} />} />
       <Route path="/admin/announcements" component={() => <AdminRoute component={AdminDashboard} />} />
       <Route path="/admin/resources" component={() => <AdminRoute component={AdminDashboard} />} />
       <Route path="/admin/activity" component={() => <AdminRoute component={AdminDashboard} />} />

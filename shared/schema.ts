@@ -7,7 +7,7 @@ import { z } from "zod";
 export const rankEnum = pgEnum("rank", ['agent', 'builder', 'leader', 'director', 'partner']);
 export const legEnum = pgEnum("leg", ['left', 'right']);
 export const statusEnum = pgEnum("status", ['active', 'inactive', 'suspended']);
-export const commissionTypeEnum = pgEnum("commission_type", ['personal_deal', 'binary_bonus', 'generation_override', 'course_sale', 'fast_start', 'leadership_pool']);
+export const commissionTypeEnum = pgEnum("commission_type", ['personal_deal', 'binary_bonus', 'generation_override', 'course_sale', 'fast_start', 'leadership_pool', 'mac_primary', 'mac_sponsor_l1', 'mac_sponsor_l2', 'tfc', 'subscription_commission', 'subscription_residual']);
 export const commissionStatusEnum = pgEnum("commission_status", ['pending', 'approved', 'paid', 'voided']);
 export const dealStatusEnum = pgEnum("deal_status", ['pending', 'funded', 'rejected']);
 export const payoutStatusEnum = pgEnum("payout_status", ['pending', 'processing', 'completed', 'failed']);
@@ -18,6 +18,11 @@ export const announcementTargetEnum = pgEnum("announcement_target", ['all', 'age
 // Lead status enum
 export const leadStatusEnum = pgEnum("lead_status", ['new', 'contacted', 'warm', 'hot', 'qualified', 'submitted', 'closed_won', 'closed_lost', 'ai_followup']);
 export const leadRequestStatusEnum = pgEnum("lead_request_status", ['pending', 'approved', 'denied', 'fulfilled']);
+
+export const subscriptionTierEnum = pgEnum("subscription_tier", ['tier_1', 'tier_2', 'tier_3']);
+export const subscriptionStatusEnum = pgEnum("subscription_status", ['active', 'paused', 'cancelled', 'expired']);
+export const holdbackStatusEnum = pgEnum("holdback_status", ['held', 'partially_released', 'released', 'clawed_back']);
+export const fulfillmentTierLevelEnum = pgEnum("fulfillment_tier_level", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
 
 // === TABLE DEFINITIONS ===
 
@@ -90,10 +95,11 @@ export const deals = pgTable("deals", {
   merchantEmail: text("merchant_email"),
   merchantPhone: text("merchant_phone"),
   loanAmount: decimal("loan_amount", { precision: 12, scale: 2 }).notNull(),
-  companyRevenue: decimal("company_revenue", { precision: 10, scale: 2 }).notNull(), // 10% of loan
+  companyRevenue: decimal("company_revenue", { precision: 10, scale: 2 }).notNull(),
+  gbrAmount: decimal("gbr_amount", { precision: 12, scale: 2 }),
+  fulfillmentAgentId: integer("fulfillment_agent_id"),
   status: dealStatusEnum("status").default("funded").notNull(),
   
-  // For admin tracking
   notes: text("notes"),
   approvedById: integer("approved_by_id"),
   
@@ -297,6 +303,57 @@ export const activityLog = pgTable("activity_log", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// === SUBSCRIPTION TABLES ===
+
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  merchantName: text("merchant_name").notNull(),
+  merchantEmail: text("merchant_email"),
+  tier: subscriptionTierEnum("tier").notNull(),
+  monthlyAmount: decimal("monthly_amount", { precision: 10, scale: 2 }).notNull(),
+  status: subscriptionStatusEnum("status").default("active").notNull(),
+  mcaPairedDealId: integer("mca_paired_deal_id"),
+  startDate: timestamp("start_date").defaultNow().notNull(),
+  cancelledAt: timestamp("cancelled_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// === HOLDBACK & CLAWBACK TABLES ===
+
+export const holdbacks = pgTable("holdbacks", {
+  id: serial("id").primaryKey(),
+  dealId: integer("deal_id").notNull(),
+  agentId: integer("agent_id").notNull(),
+  commissionId: integer("commission_id"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  releasedAmount: decimal("released_amount", { precision: 10, scale: 2 }).default("0"),
+  clawbackAmount: decimal("clawback_amount", { precision: 10, scale: 2 }).default("0"),
+  status: holdbackStatusEnum("status").default("held").notNull(),
+  releaseDate: timestamp("release_date"),
+  clawbackDate: timestamp("clawback_date"),
+  clawbackReason: text("clawback_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// === FULFILLMENT TIER TABLES ===
+
+export const fulfillmentTiers = pgTable("fulfillment_tiers", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  month: text("month").notNull(),
+  tier: fulfillmentTierLevelEnum("tier").default("tier_1").notNull(),
+  dealCount: integer("deal_count").default(0).notNull(),
+  totalGbr: decimal("total_gbr", { precision: 12, scale: 2 }).default("0"),
+  qualifiedAt: timestamp("qualified_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  agentMonthUnique: uniqueIndex("agent_month_unique").on(table.agentId, table.month),
+}));
 
 // === LEADS TABLES ===
 
@@ -516,6 +573,39 @@ export const leadRequestsRelations = relations(leadRequests, ({ one }) => ({
   }),
 }));
 
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  agent: one(agents, {
+    fields: [subscriptions.agentId],
+    references: [agents.id],
+  }),
+  mcaPairedDeal: one(deals, {
+    fields: [subscriptions.mcaPairedDealId],
+    references: [deals.id],
+  }),
+}));
+
+export const holdbacksRelations = relations(holdbacks, ({ one }) => ({
+  deal: one(deals, {
+    fields: [holdbacks.dealId],
+    references: [deals.id],
+  }),
+  agent: one(agents, {
+    fields: [holdbacks.agentId],
+    references: [agents.id],
+  }),
+  commission: one(commissions, {
+    fields: [holdbacks.commissionId],
+    references: [commissions.id],
+  }),
+}));
+
+export const fulfillmentTiersRelations = relations(fulfillmentTiers, ({ one }) => ({
+  agent: one(agents, {
+    fields: [fulfillmentTiers.agentId],
+    references: [agents.id],
+  }),
+}));
+
 // === ZOD SCHEMAS ===
 
 export const insertAgentSchema = createInsertSchema(agents).omit({ 
@@ -556,8 +646,10 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   companyRevenue: true,
   fundedAt: true,
   approvedById: true,
+  fulfillmentAgentId: true,
 }).extend({
   loanAmount: z.coerce.number().min(0, "Amount must be positive"),
+  gbrAmount: z.coerce.number().min(0).optional(),
   fundedAt: z.coerce.date().optional(),
 });
 
@@ -641,6 +733,29 @@ export const updateLeadStatusSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  cancelledAt: true,
+}).extend({
+  monthlyAmount: z.coerce.number().min(0),
+});
+
+export const insertHoldbackSchema = createInsertSchema(holdbacks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  clawbackDate: true,
+  clawbackReason: true,
+});
+
+export const insertFulfillmentTierSchema = createInsertSchema(fulfillmentTiers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // === EXPLICIT TYPES ===
 
 export type Agent = typeof agents.$inferSelect;
@@ -678,6 +793,15 @@ export type InsertLead = z.infer<typeof insertLeadSchema>;
 
 export type LeadRequest = typeof leadRequests.$inferSelect;
 export type InsertLeadRequest = z.infer<typeof insertLeadRequestSchema>;
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+
+export type Holdback = typeof holdbacks.$inferSelect;
+export type InsertHoldback = z.infer<typeof insertHoldbackSchema>;
+
+export type FulfillmentTier = typeof fulfillmentTiers.$inferSelect;
+export type InsertFulfillmentTier = z.infer<typeof insertFulfillmentTierSchema>;
 
 // Request types
 export type CreateDealRequest = InsertDeal;

@@ -2,17 +2,55 @@
 
 ## Overview
 
-PSL Capital is a full-stack network marketing (MLM) platform designed for Merchant Cash Advance (MCA) lending operations. The system enables agents to sign up via referral links, log funded deals, and receive multi-tier commissions through a binary tree structure. The platform includes both an agent portal for managing personal business, an admin portal for company-wide operations, and a public marketing website for agent recruitment.
+PSL Capital is a full-stack network marketing (MLM) platform designed for Merchant Cash Advance (MCA) lending operations and recurring subscription products. The system enables agents to sign up via referral links, log funded deals, manage merchant subscriptions, and receive multi-tiered commissions through a GBR waterfall and subscription decay structure. The platform includes an agent portal, an admin portal, and a public marketing website for agent recruitment.
 
 **Core Business Logic:**
 - Binary tree placement for agent hierarchy
-- Four commission types: personal deal, generation override, binary bonus, and course sales
+- GBR (Gross Brokerage Revenue) waterfall for MCA commissions
+- Subscription commission engine with decay schedule
+- Holdback/clawback system for risk management
+- Fulfillment agent tiering for transaction completion
 - Rank advancement system (Agent → Builder → Leader → Director → Partner)
-- Weekly payout cycles with volume tracking
+- Platform fee management with production-based waivers
+- Lead distribution system with AI follow-up queue
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Commission Architecture
+
+### MCA Commission (GBR Waterfall)
+When a deal is funded, GBR is allocated:
+- **MAC (Merchant Acquisition Compensation)**: 30% of GBR
+  - Primary Agent: 22% of GBR
+  - Senior Sponsor (L1): 5% of GBR
+  - Executive Sponsor (L2): 3% of GBR
+- **TFC (Transaction Fulfillment Compensation)**: 30-40% of GBR (based on fulfillment tier)
+- **PICF (Platform Infrastructure & Compliance Fee)**: 25-35% retained
+- **RSR (Risk Stabilization Reserve)**: 5% reserved
+
+### Holdback & Clawback
+- 70% of commission released at funding
+- 30% deferred for 75 days
+- Clawback: 0-30 days = 100%, 31-90 days = 50%, after 90 days = none
+
+### Fulfillment Tiers (TFC Rate)
+- Tier 1: 30% | Tier 2: 33% | Tier 3: 36% | Tier 4: 40%
+
+### Subscription Commission
+Three subscription tiers: Merchant Essentials ($199/mo), Growth Accelerator ($429/mo), Elite AI ($749/mo)
+- Commission pools: Tier 1 = 50%, Tier 2 = 60%, Tier 3 = 70%
+- Decay schedule: Months 1-3: 100%, 4-6: 75%, 7-9: 50%, 10-12: 25%, Post-12: 10% residual
+- MCA pairing bonus: +5% during months 1-3 if paired with funded MCA
+
+### Platform Fee ($99/month per agent)
+- Level 1 ($3,000+ revenue): 50% reduction
+- Level 2 ($5,000+ revenue): 100% waiver
+- Level 3 ($8,500+ revenue): 100% waiver + $100 credit
+
+### Binary Bonus (unchanged)
+- Builder: 5% (max $2,500) | Leader: 6% (max $5,000) | Director: 7% (max $10,000) | Partner: 8% (max $25,000)
 
 ## System Architecture
 
@@ -48,12 +86,18 @@ Preferred communication style: Simple, everyday language.
 
 **Core Tables:**
 - `agents` - User accounts with binary tree structure (sponsorId, placementId, leg)
-- `deals` - Funded MCA loans with merchant info and amounts
-- `commissions` - Calculated earnings per agent per deal
+- `deals` - Funded MCA loans with GBR tracking and fulfillment agent assignment
+- `commissions` - Earnings with types: mac_primary, mac_sponsor_l1, mac_sponsor_l2, tfc, subscription_commission, subscription_residual, binary_bonus, personal_deal
+- `subscriptions` - Merchant subscription tracking (tier, monthly amount, MCA pairing, decay)
+- `holdbacks` - Deferred commission tracking with release dates and clawback management
+- `fulfillment_tiers` - Monthly fulfillment agent performance tiers
 - `payouts` - Payout batch tracking
+- `leads` - Lead management with assignment and AI follow-up
+- `lead_requests` - Agent lead requests
 - `notifications` - System notifications for agents
 - `announcements` - Company-wide messages
 - `resources` - Training materials and documents
+- `course_modules` / `course_progress` - Training module system
 
 **Binary Tree Structure:**
 - Each agent has `sponsorId` (who recruited them) and `placementId` (position in binary tree)
@@ -62,10 +106,13 @@ Preferred communication style: Simple, everyday language.
 
 ### Commission Engine
 Located in `server/routes.ts`, implements:
-- Personal commission rates by rank (40-60%)
+- GBR waterfall allocation (MAC/TFC/PICF/RSR) with 70/30 holdback
+- MAC sponsor overrides with compression (unqualified sponsors skipped)
+- Subscription commission decay over 12 months
+- MCA pairing enhancement (+5% months 1-3)
 - Binary bonus with rank-based caps
-- Generation override for upline sponsors
-- Volume accumulation for rank qualification
+- Platform fee waiver calculations
+- Fulfillment tier rate determination
 
 ## External Dependencies
 

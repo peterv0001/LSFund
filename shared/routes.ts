@@ -609,6 +609,8 @@ export const api = {
         input: z.object({
           merchantName: z.string().optional(),
           loanAmount: z.number().optional(),
+          gbrAmount: z.number().optional(),
+          fulfillmentAgentId: z.number().optional(),
           status: z.enum(['pending', 'funded', 'rejected']).optional(),
           notes: z.string().optional(),
         }),

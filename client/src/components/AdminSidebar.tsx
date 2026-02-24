@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   Activity,
   UserPlus,
-  Bot
+  Bot,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +27,7 @@ const adminNavItems = [
   { href: "/admin/deals", icon: Briefcase, label: "Deals" },
   { href: "/admin/commissions", icon: DollarSign, label: "Commissions" },
   { href: "/admin/payouts", icon: CreditCard, label: "Payouts" },
+  { href: "/admin/subscriptions", icon: RefreshCw, label: "Subscriptions" },
   { href: "/admin/announcements", icon: Megaphone, label: "Announcements" },
   { href: "/admin/resources", icon: BookOpen, label: "Resources" },
   { href: "/admin/activity", icon: Activity, label: "Activity Log" },

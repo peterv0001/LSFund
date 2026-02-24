@@ -36,32 +36,80 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-// Commission Config
+// GBR Waterfall Commission Config (MCA Platform Compensation Policy)
 const CONFIG = {
-  personalCommission: {
-    agent: 0.40,
-    builder: 0.45,
-    leader: 0.50,
-    director: 0.55,
-    partner: 0.60
+  gbrWaterfall: {
+    mac: 0.30,
+    macSplit: {
+      primaryAgent: 0.22,
+      seniorSponsor: 0.05,
+      executiveSponsor: 0.03,
+    },
+    tfc: { min: 0.30, max: 0.40 },
+    picf: { min: 0.25, max: 0.35 },
+    rsr: 0.05,
+  },
+  fulfillmentTierRates: {
+    tier_1: 0.30,
+    tier_2: 0.33,
+    tier_3: 0.36,
+    tier_4: 0.40,
+  } as Record<string, number>,
+  holdback: {
+    immediateRelease: 0.70,
+    deferred: 0.30,
+    deferralDays: 75,
+  },
+  clawback: {
+    days0to30: 1.00,
+    days31to90: 0.50,
+    after90: 0.00,
+  },
+  subscriptionPools: {
+    tier_1: 0.50,
+    tier_2: 0.60,
+    tier_3: 0.70,
+  } as Record<string, number>,
+  subscriptionDecay: {
+    months1to3: 1.00,
+    months4to6: 0.75,
+    months7to9: 0.50,
+    months10to12: 0.25,
+    postMonth12: 0.10,
+  },
+  mcaPairingBonus: 0.05,
+  subscriptionTierPrices: {
+    tier_1: 199,
+    tier_2: 429,
+    tier_3: 749,
+  } as Record<string, number>,
+  platformFee: {
+    standard: 99,
+    waivers: {
+      level1: { threshold: 3000, reduction: 0.50 },
+      level2: { threshold: 5000, reduction: 1.00 },
+      level3: { threshold: 8500, reduction: 1.00, credit: 100 },
+    },
+  },
+  residualProduction: {
+    minRevenue: 3000,
+    minMcaAndSub: { mca: 1, subscriptions: 1 },
+    reductionAfterDays: 90,
+    reductionPercent: 0.50,
+    suspensionAfterMonths: 6,
   },
   binaryBonus: {
     builder: { rate: 0.05, max: 2500 },
     leader: { rate: 0.06, max: 5000 },
     director: { rate: 0.07, max: 10000 },
-    partner: { rate: 0.08, max: 25000 }
-  },
-  generationOverride: {
-    leader: { 1: 0.10 },
-    director: { 1: 0.15, 2: 0.10 },
-    partner: { 1: 0.20, 2: 0.15, 3: 0.10, 4: 0.05 }
-  },
+    partner: { rate: 0.08, max: 25000 },
+  } as Record<string, { rate: number; max: number }>,
   rankRequirements: {
     builder: { personalVolume: 1000, weakLegVolume: 2500 },
     leader: { personalVolume: 2500, weakLegVolume: 10000 },
     director: { personalVolume: 5000, weakLegVolume: 25000 },
-    partner: { personalVolume: 10000, weakLegVolume: 100000 }
-  }
+    partner: { personalVolume: 10000, weakLegVolume: 100000 },
+  } as Record<string, { personalVolume: number; weakLegVolume: number }>,
 };
 
 // Middleware helpers
@@ -374,6 +422,25 @@ export async function registerRoutes(
       }
     }
     
+    const subscriptionRevenue = await storage.getActiveSubscriptionRevenue(agentId);
+    let platformFeeStatus = {
+      standardFee: CONFIG.platformFee.standard,
+      currentFee: CONFIG.platformFee.standard,
+      waiverLevel: 'none' as string,
+      credit: 0,
+      subscriptionRevenue,
+    };
+    if (subscriptionRevenue >= CONFIG.platformFee.waivers.level3.threshold) {
+      platformFeeStatus = { ...platformFeeStatus, currentFee: 0, waiverLevel: 'level3', credit: CONFIG.platformFee.waivers.level3.credit };
+    } else if (subscriptionRevenue >= CONFIG.platformFee.waivers.level2.threshold) {
+      platformFeeStatus = { ...platformFeeStatus, currentFee: 0, waiverLevel: 'level2' };
+    } else if (subscriptionRevenue >= CONFIG.platformFee.waivers.level1.threshold) {
+      platformFeeStatus = { ...platformFeeStatus, currentFee: Math.round(CONFIG.platformFee.standard * 0.50), waiverLevel: 'level1' };
+    }
+
+    const holdbacksList = await storage.getHoldbacksByAgent(agentId);
+    const totalHeld = holdbacksList.filter(h => h.status === 'held').reduce((s, h) => s + Number(h.totalAmount), 0);
+    
     res.json({
       totalEarned: stats.totalEarned,
       thisWeek: stats.thisWeek,
@@ -388,6 +455,8 @@ export async function registerRoutes(
       rankProgress,
       recentDeals: recentDeals.slice(0, 5),
       recentCommissions: recentCommissions.slice(0, 5),
+      platformFee: platformFeeStatus,
+      totalHeldBack: totalHeld,
     });
   });
 
@@ -465,86 +534,149 @@ export async function registerRoutes(
       const agentId = req.user!.id;
       
       const companyRevenue = Number(input.loanAmount) * 0.10;
+      const gbrAmount = input.gbrAmount ? Number(input.gbrAmount) : companyRevenue;
       
       const deal = await storage.createDeal({
         ...input,
         agentId,
         loanAmount: input.loanAmount.toString(),
         companyRevenue: companyRevenue.toString(),
+        gbrAmount: gbrAmount.toString(),
         status: 'funded',
         fundedAt: input.fundedAt || new Date(),
       });
       
-      // Calculate personal commission
       const agent = await storage.getAgent(agentId);
-      // @ts-ignore
-      const rate = CONFIG.personalCommission[agent!.currentRank] || 0.40;
-      const commissionAmount = companyRevenue * rate;
+      const periodDate = new Date().toISOString().split('T')[0];
+      const releaseDate = new Date();
+      releaseDate.setDate(releaseDate.getDate() + CONFIG.holdback.deferralDays);
       
-      await storage.createCommission({
+      // === GBR WATERFALL: MAC (Merchant Acquisition Compensation) ===
+      // MAC = 30% of GBR, split: Primary 22%, Senior Sponsor L1 5%, Executive Sponsor L2 3%
+      
+      const macPrimaryAmount = gbrAmount * CONFIG.gbrWaterfall.macSplit.primaryAgent;
+      const macImmediate = macPrimaryAmount * CONFIG.holdback.immediateRelease;
+      const macDeferred = macPrimaryAmount * CONFIG.holdback.deferred;
+      
+      const macCommission = await storage.createCommission({
         agentId,
-        type: 'personal_deal',
-        amount: commissionAmount.toString(),
+        type: 'mac_primary',
+        amount: macImmediate.toFixed(2),
         dealId: deal.id,
-        periodDate: new Date().toISOString().split('T')[0],
+        periodDate,
         status: 'pending'
       });
       
-      // Create notification
+      await storage.createHoldback({
+        dealId: deal.id,
+        agentId,
+        commissionId: macCommission.id,
+        totalAmount: macDeferred.toFixed(2),
+        releaseDate,
+      });
+      
       await storage.createNotification({
         agentId,
         type: 'deal_funded',
         title: 'Deal Funded!',
-        message: `Your deal for ${deal.merchantName} ($${Number(deal.loanAmount).toLocaleString()}) has been funded. You earned $${commissionAmount.toFixed(2)} in commission.`,
+        message: `Your deal for ${deal.merchantName} ($${Number(deal.loanAmount).toLocaleString()}) has been funded. MAC: $${macImmediate.toFixed(2)} (+ $${macDeferred.toFixed(2)} held for release).`,
         dealId: deal.id,
         isRead: false,
         emailSent: false,
       });
       
-      // Send deal funded email (async, don't wait)
       emailService.sendDealFundedEmail(agent!.email, {
         firstName: agent!.firstName,
         merchantName: deal.merchantName,
         amount: Number(deal.loanAmount),
-        commission: commissionAmount,
+        commission: macImmediate,
       }).catch(console.error);
       
-      // Calculate generation overrides for upline
+      // === MAC SPONSOR OVERRIDES (3-level cap with compression) ===
       const upline = await storage.getUpline(agentId);
-      let generation = 0;
+      let sponsorLevel = 0;
+      const sponsorRates = [
+        { type: 'mac_sponsor_l1' as const, rate: CONFIG.gbrWaterfall.macSplit.seniorSponsor },
+        { type: 'mac_sponsor_l2' as const, rate: CONFIG.gbrWaterfall.macSplit.executiveSponsor },
+      ];
       
       for (const sponsor of upline) {
-        if (generation >= 4) break;
+        if (sponsorLevel >= 2) break;
         
-        if (['leader', 'director', 'partner'].includes(sponsor.currentRank)) {
-          generation++;
-          // @ts-ignore
-          const overrideRates = CONFIG.generationOverride[sponsor.currentRank];
-          // @ts-ignore
-          const overrideRate = overrideRates?.[generation];
+        const isQualified = sponsor.status === 'active';
+        
+        if (isQualified) {
+          const sponsorConfig = sponsorRates[sponsorLevel];
+          const sponsorAmount = gbrAmount * sponsorConfig.rate;
+          const sponsorImmediate = sponsorAmount * CONFIG.holdback.immediateRelease;
+          const sponsorDeferred = sponsorAmount * CONFIG.holdback.deferred;
           
-          if (overrideRate) {
-            const overrideAmount = commissionAmount * overrideRate;
-            
-            await storage.createCommission({
-              agentId: sponsor.id,
-              type: 'generation_override',
-              amount: overrideAmount.toString(),
-              dealId: deal.id,
-              sourceAgentId: agentId,
-              periodDate: new Date().toISOString().split('T')[0],
-              status: 'pending'
-            });
-            
-            await storage.createNotification({
-              agentId: sponsor.id,
-              type: 'commission_earned',
-              title: 'Override Earned!',
-              message: `You earned a $${overrideAmount.toFixed(2)} generation override from ${agent!.firstName} ${agent!.lastName}'s deal.`,
-              isRead: false,
-              emailSent: false,
-            });
-          }
+          const sponsorComm = await storage.createCommission({
+            agentId: sponsor.id,
+            type: sponsorConfig.type,
+            amount: sponsorImmediate.toFixed(2),
+            dealId: deal.id,
+            sourceAgentId: agentId,
+            periodDate,
+            status: 'pending'
+          });
+          
+          await storage.createHoldback({
+            dealId: deal.id,
+            agentId: sponsor.id,
+            commissionId: sponsorComm.id,
+            totalAmount: sponsorDeferred.toFixed(2),
+            releaseDate,
+          });
+          
+          await storage.createNotification({
+            agentId: sponsor.id,
+            type: 'commission_earned',
+            title: 'Sponsor Override Earned!',
+            message: `You earned a $${sponsorImmediate.toFixed(2)} L${sponsorLevel + 1} sponsor override from ${agent!.firstName} ${agent!.lastName}'s deal.`,
+            isRead: false,
+            emailSent: false,
+          });
+          
+          sponsorLevel++;
+        }
+      }
+      
+      // === GBR WATERFALL: TFC (Transaction Fulfillment Compensation) ===
+      const fulfillmentAgentId = deal.fulfillmentAgentId || agentId;
+      const tfcRate = await storage.getCurrentFulfillmentTierRate(fulfillmentAgentId);
+      const tfcAmount = gbrAmount * tfcRate;
+      const tfcImmediate = tfcAmount * CONFIG.holdback.immediateRelease;
+      const tfcDeferred = tfcAmount * CONFIG.holdback.deferred;
+      
+      if (fulfillmentAgentId !== agentId || !deal.fulfillmentAgentId) {
+        const tfcComm = await storage.createCommission({
+          agentId: fulfillmentAgentId,
+          type: 'tfc',
+          amount: tfcImmediate.toFixed(2),
+          dealId: deal.id,
+          sourceAgentId: agentId,
+          periodDate,
+          status: 'pending'
+        });
+        
+        await storage.createHoldback({
+          dealId: deal.id,
+          agentId: fulfillmentAgentId,
+          commissionId: tfcComm.id,
+          totalAmount: tfcDeferred.toFixed(2),
+          releaseDate,
+        });
+        
+        if (fulfillmentAgentId !== agentId) {
+          await storage.createNotification({
+            agentId: fulfillmentAgentId,
+            type: 'commission_earned',
+            title: 'Fulfillment Commission Earned!',
+            message: `You earned a $${tfcImmediate.toFixed(2)} TFC from ${deal.merchantName} deal.`,
+            isRead: false,
+            emailSent: false,
+          });
         }
       }
 
@@ -823,6 +955,8 @@ export async function registerRoutes(
       const updated = await storage.updateDeal(Number(req.params.id), {
         ...input,
         loanAmount: input.loanAmount?.toString(),
+        gbrAmount: input.gbrAmount?.toString(),
+        fulfillmentAgentId: input.fulfillmentAgentId,
       });
       res.json(updated);
     } catch (err) {
@@ -880,7 +1014,6 @@ export async function registerRoutes(
         const weakerLegVolume = Math.min(leftVol, rightVol);
         
         if (weakerLegVolume > 0) {
-          // @ts-ignore
           const config = CONFIG.binaryBonus[agent.currentRank];
           if (config) {
             let bonus = weakerLegVolume * config.rate;
@@ -913,6 +1046,178 @@ export async function registerRoutes(
       console.error(err);
       res.status(500).json({ message: "Calculation failed" });
     }
+  });
+
+  // === SUBSCRIPTION ROUTES ===
+  
+  app.get("/api/subscriptions", requireAuth, async (req, res) => {
+    // @ts-ignore
+    const subs = await storage.getSubscriptionsByAgent(req.user!.id);
+    res.json(subs);
+  });
+
+  app.post("/api/subscriptions", requireAuth, async (req, res) => {
+    try {
+      // @ts-ignore
+      const agentId = req.user!.id;
+      const { merchantName, merchantEmail, tier, mcaPairedDealId } = req.body;
+      
+      const tierPrices: Record<string, number> = CONFIG.subscriptionTierPrices;
+      const monthlyAmount = tierPrices[tier] || 199;
+      
+      const sub = await storage.createSubscription({
+        agentId,
+        merchantName,
+        merchantEmail,
+        tier,
+        monthlyAmount: monthlyAmount.toString(),
+        mcaPairedDealId: mcaPairedDealId || undefined,
+      });
+      
+      res.status(201).json(sub);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Admin subscription management
+  app.get("/api/admin/subscriptions", requireAdmin, async (req, res) => {
+    const subs = await storage.getAllSubscriptions();
+    res.json(subs);
+  });
+
+  app.patch("/api/admin/subscriptions/:id/status", requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      const updated = await storage.updateSubscriptionStatus(Number(req.params.id), status);
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update subscription" });
+    }
+  });
+
+  // Admin subscription commission calculation (monthly trigger)
+  app.post("/api/admin/subscriptions/calculate-commissions", requireAdmin, async (req, res) => {
+    try {
+      const allSubs = await storage.getAllSubscriptions();
+      const activeSubs = allSubs.filter(s => s.status === 'active');
+      let processed = 0;
+      const periodDate = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      
+      for (const sub of activeSubs) {
+        const startDate = new Date(sub.startDate);
+        const monthsSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (30.44 * 24 * 60 * 60 * 1000));
+        
+        let decayRate: number;
+        if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
+        else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;
+        else if (monthsSinceStart < 9) decayRate = CONFIG.subscriptionDecay.months7to9;
+        else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
+        else decayRate = CONFIG.subscriptionDecay.postMonth12;
+        
+        const poolRate = CONFIG.subscriptionPools[sub.tier] || 0.50;
+        let commissionRate = poolRate * decayRate;
+        
+        if (sub.mcaPairedDealId && monthsSinceStart < 3) {
+          commissionRate += CONFIG.mcaPairingBonus;
+        }
+        
+        const commissionAmount = Number(sub.monthlyAmount) * commissionRate;
+        const commType = monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
+        
+        if (commissionAmount > 0) {
+          await storage.createCommission({
+            agentId: sub.agentId,
+            type: commType,
+            amount: commissionAmount.toFixed(2),
+            periodDate,
+            status: 'pending'
+          });
+          processed++;
+        }
+      }
+      
+      res.json({ message: "Subscription commissions calculated", processed, totalActive: activeSubs.length });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Subscription commission calculation failed" });
+    }
+  });
+
+  // === HOLDBACK MANAGEMENT ROUTES ===
+  
+  app.get("/api/admin/holdbacks", requireAdmin, async (req, res) => {
+    const allHoldbacks = await storage.getAllHoldbacks();
+    res.json(allHoldbacks);
+  });
+
+  app.get("/api/admin/holdbacks/pending", requireAdmin, async (req, res) => {
+    const pending = await storage.getPendingHoldbacks();
+    res.json(pending);
+  });
+
+  app.post("/api/admin/holdbacks/:id/release", requireAdmin, async (req, res) => {
+    try {
+      const released = await storage.releaseHoldback(Number(req.params.id));
+      res.json(released);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to release holdback" });
+    }
+  });
+
+  app.post("/api/admin/holdbacks/:id/clawback", requireAdmin, async (req, res) => {
+    try {
+      const { reason, percentage } = req.body;
+      const result = await storage.applyClawback(Number(req.params.id), reason || "Default clawback", percentage || 100);
+      
+      if (result.commissionId) {
+        // @ts-ignore
+        await storage.voidCommission(result.commissionId, req.user!.id, `Clawback: ${reason}`);
+      }
+      
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to apply clawback" });
+    }
+  });
+
+  app.post("/api/admin/holdbacks/release-eligible", requireAdmin, async (req, res) => {
+    try {
+      const eligible = await storage.getReleasableHoldbacks();
+      let released = 0;
+      for (const holdback of eligible) {
+        await storage.releaseHoldback(holdback.id);
+        released++;
+      }
+      res.json({ message: `Released ${released} holdbacks`, released });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to release holdbacks" });
+    }
+  });
+
+  // Agent holdback view
+  app.get("/api/holdbacks", requireAuth, async (req, res) => {
+    // @ts-ignore
+    const agentHoldbacks = await storage.getHoldbacksByAgent(req.user!.id);
+    res.json(agentHoldbacks);
+  });
+
+  // === COMMISSION CONFIG ROUTE ===
+  app.get("/api/commission-config", requireAuth, async (req, res) => {
+    res.json({
+      gbrWaterfall: CONFIG.gbrWaterfall,
+      fulfillmentTierRates: CONFIG.fulfillmentTierRates,
+      holdback: CONFIG.holdback,
+      clawback: CONFIG.clawback,
+      subscriptionPools: CONFIG.subscriptionPools,
+      subscriptionDecay: CONFIG.subscriptionDecay,
+      subscriptionTierPrices: CONFIG.subscriptionTierPrices,
+      platformFee: CONFIG.platformFee,
+      binaryBonus: CONFIG.binaryBonus,
+      rankRequirements: CONFIG.rankRequirements,
+    });
   });
 
   // Admin Payout Management

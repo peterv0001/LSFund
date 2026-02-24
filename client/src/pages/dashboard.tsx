@@ -14,7 +14,9 @@ import {
   Copy, 
   ArrowRight,
   Share2,
-  UserPlus
+  UserPlus,
+  Shield,
+  Repeat
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +26,6 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useCommissionStats();
   const { toast } = useToast();
 
-  // Fetch referral link
   const { data: referralData } = useQuery({
     queryKey: ['referral-link'],
     queryFn: async () => {
@@ -34,7 +35,6 @@ export default function Dashboard() {
     },
   });
 
-  // Fetch referral stats
   const { data: referralStats } = useQuery({
     queryKey: ['referral-stats'],
     queryFn: async () => {
@@ -48,20 +48,27 @@ export default function Dashboard() {
     const link = referralData?.referralUrl || `${window.location.origin}/join/${user?.referralCode || user?.id}`;
     navigator.clipboard.writeText(link);
     toast({
-      title: "Link Copied! 🎉",
+      title: "Link Copied!",
       description: "Share this link to grow your team",
     });
   };
+
+  const mcaEarnings = (stats?.byType?.['mac_primary'] || 0) +
+    (stats?.byType?.['mac_sponsor_l1'] || 0) +
+    (stats?.byType?.['mac_sponsor_l2'] || 0) +
+    (stats?.byType?.['tfc'] || 0);
+
+  const subscriptionEarnings = (stats?.byType?.['subscription_commission'] || 0) +
+    (stats?.byType?.['subscription_residual'] || 0);
 
   return (
     <div className="flex min-h-screen bg-gray-50/50">
       <Sidebar />
       
       <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
-        {/* Welcome Header */}
         <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-primary">
+            <h1 data-testid="text-welcome" className="text-3xl font-display font-bold text-primary">
               Welcome back, {user?.firstName}
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -70,12 +77,12 @@ export default function Dashboard() {
           </div>
           
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={copyReferralLink}>
+            <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={copyReferralLink} data-testid="button-copy-referral">
               <Copy className="w-4 h-4" />
               <span className="hidden sm:inline">Copy </span>Referral Link
             </Button>
             <Link href="/deals" className="flex-1 sm:flex-none">
-              <Button className="w-full gap-2 bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/25">
+              <Button className="w-full gap-2 bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/25" data-testid="button-log-deal">
                 <Plus className="w-4 h-4" />
                 Log New Deal
               </Button>
@@ -83,8 +90,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           <StatsCard 
             title="Total Earnings" 
             value={isLoading ? "..." : `$${stats?.totalEarned.toLocaleString()}`} 
@@ -103,6 +109,19 @@ export default function Dashboard() {
             value={isLoading ? "..." : `$${stats?.pending.toLocaleString()}`} 
             icon={<Clock className="w-6 h-6" />}
           />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <StatsCard 
+            title="MCA Earnings" 
+            value={isLoading ? "..." : `$${mcaEarnings.toLocaleString()}`} 
+            icon={<Shield className="w-6 h-6" />}
+          />
+          <StatsCard 
+            title="Subscription Earnings" 
+            value={isLoading ? "..." : `$${subscriptionEarnings.toLocaleString()}`} 
+            icon={<Repeat className="w-6 h-6" />}
+          />
           <StatsCard 
             title="Team Size" 
             value={referralStats?.totalReferrals?.toString() ?? "0"}
@@ -112,10 +131,8 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Content Section */}
         <div className="grid lg:grid-cols-3 gap-8">
           
-          {/* Recent Activity */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-primary">Recent Deals</h3>
@@ -131,19 +148,18 @@ export default function Dashboard() {
                 </div>
                 <p>No recent deals found.</p>
                 <Link href="/deals">
-                  <Button variant="ghost" className="mt-2">Log your first deal</Button>
+                  <Button variant="ghost" className="mt-2" data-testid="button-log-first-deal">Log your first deal</Button>
                 </Link>
               </div>
             </div>
           </div>
 
-          {/* Quick Stats / Right Column */}
           <div className="space-y-6">
             <div className="bg-gradient-to-br from-primary to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
               
               <h3 className="font-bold text-lg mb-1 relative z-10">Current Rank</h3>
-              <div className="text-4xl font-display font-bold text-yellow-400 mb-2 relative z-10 capitalize">
+              <div className="text-4xl font-display font-bold text-yellow-400 mb-2 relative z-10 capitalize" data-testid="text-current-rank">
                 {user?.currentRank}
               </div>
               <p className="text-white/60 text-sm relative z-10">
@@ -175,7 +191,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Referral Link Card */}
             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
               
@@ -190,7 +205,7 @@ export default function Dashboard() {
               
               <div className="bg-white/10 backdrop-blur rounded-lg p-3 mb-4">
                 <div className="text-xs text-white/60 mb-1">Your Referral Link</div>
-                <div className="font-mono text-sm truncate">
+                <div className="font-mono text-sm truncate" data-testid="text-referral-url">
                   {referralData?.referralUrl || 'Loading...'}
                 </div>
               </div>
@@ -199,6 +214,7 @@ export default function Dashboard() {
                 <Button 
                   onClick={copyReferralLink}
                   className="flex-1 bg-white text-emerald-600 hover:bg-white/90"
+                  data-testid="button-copy-link"
                 >
                   <Copy className="w-4 h-4 mr-2" />
                   Copy Link
@@ -206,6 +222,7 @@ export default function Dashboard() {
                 <Button 
                   variant="outline"
                   className="border-white/30 text-white hover:bg-white/10"
+                  data-testid="button-share"
                   onClick={() => {
                     if (navigator.share && referralData?.referralUrl) {
                       navigator.share({
@@ -224,7 +241,7 @@ export default function Dashboard() {
                 <div className="mt-4 pt-4 border-t border-white/20">
                   <div className="flex justify-between text-sm">
                     <span className="text-white/70">Total Referrals</span>
-                    <span className="font-bold">{referralStats.totalReferrals}</span>
+                    <span className="font-bold" data-testid="text-total-referrals">{referralStats.totalReferrals}</span>
                   </div>
                 </div>
               )}

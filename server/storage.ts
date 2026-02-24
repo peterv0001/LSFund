@@ -1,10 +1,11 @@
 import { db } from "./db";
 import { 
   agents, deals, commissions, payouts, notifications, announcements, resources, rankQualifications, activityLog,
-  courseModules, courseProgress, leads, leadRequests,
+  courseModules, courseProgress, leads, leadRequests, subscriptions, holdbacks, fulfillmentTiers,
   type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource,
   type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress,
-  type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest
+  type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest,
+  type Subscription, type Holdback, type FulfillmentTier
 } from "@shared/schema";
 import { eq, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum } from "drizzle-orm";
 
@@ -336,6 +337,8 @@ export class DatabaseStorage {
       merchantPhone: deal.merchantPhone ?? null,
       loanAmount: deal.loanAmount,
       companyRevenue: deal.companyRevenue,
+      gbrAmount: deal.gbrAmount ?? null,
+      fulfillmentAgentId: deal.fulfillmentAgentId ?? null,
       status: deal.status ?? 'funded',
       notes: deal.notes ?? null,
       approvedById: deal.approvedById ?? null,
@@ -1214,6 +1217,212 @@ export class DatabaseStorage {
       .where(eq(leadRequests.id, id))
       .returning();
     return updated;
+  }
+
+  // ==================== SUBSCRIPTIONS ====================
+
+  async createSubscription(sub: {
+    agentId: number;
+    merchantName: string;
+    merchantEmail?: string;
+    tier: 'tier_1' | 'tier_2' | 'tier_3';
+    monthlyAmount: string;
+    mcaPairedDealId?: number;
+    startDate?: Date;
+  }): Promise<Subscription> {
+    const [newSub] = await db.insert(subscriptions).values({
+      agentId: sub.agentId,
+      merchantName: sub.merchantName,
+      merchantEmail: sub.merchantEmail ?? null,
+      tier: sub.tier,
+      monthlyAmount: sub.monthlyAmount,
+      status: 'active',
+      mcaPairedDealId: sub.mcaPairedDealId ?? null,
+      startDate: sub.startDate ?? new Date(),
+    }).returning();
+    return newSub;
+  }
+
+  async getSubscriptionsByAgent(agentId: number): Promise<Subscription[]> {
+    return await db.select().from(subscriptions)
+      .where(eq(subscriptions.agentId, agentId))
+      .orderBy(desc(subscriptions.createdAt));
+  }
+
+  async getAllSubscriptions(): Promise<(Subscription & { agent: Agent })[]> {
+    const results = await db.select({
+      subscription: subscriptions,
+      agent: agents,
+    })
+      .from(subscriptions)
+      .leftJoin(agents, eq(subscriptions.agentId, agents.id))
+      .orderBy(desc(subscriptions.createdAt));
+    return results.map(r => ({ ...r.subscription, agent: r.agent! }));
+  }
+
+  async updateSubscriptionStatus(id: number, status: 'active' | 'paused' | 'cancelled' | 'expired'): Promise<Subscription> {
+    const updates: any = { status, updatedAt: new Date() };
+    if (status === 'cancelled') updates.cancelledAt = new Date();
+    const [updated] = await db.update(subscriptions)
+      .set(updates)
+      .where(eq(subscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getActiveSubscriptionRevenue(agentId: number): Promise<number> {
+    const subs = await db.select().from(subscriptions)
+      .where(and(eq(subscriptions.agentId, agentId), eq(subscriptions.status, 'active')));
+    return subs.reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
+  }
+
+  // ==================== HOLDBACKS ====================
+
+  async createHoldback(holdback: {
+    dealId: number;
+    agentId: number;
+    commissionId?: number;
+    totalAmount: string;
+    releaseDate?: Date;
+  }): Promise<Holdback> {
+    const [newHoldback] = await db.insert(holdbacks).values({
+      dealId: holdback.dealId,
+      agentId: holdback.agentId,
+      commissionId: holdback.commissionId ?? null,
+      totalAmount: holdback.totalAmount,
+      releasedAmount: "0",
+      clawbackAmount: "0",
+      status: 'held',
+      releaseDate: holdback.releaseDate ?? null,
+    }).returning();
+    return newHoldback;
+  }
+
+  async getHoldbacksByAgent(agentId: number): Promise<Holdback[]> {
+    return await db.select().from(holdbacks)
+      .where(eq(holdbacks.agentId, agentId))
+      .orderBy(desc(holdbacks.createdAt));
+  }
+
+  async getHoldbacksByDeal(dealId: number): Promise<Holdback[]> {
+    return await db.select().from(holdbacks)
+      .where(eq(holdbacks.dealId, dealId))
+      .orderBy(desc(holdbacks.createdAt));
+  }
+
+  async getAllHoldbacks(): Promise<(Holdback & { agent: Agent })[]> {
+    const results = await db.select({
+      holdback: holdbacks,
+      agent: agents,
+    })
+      .from(holdbacks)
+      .leftJoin(agents, eq(holdbacks.agentId, agents.id))
+      .orderBy(desc(holdbacks.createdAt));
+    return results.map(r => ({ ...r.holdback, agent: r.agent! }));
+  }
+
+  async releaseHoldback(id: number): Promise<Holdback> {
+    const [existing] = await db.select().from(holdbacks).where(eq(holdbacks.id, id));
+    if (!existing) throw new Error("Holdback not found");
+    const [updated] = await db.update(holdbacks)
+      .set({
+        releasedAmount: existing.totalAmount,
+        status: 'released',
+        releaseDate: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(holdbacks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async applyClawback(id: number, reason: string, percentage: number = 100): Promise<Holdback> {
+    const [existing] = await db.select().from(holdbacks).where(eq(holdbacks.id, id));
+    if (!existing) throw new Error("Holdback not found");
+    const clawbackAmt = (Number(existing.totalAmount) * percentage / 100).toFixed(2);
+    const [updated] = await db.update(holdbacks)
+      .set({
+        clawbackAmount: clawbackAmt,
+        status: 'clawed_back',
+        clawbackDate: new Date(),
+        clawbackReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(holdbacks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getPendingHoldbacks(): Promise<(Holdback & { agent: Agent })[]> {
+    const results = await db.select({
+      holdback: holdbacks,
+      agent: agents,
+    })
+      .from(holdbacks)
+      .leftJoin(agents, eq(holdbacks.agentId, agents.id))
+      .where(eq(holdbacks.status, 'held'))
+      .orderBy(asc(holdbacks.releaseDate));
+    return results.map(r => ({ ...r.holdback, agent: r.agent! }));
+  }
+
+  async getReleasableHoldbacks(): Promise<Holdback[]> {
+    return await db.select().from(holdbacks)
+      .where(and(
+        eq(holdbacks.status, 'held'),
+        lte(holdbacks.releaseDate, new Date())
+      ));
+  }
+
+  // ==================== FULFILLMENT TIERS ====================
+
+  async getFulfillmentTier(agentId: number, month: string): Promise<FulfillmentTier | undefined> {
+    const [tier] = await db.select().from(fulfillmentTiers)
+      .where(and(eq(fulfillmentTiers.agentId, agentId), eq(fulfillmentTiers.month, month)));
+    return tier;
+  }
+
+  async upsertFulfillmentTier(data: {
+    agentId: number;
+    month: string;
+    tier: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4';
+    dealCount: number;
+    totalGbr: string;
+  }): Promise<FulfillmentTier> {
+    const existing = await this.getFulfillmentTier(data.agentId, data.month);
+    if (existing) {
+      const [updated] = await db.update(fulfillmentTiers)
+        .set({
+          tier: data.tier,
+          dealCount: data.dealCount,
+          totalGbr: data.totalGbr,
+          qualifiedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(fulfillmentTiers.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [newTier] = await db.insert(fulfillmentTiers).values({
+      agentId: data.agentId,
+      month: data.month,
+      tier: data.tier,
+      dealCount: data.dealCount,
+      totalGbr: data.totalGbr,
+      qualifiedAt: new Date(),
+    }).returning();
+    return newTier;
+  }
+
+  async getCurrentFulfillmentTierRate(agentId: number): Promise<number> {
+    const month = new Date().toISOString().slice(0, 7);
+    const tier = await this.getFulfillmentTier(agentId, month);
+    const rates: Record<string, number> = {
+      'tier_1': 0.30,
+      'tier_2': 0.33,
+      'tier_3': 0.36,
+      'tier_4': 0.40,
+    };
+    return rates[tier?.tier || 'tier_1'] || 0.30;
   }
 }
 
