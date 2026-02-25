@@ -261,7 +261,7 @@ export async function registerRoutes(
       await storage.createNotification({
         agentId: agent.id,
         type: 'system',
-        title: 'Welcome to PSL Capital!',
+        title: 'Welcome to Leadershield Network!',
         message: 'Your account has been created. Start by completing your profile and exploring the platform.',
         isRead: false,
         emailSent: false,
@@ -507,7 +507,7 @@ export async function registerRoutes(
       await storage.updateAgent(agent.id, { referralCode });
     }
     
-    const baseUrl = process.env.APP_URL || 'https://psl.capital';
+    const baseUrl = process.env.APP_URL || 'https://leadershield.com';
     const referralUrl = `${baseUrl}/join/${referralCode}`;
     
     res.json({ referralCode, referralUrl });
@@ -1356,8 +1356,8 @@ export async function registerRoutes(
       rankRequirements: CONFIG.rankRequirements,
       binaryBonusCaps: CONFIG.binaryBonus,
       companyInfo: {
-        name: "PSL Capital",
-        supportEmail: "support@psl.capital",
+        name: "Leadershield Network",
+        supportEmail: "support@leadershield.com",
       },
     });
   });

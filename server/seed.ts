@@ -107,7 +107,7 @@ export async function seedDatabase() {
 
   // 1. Root Agent (Partner + Admin)
   const root = await storage.createAgent({
-    email: "admin@psl.capital",
+    email: "admin@leadershield.com",
     password,
     firstName: "Admin",
     lastName: "User",
@@ -123,7 +123,7 @@ export async function seedDatabase() {
 
   // 2. Left Leg (Director)
   const leftLeader = await storage.createAgent({
-    email: "sarah@psl.capital",
+    email: "sarah@leadershield.com",
     password,
     firstName: "Sarah",
     lastName: "Director",
@@ -139,7 +139,7 @@ export async function seedDatabase() {
 
   // 3. Right Leg (Leader)
   const rightLeader = await storage.createAgent({
-    email: "mike@psl.capital",
+    email: "mike@leadershield.com",
     password,
     firstName: "Mike",
     lastName: "Leader",
@@ -155,7 +155,7 @@ export async function seedDatabase() {
 
   // 4. Downline under Sarah (Left)
   const agent4 = await storage.createAgent({
-    email: "john@psl.capital",
+    email: "john@leadershield.com",
     password,
     firstName: "John",
     lastName: "Builder",
@@ -171,7 +171,7 @@ export async function seedDatabase() {
 
   // 5. Downline under Mike (Right)
   const agent5 = await storage.createAgent({
-    email: "lisa@psl.capital",
+    email: "lisa@leadershield.com",
     password,
     firstName: "Lisa",
     lastName: "Agent",

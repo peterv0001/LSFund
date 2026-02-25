@@ -100,18 +100,29 @@ Three subscription tiers: Merchant Essentials ($199/mo), Growth Accelerator ($42
 - Path aliases configured: `@/` for client/src, `@shared/` for shared code
 - Protected routes wrap components with auth checks before rendering
 
-### Landing Page Structure
+### Landing Page Structure (ACN/Family First Life-style Marketing)
 The public marketing landing page (`client/src/pages/landing.tsx`) includes:
-- Hero with "Your Path to Recurring Revenue and Long-Term Wealth" messaging
-- Two Revenue Streams section (MCA + Merchant Growth Platform)
-- Merchant Growth Platform tier cards with feature details
-- Commission decay visualization
-- MCA commission structure with GBR waterfall
-- Platform fees with production waivers
-- Compliance-first section
-- Your First 30 Days roadmap
-- Income projection with compounding scenarios
-- FTC-compliant legal disclaimers
+- **Immersive dark hero** with animated gradient blobs, "Build Your Financial Legacy" messaging, Framer Motion entrance animations
+- **Social proof stats bar** with animated CountUp counters ($200B+ industry, 30M+ businesses, 70% max pool, 48hr funding)
+- **"How It Works" 3-step section** (Join & Learn, Sell & Earn, Build & Scale) with gradient accent cards
+- **Two Revenue Streams** dark section with glass-morphism cards (MCA immediate + Platform recurring)
+- **Merchant Growth Platform tiers** with "Most Popular" badge, color-coded tier cards, feature lists
+- **Income lifestyle scenarios** (Part-Time, Full-Time, Team Builder) with monthly projection table
+- **Compensation plan** dark section with 4 earning streams + payout mechanics + quarterly accelerators
+- **Testimonials section** with agent success stories and avatars
+- **Platform & tools section** with CRM, Academy, Compliance, Support cards + platform fee waivers
+- **Your First 30 Days roadmap** with connected timeline dots and week-by-week cards
+- **Compliance section** (centralized pricing, disclosures, clear comp, regulatory)
+- **FAQ accordion** with Framer Motion expand/collapse
+- **Final CTA** dark section with gradient text and urgency messaging
+- **FTC-compliant legal disclaimers** and dark branded footer
+- Uses `AnimatedSection` (Framer Motion scroll-triggered), `CountUp` (animated stat counter), `FAQItem` (accordion)
+- Scroll-aware navigation bar with transparency-to-solid transition
+
+### Auth Page
+- **Left panel**: Immersive dark gradient matching landing hero, animated shield logo, 4 earning bullet points, stats bar
+- **Right panel**: Login/register forms with gold gradient CTAs, sponsor search, placement preference
+- Mobile-responsive with branding header on small screens
 
 ### Training Page (Leadershield Academy)
 The training page (`client/src/pages/training.tsx`) includes:

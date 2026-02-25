@@ -5,7 +5,7 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { ShieldCheck, ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown } from "lucide-react";
+import { Shield, ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown, Star, Zap, DollarSign, Repeat, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,60 +25,92 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const { login, register, isLoggingIn, isRegistering } = useAuth();
   const [location] = useLocation();
-  
-  // Parse referral code from URL
+
   const searchParams = new URLSearchParams(window.location.search);
   const referralCode = searchParams.get("ref");
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      {/* Left Panel - Hero */}
-      <div className="hidden lg:flex flex-col justify-between p-12 bg-primary relative overflow-hidden">
-        {/* Abstract Background Shapes */}
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-yellow-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+      {/* Left Panel - Immersive Hero */}
+      <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden bg-gradient-to-br from-[#0A1628] via-[#0f1f3a] to-[#0A1628]">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-yellow-400/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-yellow-500/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(10,22,40,0.6)_70%)]" />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
-              <ShieldCheck className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-3 mb-16">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20 animate-pulse-glow">
+              <Shield className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-display font-bold text-white tracking-wide">Leadershield Network</h1>
+            <h1 className="text-2xl font-display font-bold text-white tracking-wide">Leadershield</h1>
           </div>
 
           <h2 className="text-5xl font-display font-bold text-white leading-tight mb-6">
-            Your Path to <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-200">Recurring Revenue and Long-Term Wealth</span>
+            Build Your
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500">
+              Financial Legacy
+            </span>
           </h2>
-          <p className="text-lg text-white/60 max-w-md leading-relaxed">
-            Join Leadershield Network and unlock two powerful revenue streams. 
-            Build recurring income through subscriptions and immediate earnings through MCA.
+          <p className="text-lg text-white/50 max-w-md leading-relaxed mb-10">
+            Two revenue streams. No ceiling on your income. Join the platform that's transforming agents into long-term merchant partners.
           </p>
+
+          <div className="space-y-3">
+            {[
+              { icon: DollarSign, text: "22% MCA commission on every funded deal", color: "text-emerald-400" },
+              { icon: Repeat, text: "50-70% recurring subscription commissions", color: "text-blue-400" },
+              { icon: Zap, text: "+5% pairing enhancement bonus", color: "text-yellow-400" },
+              { icon: Users, text: "Override income from your team", color: "text-purple-400" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                  <item.icon className={`w-4 h-4 ${item.color}`} />
+                </div>
+                <span className="text-white/60 text-sm">{item.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="relative z-10 grid grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-3xl font-bold text-white mb-1">12k+</h3>
-            <p className="text-white/40 text-sm">Active Agents</p>
+        <div className="relative z-10">
+          <div className="grid grid-cols-3 gap-6 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-400">$200B+</p>
+              <p className="text-xs text-white/40 mt-1">Industry Size</p>
+            </div>
+            <div className="text-center border-x border-white/10">
+              <p className="text-2xl font-bold text-yellow-400">70%</p>
+              <p className="text-xs text-white/40 mt-1">Max Commission</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-400">48hr</p>
+              <p className="text-xs text-white/40 mt-1">Avg Funding</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-3xl font-bold text-white mb-1">$450M</h3>
-            <p className="text-white/40 text-sm">Deal Volume</p>
-          </div>
+          <p className="text-xs text-white/20 mt-3 text-center">*Individual results vary. No income guarantees.</p>
         </div>
       </div>
 
       {/* Right Panel - Forms */}
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md space-y-8">
+          {/* Mobile branding */}
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+          </div>
+
           <div className="text-center lg:text-left">
             <h2 className="text-3xl font-bold tracking-tight text-foreground">
               {isLogin ? "Welcome back" : "Create your account"}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {isLogin 
-                ? "Enter your credentials to access your dashboard" 
-                : "Start your journey with Leadershield Network today"}
+              {isLogin
+                ? "Sign in to access your agent dashboard"
+                : "Start building your financial legacy today"}
             </p>
           </div>
 
@@ -87,47 +119,51 @@ export default function AuthPage() {
               {isLogin ? (
                 <LoginForm key="login" onSubmit={login} isLoading={isLoggingIn} onToggle={() => setIsLogin(false)} />
               ) : (
-                <RegisterForm 
-                  key="register" 
-                  onSubmit={register} 
-                  isLoading={isRegistering} 
-                  onToggle={() => setIsLogin(true)} 
-                  referralCode={referralCode} 
+                <RegisterForm
+                  key="register"
+                  onSubmit={register}
+                  isLoading={isRegistering}
+                  onToggle={() => setIsLogin(true)}
+                  referralCode={referralCode}
                 />
               )}
             </AnimatePresence>
           </div>
+
+          <p className="text-xs text-muted-foreground text-center">
+            By creating an account, you agree to the Leadershield Network Agent Agreement and acknowledge you've reviewed our income disclosures.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function LoginForm({ onSubmit, isLoading, onToggle }: { 
-  onSubmit: any, 
-  isLoading: boolean, 
-  onToggle: () => void 
+function LoginForm({ onSubmit, isLoading, onToggle }: {
+  onSubmit: any,
+  isLoading: boolean,
+  onToggle: () => void
 }) {
   const form = useForm({
     resolver: zodResolver(api.auth.login.input),
   });
 
   return (
-    <motion.form 
+    <motion.form
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      onSubmit={form.handleSubmit(onSubmit)} 
+      onSubmit={form.handleSubmit(onSubmit)}
       className="space-y-5"
     >
       <div className="space-y-2">
         <Label htmlFor="username">Email Address</Label>
-        <Input 
-          id="username" 
-          type="email" 
-          placeholder="agent@leadershield.com" 
+        <Input
+          id="username"
+          type="email"
+          placeholder="agent@leadershield.com"
           className="h-12"
-          {...form.register("username")} 
+          {...form.register("username")}
         />
         {form.formState.errors.username && (
           <p className="text-xs text-destructive">{form.formState.errors.username.message as string}</p>
@@ -139,18 +175,18 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
           <Label htmlFor="password">Password</Label>
           <a href="#" className="text-xs font-medium text-primary hover:underline">Forgot password?</a>
         </div>
-        <Input 
-          id="password" 
-          type="password" 
+        <Input
+          id="password"
+          type="password"
           className="h-12"
-          {...form.register("password")} 
+          {...form.register("password")}
         />
         {form.formState.errors.password && (
           <p className="text-xs text-destructive">{form.formState.errors.password.message as string}</p>
         )}
       </div>
 
-      <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isLoading}>
+      <Button type="submit" className="w-full h-12 text-base font-semibold bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20" disabled={isLoading}>
         {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
         Sign In
       </Button>
@@ -165,9 +201,9 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
   );
 }
 
-function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: { 
-  onSubmit: any, 
-  isLoading: boolean, 
+function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
+  onSubmit: any,
+  isLoading: boolean,
   onToggle: () => void,
   referralCode?: string | null
 }) {
@@ -190,13 +226,11 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
     }
   });
 
-  // Auto-lookup sponsor when referral code is provided via URL
   useEffect(() => {
     if (referralCode) {
       fetch(`/api/sponsors/search?q=${encodeURIComponent(referralCode)}`)
         .then(res => res.json())
         .then((sponsors: SponsorOption[]) => {
-          // Find exact match by referralCode
           const match = sponsors.find(s => s.referralCode === referralCode);
           if (match) {
             setSelectedSponsor(match);
@@ -234,11 +268,11 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
   };
 
   return (
-    <motion.form 
+    <motion.form
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      onSubmit={form.handleSubmit(onSubmit)} 
+      onSubmit={form.handleSubmit(onSubmit)}
       className="space-y-4"
     >
       <div className="grid grid-cols-2 gap-4">
@@ -256,7 +290,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
         <Label>Email</Label>
         <Input type="email" {...form.register("email")} data-testid="input-email" />
       </div>
-      
+
       <div className="space-y-2">
         <Label>Phone</Label>
         <Input type="tel" {...form.register("phone")} data-testid="input-phone" />
@@ -279,8 +313,8 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
                   <span className="text-muted-foreground ml-2">({selectedSponsor.maskedEmail})</span>
                 </span>
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleClearSponsor}
                 className="text-muted-foreground hover:text-foreground"
                 data-testid="button-clear-sponsor"
@@ -307,7 +341,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
                 />
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
-              
+
               {showDropdown && (
                 <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
                   {isLoadingSponsors ? (
@@ -354,8 +388,8 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
 
       <div className="space-y-3">
         <h4 className="text-sm font-medium">Placement Preference</h4>
-        <RadioGroup 
-          defaultValue="auto" 
+        <RadioGroup
+          defaultValue="auto"
           onValueChange={(val) => form.setValue("placementLeg", val as any)}
           className="flex gap-4"
         >
@@ -374,7 +408,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
         </RadioGroup>
       </div>
 
-      <Button type="submit" className="w-full h-12 text-base font-semibold mt-4" disabled={isLoading} data-testid="button-create-account">
+      <Button type="submit" className="w-full h-12 text-base font-semibold mt-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20" disabled={isLoading} data-testid="button-create-account">
         {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
         Create Account
       </Button>
