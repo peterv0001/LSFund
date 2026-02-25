@@ -1,56 +1,88 @@
-# PSL Capital - MCA Back Office Platform
+# Leadershield Network - Agent Portal
 
 ## Overview
 
-PSL Capital is a full-stack network marketing (MLM) platform designed for Merchant Cash Advance (MCA) lending operations and recurring subscription products. The system enables agents to sign up via referral links, log funded deals, manage merchant subscriptions, and receive multi-tiered commissions through a GBR waterfall and subscription decay structure. The platform includes an agent portal, an admin portal, and a public marketing website for agent recruitment.
+Leadershield Network is a full-stack network marketing (MLM) platform designed for Merchant Cash Advance (MCA) lending operations and the Merchant Growth Platform (recurring subscription products). The system enables agents to sign up via referral links, log funded deals, manage merchant subscriptions, and receive multi-tiered commissions through a GBR waterfall and subscription decay structure. The platform includes an agent portal, an admin portal, and a public marketing website for agent recruitment.
+
+**Brand:** Leadershield Network (formerly PSL Capital)
+**Domain:** leadershield.com
+**Color Palette:** Deep navy (#0A1628) + metallic gold (#D4AF37)
+**Fonts:** Cinzel (display) + Manrope (body)
 
 **Core Business Logic:**
 - Binary tree placement for agent hierarchy
 - GBR (Gross Brokerage Revenue) waterfall for MCA commissions
-- Subscription commission engine with decay schedule
+- Merchant Growth Platform subscription commission engine with decay schedule
 - Holdback/clawback system for risk management
 - Fulfillment agent tiering for transaction completion
 - Rank advancement system (Agent → Builder → Leader → Director → Partner)
 - Platform fee management with production-based waivers
 - Lead distribution system with AI follow-up queue
+- Quarterly Performance Accelerators (up to 3% bonus)
+- Renewal commissions (15% MAC for renewed deals)
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Products
+
+### Merchant Growth Platform (Subscription Tiers)
+- **Tier 1: Merchant Essentials ($199/mo)**: Financial reporting dashboards, 30-day forecasting, AI expense categorization, credit monitoring & fraud alerts
+- **Tier 2: Growth Accelerator ($429/mo)**: Google Business optimization, automated review capture, SMS/email marketing automation, CRM & AI chatbot
+- **Tier 3: Elite AI Revenue System ($749/mo)**: AI-driven lead generation, appointment booking automation, advanced conversion funnels, competitive ad intelligence
+
+### Merchant Cash Advance (MCA)
+Traditional capital access providing immediate cash flow commissions, with pairing enhancement when bundled with subscription products.
 
 ## Commission Architecture
 
 ### MCA Commission (GBR Waterfall)
 When a deal is funded, GBR is allocated:
 - **MAC (Merchant Acquisition Compensation)**: 30% of GBR
-  - Primary Agent: 22% of GBR
-  - Senior Sponsor (L1): 5% of GBR
-  - Executive Sponsor (L2): 3% of GBR
+  - Primary Referring Agent: 22% of GBR
+  - Senior Referral Sponsor (L1): 5% of GBR
+  - Executive Referral Sponsor (L2): 3% of GBR
 - **TFC (Transaction Fulfillment Compensation)**: 30-40% of GBR (based on fulfillment tier)
 - **PICF (Platform Infrastructure & Compliance Fee)**: 25-35% retained
 - **RSR (Risk Stabilization Reserve)**: 5% reserved
 
 ### Holdback & Clawback
 - 70% of commission released at funding
-- 30% deferred for 75 days
+- 30% deferred for 60-90 days
 - Clawback: 0-30 days = 100%, 31-90 days = 50%, after 90 days = none
 
 ### Fulfillment Tiers (TFC Rate)
 - Tier 1: 30% | Tier 2: 33% | Tier 3: 36% | Tier 4: 40%
 
-### Subscription Commission
+### Quarterly Performance Accelerators
+- $250K+ funded volume: 0.5% bonus
+- $500K+ funded volume: 1.0% bonus
+- $1M+ funded volume: 2.0% bonus
+- $2M+ funded volume: 3.0% bonus
+
+### Renewal Commissions
+- MAC for renewals: 15% of GBR (11% primary, 2.5% senior, 1.5% executive)
+
+### Subscription Commission (Merchant Growth Platform)
 Three subscription tiers: Merchant Essentials ($199/mo), Growth Accelerator ($429/mo), Elite AI ($749/mo)
 - Commission pools: Tier 1 = 50%, Tier 2 = 60%, Tier 3 = 70%
 - Decay schedule: Months 1-3: 100%, 4-6: 75%, 7-9: 50%, 10-12: 25%, Post-12: 10% residual
 - MCA pairing bonus: +5% during months 1-3 if paired with funded MCA
+- Residual requires: $3,000 collected revenue OR 1 funded MCA + 1 new subscription/month
 
 ### Platform Fee ($99/month per agent)
 - Level 1 ($3,000+ revenue): 50% reduction
 - Level 2 ($5,000+ revenue): 100% waiver
 - Level 3 ($8,500+ revenue): 100% waiver + $100 credit
 
-### Binary Bonus (unchanged)
+### Binary Bonus
 - Builder: 5% (max $2,500) | Leader: 6% (max $5,000) | Director: 7% (max $10,000) | Partner: 8% (max $25,000)
+
+## Agent Roles
+- **Primary Referring Agent (Opener)**: Sources and qualifies merchant leads, collects documentation, submits files
+- **Fulfillment Agent (Closer)**: Coordinates underwriting/approval, manages merchant-funder communication, drives to funding
+- **Sponsor (Senior & Executive)**: Provides coaching/training, drives team performance, ensures compliance
 
 ## System Architecture
 
@@ -61,11 +93,35 @@ Three subscription tiers: Merchant Essentials ($199/mo), Growth Accelerator ($42
 - **UI Components:** shadcn/ui (Radix UI primitives) with Tailwind CSS
 - **Styling:** Tailwind CSS with custom design tokens (deep navy + gold color palette)
 - **Fonts:** Cinzel (display) and Manrope (body) from Google Fonts
+- **Logo:** ShieldCheck icon (lucide-react) with gold gradient background
 
 **Key Design Decisions:**
 - Component library uses New York style shadcn/ui for polished, professional look
 - Path aliases configured: `@/` for client/src, `@shared/` for shared code
 - Protected routes wrap components with auth checks before rendering
+
+### Landing Page Structure
+The public marketing landing page (`client/src/pages/landing.tsx`) includes:
+- Hero with "Your Path to Recurring Revenue and Long-Term Wealth" messaging
+- Two Revenue Streams section (MCA + Merchant Growth Platform)
+- Merchant Growth Platform tier cards with feature details
+- Commission decay visualization
+- MCA commission structure with GBR waterfall
+- Platform fees with production waivers
+- Compliance-first section
+- Your First 30 Days roadmap
+- Income projection with compounding scenarios
+- FTC-compliant legal disclaimers
+
+### Training Page (Leadershield Academy)
+The training page (`client/src/pages/training.tsx`) includes:
+- 6-module video course with progress tracking
+- Sales playbook with consultative approach (Discovery, Presentation, Objections, Closing)
+- Merchant Growth Platform sales section
+- MCA pairing enhancement selling points
+- Subscription tier quick reference
+- Your First 30 Days checklist
+- Agent role descriptions
 
 ### Backend Architecture
 - **Runtime:** Node.js with Express 5

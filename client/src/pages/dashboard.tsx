@@ -226,8 +226,8 @@ export default function Dashboard() {
                   onClick={() => {
                     if (navigator.share && referralData?.referralUrl) {
                       navigator.share({
-                        title: 'Join PSL Capital',
-                        text: 'Start earning with MCA deals!',
+                        title: 'Join Leadershield Network',
+                        text: 'Start earning with MCA deals and recurring subscription revenue!',
                         url: referralData.referralUrl,
                       });
                     }

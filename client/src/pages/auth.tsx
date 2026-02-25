@@ -5,7 +5,7 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Building, ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,18 +41,18 @@ export default function AuthPage() {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
-              <Building className="w-6 h-6 text-white" />
+              <ShieldCheck className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-display font-bold text-white tracking-wide">PSL Capital</h1>
+            <h1 className="text-2xl font-display font-bold text-white tracking-wide">Leadershield Network</h1>
           </div>
 
           <h2 className="text-5xl font-display font-bold text-white leading-tight mb-6">
-            Build Your <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-200">Financial Legacy</span>
+            Your Path to <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-200">Recurring Revenue and Long-Term Wealth</span>
           </h2>
           <p className="text-lg text-white/60 max-w-md leading-relaxed">
-            Join the fastest growing network of elite financial professionals. 
-            Scale your team, amplify your earnings, and secure your future.
+            Join Leadershield Network and unlock two powerful revenue streams. 
+            Build recurring income through subscriptions and immediate earnings through MCA.
           </p>
         </div>
 
@@ -78,7 +78,7 @@ export default function AuthPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               {isLogin 
                 ? "Enter your credentials to access your dashboard" 
-                : "Start your journey with PSL Capital today"}
+                : "Start your journey with Leadershield Network today"}
             </p>
           </div>
 
@@ -125,7 +125,7 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
         <Input 
           id="username" 
           type="email" 
-          placeholder="agent@psl.capital" 
+          placeholder="agent@leadershield.com" 
           className="h-12"
           {...form.register("username")} 
         />

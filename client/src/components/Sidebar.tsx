@@ -7,7 +7,7 @@ import {
   Briefcase, 
   Settings, 
   LogOut,
-  Building,
+  ShieldCheck,
   BookOpen,
   Trophy,
   TrendingUp,
@@ -74,10 +74,10 @@ export function Sidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
-              <Building className="w-5 h-5 text-white" />
+              <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-lg tracking-wide leading-none">PSL Capital</h1>
+              <h1 className="font-display font-bold text-lg tracking-wide leading-none">Leadershield</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -194,9 +194,9 @@ export function Sidebar() {
         
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-            <Building className="w-4 h-4 text-white" />
+            <ShieldCheck className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display font-bold">PSL Capital</span>
+          <span className="font-display font-bold">Leadershield</span>
         </div>
         
         <NotificationBell />
