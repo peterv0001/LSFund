@@ -1,8 +1,9 @@
 import { useCommissions, useCommissionStats } from "@/hooks/use-commissions";
 import { Sidebar } from "@/components/Sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, DollarSign, Wallet, AlertTriangle, Clock, Shield } from "lucide-react";
+import { Loader2, DollarSign, Wallet, AlertTriangle, Clock, Shield, Info } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "wouter";
 
 const COMMISSION_TYPE_LABELS: Record<string, string> = {
   personal_deal: "Personal Deal",
@@ -82,6 +83,16 @@ export default function EarningsPage() {
             Track your MCA, subscription, and team payouts.
           </p>
         </header>
+
+        <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-6" data-testid="banner-earnings-disclaimer">
+          <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            Income shown reflects your personal results. Individual results vary and are not guaranteed. Most participants earn little to no income.{" "}
+            <Link href="/income-disclosure" className="underline font-medium" data-testid="link-income-disclosure-earnings">
+              See Income Disclosure Statement
+            </Link>.
+          </p>
+        </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-6 text-white shadow-xl">

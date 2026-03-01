@@ -1019,6 +1019,21 @@ export default function LandingPage() {
               <h4 className="font-semibold text-foreground mb-1">Testimonial Disclaimer</h4>
               <p>Testimonials and success stories on this website represent individual experiences and are not typical results. Individual results will vary based on background, dedication, effort, and market conditions. Names and details may be changed for privacy.</p>
             </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">Anti-Pyramid Scheme Disclosure</h4>
+              <p>Leadershield Network commissions are earned exclusively from the sale of legitimate products and services to end-user merchants — not from recruitment fees or the enrollment of other agents. Agents are never required to purchase products or inventory to participate. Our compensation plan rewards product sales performance, not headcount. Leadershield Network complies with all applicable FTC guidelines regarding multi-level marketing and business opportunity practices.</p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">Material Connection Disclosure</h4>
+              <p>Some individuals featured on this website, including those providing testimonials, endorsements, or success stories, have a material connection to Leadershield Network. They may be current agents, affiliates, or compensated participants. Their experiences and results are their own and should not be considered typical. Any compensation or benefits received are disclosed in accordance with the FTC's Endorsement Guides (16 CFR Part 255).</p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">State-Specific Business Opportunity Notice</h4>
+              <p>Certain states, including but not limited to California, Maryland, New York, and others, may require the registration or filing of business opportunity disclosures before an offer or sale can be made. Leadershield Network complies with all applicable state business opportunity laws. If you reside in a state with specific business opportunity registration requirements, additional disclosures may apply. Please contact compliance@leadershield.com for state-specific information before enrolling.</p>
+            </div>
+            <div className="pt-4 border-t border-border">
+              <p>For complete details, please review our <Link href="/income-disclosure"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-ids">Income Disclosure Statement</span></Link>, <Link href="/terms"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-terms">Terms of Service</span></Link>, <Link href="/privacy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-privacy">Privacy Policy</span></Link>, and <Link href="/refund-policy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-refund">Refund Policy</span></Link>.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -1026,7 +1041,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-16 px-6 bg-[#0A1628] text-white">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-10 mb-12">
+          <div className="grid md:grid-cols-5 gap-10 mb-12">
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
@@ -1049,6 +1064,15 @@ export default function LandingPage() {
               </div>
             </div>
             <div>
+              <h4 className="font-bold text-white/80 mb-4">Legal</h4>
+              <div className="space-y-2 text-sm">
+                <Link href="/income-disclosure"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-income-disclosure">Income Disclosure</span></Link>
+                <Link href="/terms"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-terms">Terms of Service</span></Link>
+                <Link href="/privacy"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-privacy">Privacy Policy</span></Link>
+                <Link href="/refund-policy"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-refund">Refund Policy</span></Link>
+              </div>
+            </div>
+            <div>
               <h4 className="font-bold text-white/80 mb-4">Get Started</h4>
               <div className="space-y-2 text-sm">
                 <Link href="/signup"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer">Join Now</span></Link>
@@ -1060,9 +1084,12 @@ export default function LandingPage() {
             <p className="text-sm text-white/30">
               &copy; 2026 Leadershield Network. All rights reserved.
             </p>
-            <p className="text-xs text-white/20 max-w-xl text-center md:text-right">
-              Leadershield Network is a network marketing company operating in the Merchant Cash Advance and merchant services industries. Results vary by individual. This website does not constitute financial, legal, or tax advice.
-            </p>
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-4 text-xs text-white/30">
+              <Link href="/income-disclosure"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-income-disclosure">Income Disclosure</span></Link>
+              <Link href="/terms"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-terms">Terms</span></Link>
+              <Link href="/privacy"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-privacy">Privacy</span></Link>
+              <Link href="/refund-policy"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-refund">Refund Policy</span></Link>
+            </div>
           </div>
         </div>
       </footer>

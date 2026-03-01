@@ -173,10 +173,26 @@ export function Sidebar() {
         <button 
           onClick={() => logout()}
           className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-300 hover:text-red-200 hover:bg-red-500/10 rounded-lg transition-colors"
+          data-testid="button-sign-out"
         >
           <LogOut className="w-4 h-4" />
           Sign Out
         </button>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 mt-2 border-t border-white/10">
+          <Link href="/income-disclosure">
+            <span className="text-[10px] text-white/30 hover:text-white/50 transition-colors cursor-pointer" data-testid="link-income-disclosure-sidebar">Income Disclosure</span>
+          </Link>
+          <Link href="/terms">
+            <span className="text-[10px] text-white/30 hover:text-white/50 transition-colors cursor-pointer" data-testid="link-terms-sidebar">Terms</span>
+          </Link>
+          <Link href="/privacy">
+            <span className="text-[10px] text-white/30 hover:text-white/50 transition-colors cursor-pointer" data-testid="link-privacy-sidebar">Privacy</span>
+          </Link>
+          <Link href="/refund-policy">
+            <span className="text-[10px] text-white/30 hover:text-white/50 transition-colors cursor-pointer" data-testid="link-refund-policy-sidebar">Refund Policy</span>
+          </Link>
+        </div>
       </div>
     </>
   );

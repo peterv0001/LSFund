@@ -8,6 +8,10 @@ import { Loader2 } from "lucide-react";
 
 // Public Pages
 import LandingPage from "@/pages/landing";
+import PrivacyPolicyPage from "@/pages/privacy";
+import TermsOfServicePage from "@/pages/terms";
+import RefundPolicyPage from "@/pages/refund-policy";
+import IncomeDisclosurePage from "@/pages/income-disclosure";
 
 // Agent Portal Pages
 import AuthPage from "@/pages/auth";
@@ -99,10 +103,16 @@ function Router() {
         {(params) => user ? <Redirect to="/dashboard" /> : <Redirect to={`/signup?ref=${params.code}`} />}
       </Route>
 
+      {/* Public Legal Pages */}
+      <Route path="/privacy" component={PrivacyPolicyPage} />
+      <Route path="/refund-policy" component={RefundPolicyPage} />
+      <Route path="/terms" component={TermsOfServicePage} />
+
       {/* Public Landing Page */}
       <Route path="/">
         {user ? <Redirect to="/dashboard" /> : <LandingPage />}
       </Route>
+      <Route path="/income-disclosure" component={IncomeDisclosurePage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/team" component={() => <ProtectedRoute component={TeamPage} />} />
       <Route path="/deals" component={() => <ProtectedRoute component={DealsPage} />} />

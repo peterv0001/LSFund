@@ -16,7 +16,8 @@ import {
   Share2,
   UserPlus,
   Shield,
-  Repeat
+  Repeat,
+  Info
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -88,6 +89,16 @@ export default function Dashboard() {
               </Button>
             </Link>
           </div>
+        </div>
+
+        <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-6" data-testid="banner-earnings-disclaimer">
+          <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            Income shown reflects your personal results. Individual results vary and are not guaranteed. Most participants earn little to no income.{" "}
+            <Link href="/income-disclosure" className="underline font-medium" data-testid="link-income-disclosure-dashboard">
+              See Income Disclosure Statement
+            </Link>.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">

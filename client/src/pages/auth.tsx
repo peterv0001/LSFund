@@ -6,6 +6,7 @@ import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Shield, ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown, Star, Zap, DollarSign, Repeat, Users } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,7 +132,8 @@ export default function AuthPage() {
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            By creating an account, you agree to the Leadershield Network Agent Agreement and acknowledge you've reviewed our income disclosures.
+            Need help? Contact{" "}
+            <a href="mailto:support@leadershield.com" className="text-primary hover:underline">support@leadershield.com</a>
           </p>
         </div>
       </div>
@@ -212,8 +214,14 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
   const [showDropdown, setShowDropdown] = useState(false);
   const [referralLocked, setReferralLocked] = useState(!!referralCode);
 
+  const registerSchema = api.auth.register.input.extend({
+    legalConsent: z.literal(true, {
+      errorMap: () => ({ message: "You must agree to the Terms of Service, Privacy Policy, and review the Income Disclosure Statement" }),
+    }),
+  });
+
   const form = useForm({
-    resolver: zodResolver(api.auth.register.input),
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       referralCode: referralCode || "",
       sponsorId: undefined as number | undefined,
@@ -223,6 +231,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
       email: "",
       phone: "",
       password: "",
+      legalConsent: false as unknown as true,
     }
   });
 
@@ -272,7 +281,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      onSubmit={form.handleSubmit(onSubmit)}
+      onSubmit={form.handleSubmit(({ legalConsent, ...data }) => onSubmit(data))}
       className="space-y-4"
     >
       <div className="grid grid-cols-2 gap-4">
@@ -406,6 +415,26 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
             <Label htmlFor="right" className="font-normal">Right Leg</Label>
           </div>
         </RadioGroup>
+      </div>
+
+      <div className="space-y-2 pt-2">
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="legalConsent"
+            checked={form.watch("legalConsent")}
+            onCheckedChange={(checked) => form.setValue("legalConsent", checked === true as any, { shouldValidate: true })}
+            data-testid="checkbox-legal-consent"
+          />
+          <label htmlFor="legalConsent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+            I have read and agree to the{" "}
+            <Link href="/terms" className="text-primary hover:underline font-medium" data-testid="link-terms">Terms of Service</Link>,{" "}
+            <Link href="/privacy" className="text-primary hover:underline font-medium" data-testid="link-privacy">Privacy Policy</Link>, and have reviewed the{" "}
+            <Link href="/income-disclosure" className="text-primary hover:underline font-medium" data-testid="link-income-disclosure">Income Disclosure Statement</Link>.
+          </label>
+        </div>
+        {form.formState.errors.legalConsent && (
+          <p className="text-xs text-destructive" data-testid="text-legal-consent-error">{form.formState.errors.legalConsent.message as string}</p>
+        )}
       </div>
 
       <Button type="submit" className="w-full h-12 text-base font-semibold mt-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20" disabled={isLoading} data-testid="button-create-account">

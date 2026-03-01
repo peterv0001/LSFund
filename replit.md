@@ -115,13 +115,21 @@ The public marketing landing page (`client/src/pages/landing.tsx`) includes:
 - **Compliance section** (centralized pricing, disclosures, clear comp, regulatory)
 - **FAQ accordion** with Framer Motion expand/collapse
 - **Final CTA** dark section with gradient text and urgency messaging
-- **FTC-compliant legal disclaimers** and dark branded footer
+- **FTC-compliant legal disclaimers** (FTC Income Disclosure, Independent Contractor, No Guaranteed Income, Business Opportunity, Commission Structure, Testimonial, Anti-Pyramid Scheme, Material Connection, State-Specific Business Opportunity) with cross-reference links to all legal pages
+- **Legal footer** with links to Income Disclosure, Terms of Service, Privacy Policy, and Refund Policy
 - Uses `AnimatedSection` (Framer Motion scroll-triggered), `CountUp` (animated stat counter), `FAQItem` (accordion)
 - Scroll-aware navigation bar with transparency-to-solid transition
+
+### Legal/Compliance Pages
+- **Income Disclosure Statement** (`/income-disclosure`): Comprehensive FTC-compliant income disclosure with earnings by rank table, median/average figures, material assumptions, anti-pyramid statement
+- **Terms of Service** (`/terms`): Full terms covering independent contractor status, commission terms, clawback policies, dispute resolution, arbitration, limitation of liability
+- **Privacy Policy** (`/privacy`): Data collection, usage, sharing, retention, cookies, user rights, COPPA, CCPA/CPRA compliance
+- **Refund Policy** (`/refund-policy`): Subscription cancellation, 14-day cooling-off period, refund eligibility, clawback impact on agent commissions
 
 ### Auth Page
 - **Left panel**: Immersive dark gradient matching landing hero, animated shield logo, 4 earning bullet points, stats bar
 - **Right panel**: Login/register forms with gold gradient CTAs, sponsor search, placement preference
+- **Legal consent checkbox**: Required checkbox linking to Terms, Privacy, and Income Disclosure before account creation
 - Mobile-responsive with branding header on small screens
 
 ### Training Page (Leadershield Academy)
