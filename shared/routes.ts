@@ -103,6 +103,28 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    forgotPassword: {
+      method: 'POST' as const,
+      path: '/api/auth/forgot-password',
+      input: z.object({
+        email: z.string().email(),
+      }),
+      responses: {
+        200: z.object({ message: z.string() }),
+      },
+    },
+    resetPassword: {
+      method: 'POST' as const,
+      path: '/api/auth/reset-password',
+      input: z.object({
+        token: z.string().min(1),
+        newPassword: z.string().min(8),
+      }),
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+      },
+    },
   },
 
   // === AGENTS (Agent Portal) ===

@@ -130,6 +130,7 @@ The public marketing landing page (`client/src/pages/landing.tsx`) includes:
 - **Left panel**: Immersive dark gradient matching landing hero, animated shield logo, 4 earning bullet points, stats bar
 - **Right panel**: Login/register forms with gold gradient CTAs, sponsor search, placement preference
 - **Legal consent checkbox**: Required checkbox linking to Terms, Privacy, and Income Disclosure before account creation
+- **Forgot password flow**: Login form links to `/forgot-password` page, which sends a reset email via Resend. Reset link goes to `/reset-password?token=...` page where user sets a new password. Tokens expire after 1 hour.
 - Mobile-responsive with branding header on small screens
 
 ### Training Page (Leadershield Academy)

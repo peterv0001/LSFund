@@ -9,7 +9,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { pool } from "./db";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
 import { emailService } from "./email";
@@ -337,6 +337,63 @@ export async function registerRoutes(
         return res.status(400).json({ message: err.errors[0].message });
       }
       res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Forgot password
+  app.post(api.auth.forgotPassword.path, async (req, res) => {
+    try {
+      const { email } = api.auth.forgotPassword.input.parse(req.body);
+      const agent = await storage.getAgentByEmail(email);
+
+      if (agent) {
+        const rawToken = randomBytes(32).toString("hex");
+        const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+        const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await storage.setResetToken(agent.id, hashedToken, expiry);
+
+        const resetUrl = `${process.env.APP_URL || `https://${req.get('host')}`}/reset-password?token=${rawToken}`;
+        emailService.sendPasswordResetEmail(agent.email, {
+          firstName: agent.firstName,
+          resetUrl,
+        }).catch(console.error);
+      }
+
+      res.json({ message: "If an account with that email exists, we've sent a password reset link." });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Reset password
+  app.post(api.auth.resetPassword.path, async (req, res) => {
+    try {
+      const { token, newPassword } = api.auth.resetPassword.input.parse(req.body);
+      const hashedToken = createHash("sha256").update(token).digest("hex");
+      const agent = await storage.getAgentByResetToken(hashedToken);
+
+      if (!agent) {
+        return res.status(400).json({ message: "Invalid or expired reset link." });
+      }
+
+      if (!agent.resetTokenExpiry || new Date() > agent.resetTokenExpiry) {
+        await storage.clearResetToken(agent.id);
+        return res.status(400).json({ message: "This reset link has expired. Please request a new one." });
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateAgent(agent.id, { password: hashedPassword });
+      await storage.clearResetToken(agent.id);
+
+      res.json({ message: "Your password has been reset successfully. You can now sign in." });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 

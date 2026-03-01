@@ -15,6 +15,8 @@ import IncomeDisclosurePage from "@/pages/income-disclosure";
 
 // Agent Portal Pages
 import AuthPage from "@/pages/auth";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
 import TeamPage from "@/pages/team";
 import DealsPage from "@/pages/deals";
@@ -101,6 +103,12 @@ function Router() {
       </Route>
       <Route path="/join/:code">
         {(params) => user ? <Redirect to="/dashboard" /> : <Redirect to={`/signup?ref=${params.code}`} />}
+      </Route>
+      <Route path="/forgot-password">
+        {user ? <Redirect to="/dashboard" /> : <ForgotPasswordPage />}
+      </Route>
+      <Route path="/reset-password">
+        {user ? <Redirect to="/dashboard" /> : <ResetPasswordPage />}
       </Route>
 
       {/* Public Legal Pages */}

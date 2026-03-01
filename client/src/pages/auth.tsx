@@ -175,7 +175,7 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
-          <a href="#" className="text-xs font-medium text-primary hover:underline">Forgot password?</a>
+          <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline" data-testid="link-forgot-password">Forgot password?</Link>
         </div>
         <Input
           id="password"

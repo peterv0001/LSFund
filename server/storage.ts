@@ -180,6 +180,23 @@ export class DatabaseStorage {
     return await db.select().from(agents).where(eq(agents.sponsorId, agentId));
   }
 
+  async setResetToken(agentId: number, token: string, expiry: Date): Promise<void> {
+    await db.update(agents)
+      .set({ resetToken: token, resetTokenExpiry: expiry, updatedAt: new Date() })
+      .where(eq(agents.id, agentId));
+  }
+
+  async getAgentByResetToken(token: string): Promise<Agent | undefined> {
+    const [agent] = await db.select().from(agents).where(eq(agents.resetToken, token));
+    return agent;
+  }
+
+  async clearResetToken(agentId: number): Promise<void> {
+    await db.update(agents)
+      .set({ resetToken: null, resetTokenExpiry: null, updatedAt: new Date() })
+      .where(eq(agents.id, agentId));
+  }
+
   async searchAgentsForSponsor(query: string): Promise<{ id: number; firstName: string; lastName: string; maskedEmail: string; referralCode: string | null }[]> {
     // Require minimum 2 characters to prevent enumeration
     if (!query || query.length < 2) {
