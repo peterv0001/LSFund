@@ -1461,6 +1461,9 @@ export async function registerRoutes(
         const pct = percentage ?? 100;
         const rsn = reason ?? 'Admin clawback';
         const result = await storage.applyClawback(id, rsn, pct);
+        if (result.commissionId) {
+          await storage.voidCommission(result.commissionId, req.user!.id, `Clawback: ${rsn}`);
+        }
         await storage.logActivity({
           actorId: req.user!.id,
           actorType: 'admin',
@@ -1506,7 +1509,6 @@ export async function registerRoutes(
 
   // Agent holdback view
   app.get("/api/holdbacks", requireAuth, async (req, res) => {
-    // @ts-ignore
     const agentHoldbacks = await storage.getHoldbacksByAgent(req.user!.id);
     res.json(agentHoldbacks);
   });
@@ -1577,7 +1579,6 @@ export async function registerRoutes(
 
   app.post(api.admin.payouts.process.path, requireAdmin, async (req, res) => {
     try {
-      // @ts-ignore
       await storage.processPayout(Number(req.params.id), req.user!.id);
       res.json({ success: true });
     } catch (err: any) {
@@ -1601,9 +1602,16 @@ export async function registerRoutes(
   app.post(api.admin.announcements.create.path, requireAdmin, async (req, res) => {
     try {
       const input = api.admin.announcements.create.input.parse(req.body);
-      // @ts-ignore
-      const announcement = await storage.createAnnouncement({ ...input, createdById: req.user!.id });
-      // @ts-ignore
+      const announcement = await storage.createAnnouncement({
+        ...input,
+        target: input.target ?? 'all',
+        isPinned: input.isPinned ?? false,
+        isPublished: input.isPublished ?? false,
+        priority: input.priority ?? 0,
+        publishAt: input.publishAt ?? null,
+        expiresAt: input.expiresAt ?? null,
+        createdById: req.user!.id,
+      });
       await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'announcement', entityId: announcement.id, description: `Created announcement: "${announcement.title}"`, details: { title: announcement.title } });
       res.status(201).json(announcement);
     } catch (err) {
@@ -1618,7 +1626,6 @@ export async function registerRoutes(
     try {
       const input = api.admin.announcements.update.input.parse(req.body);
       const updated = await storage.updateAnnouncement(Number(req.params.id), input);
-      // @ts-ignore
       await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), description: `Updated announcement #${req.params.id}`, details: input });
       res.json(updated);
     } catch (err) {
@@ -1628,14 +1635,12 @@ export async function registerRoutes(
 
   app.delete(api.admin.announcements.delete.path, requireAdmin, async (req, res) => {
     await storage.deleteAnnouncement(Number(req.params.id));
-    // @ts-ignore
     await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'announcement', entityId: Number(req.params.id) });
     res.json({ success: true });
   });
 
   app.post(api.admin.announcements.publish.path, requireAdmin, async (req, res) => {
     await storage.updateAnnouncement(Number(req.params.id), { isPublished: true, publishAt: new Date() });
-    // @ts-ignore
     await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), details: { isPublished: true } });
     res.json({ success: true });
   });
@@ -1649,9 +1654,15 @@ export async function registerRoutes(
   app.post(api.admin.resources.create.path, requireAdmin, async (req, res) => {
     try {
       const input = api.admin.resources.create.input.parse(req.body);
-      // @ts-ignore
-      const resource = await storage.createResource({ ...input, createdById: req.user!.id });
-      // @ts-ignore
+      const resource = await storage.createResource({
+        ...input,
+        isPublished: input.isPublished ?? false,
+        description: input.description ?? null,
+        thumbnailUrl: input.thumbnailUrl ?? null,
+        category: input.category ?? null,
+        sortOrder: input.sortOrder ?? null,
+        createdById: req.user!.id,
+      });
       await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'resource', entityId: resource.id, description: `Created resource: "${resource.title}" (${resource.type})`, details: { title: resource.title, type: resource.type } });
       res.status(201).json(resource);
     } catch (err) {
@@ -1666,7 +1677,6 @@ export async function registerRoutes(
     try {
       const input = api.admin.resources.update.input.parse(req.body);
       const updated = await storage.updateResource(Number(req.params.id), input);
-      // @ts-ignore
       await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'resource', entityId: Number(req.params.id), details: input });
       res.json(updated);
     } catch (err) {
@@ -1676,7 +1686,6 @@ export async function registerRoutes(
 
   app.delete(api.admin.resources.delete.path, requireAdmin, async (req, res) => {
     await storage.deleteResource(Number(req.params.id));
-    // @ts-ignore
     await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'resource', entityId: Number(req.params.id) });
     res.json({ success: true });
   });
@@ -1715,7 +1724,6 @@ export async function registerRoutes(
         await storage.savePlatformSetting('companyInfo', companyInfo, req.user!.id);
       }
 
-      // @ts-ignore
       await storage.logActivity({
         actorId: req.user!.id,
         actorType: 'admin',
