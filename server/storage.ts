@@ -1043,10 +1043,13 @@ export class DatabaseStorage {
     actorId?: number;
     entityType?: string;
     entityId?: number;
+    search?: string;
+    startDate?: Date;
+    endDate?: Date;
   }): Promise<{ logs: (typeof activityLog.$inferSelect)[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
-    let conditions: any[] = [];
+    const conditions: ReturnType<typeof eq>[] = [];
     
     if (filters?.actorId) {
       conditions.push(eq(activityLog.actorId, filters.actorId));
@@ -1056,6 +1059,20 @@ export class DatabaseStorage {
     }
     if (filters?.entityId) {
       conditions.push(eq(activityLog.entityId, filters.entityId));
+    }
+    if (filters?.search) {
+      const term = `%${filters.search}%`;
+      conditions.push(or(
+        like(activityLog.action, term),
+        like(activityLog.entityType, term),
+        like(activityLog.description, term),
+      ) as ReturnType<typeof eq>);
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(activityLog.createdAt, filters.startDate) as ReturnType<typeof eq>);
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(activityLog.createdAt, filters.endDate) as ReturnType<typeof eq>);
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1403,15 +1420,17 @@ export class DatabaseStorage {
       .orderBy(desc(holdbacks.createdAt));
   }
 
-  async getAllHoldbacks(): Promise<(Holdback & { agent: Agent })[]> {
+  async getAllHoldbacks(): Promise<(Holdback & { agent: Agent; dealName: string | null })[]> {
     const results = await db.select({
       holdback: holdbacks,
       agent: agents,
+      dealName: deals.merchantName,
     })
       .from(holdbacks)
       .leftJoin(agents, eq(holdbacks.agentId, agents.id))
+      .leftJoin(deals, eq(holdbacks.dealId, deals.id))
       .orderBy(desc(holdbacks.createdAt));
-    return results.map(r => ({ ...r.holdback, agent: r.agent! }));
+    return results.map(r => ({ ...r.holdback, agent: r.agent!, dealName: r.dealName ?? null }));
   }
 
   async releaseHoldback(id: number): Promise<Holdback> {

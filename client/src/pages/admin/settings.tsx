@@ -263,7 +263,8 @@ export default function AdminSettings() {
                     data-testid="button-calc-subscriptions"
                     onClick={async () => {
                       try {
-                        const result = await apiRequest("POST", api.admin.subscriptions.calculateCommissions.path) as any;
+                        const res = await apiRequest("POST", api.admin.subscriptions.calculateCommissions.path);
+                        const result = await res.json() as { processed: number };
                         toast({ title: `Subscription commissions calculated: ${result.processed} processed` });
                       } catch {
                         toast({ title: "Failed to calculate subscription commissions", variant: "destructive" });

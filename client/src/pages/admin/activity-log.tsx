@@ -1,6 +1,6 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useQuery } from "@tanstack/react-query";
-import { api, buildUrlWithQuery } from "@shared/routes";
+import { buildUrlWithQuery } from "@shared/routes";
 import {
   Activity,
   Loader2,
@@ -11,6 +11,8 @@ import {
   Briefcase,
   DollarSign,
   CreditCard,
+  Search,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,8 +28,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 type ActivityEntry = {
   id: number;
@@ -36,10 +40,24 @@ type ActivityEntry = {
   action: string;
   entityType: string;
   entityId: number;
+  description: string | null;
   details: Record<string, unknown> | null;
   ipAddress: string | null;
   userAgent: string | null;
   createdAt: string;
+};
+
+type ActivityLogResponse = {
+  logs: ActivityEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+type Filters = {
+  search: string;
+  startDate: string;
+  endDate: string;
 };
 
 const ENTITY_ICONS: Record<string, React.ElementType> = {
@@ -63,33 +81,58 @@ const ACTION_COLORS: Record<string, string> = {
   clawback: "bg-red-100 text-red-700",
 };
 
+const ACTIVITY_LOG_PATH = "/api/admin/activity-log";
+
 export default function AdminActivityLog() {
   const [page, setPage] = useState(1);
   const pageSize = 50;
+  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "" });
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "" });
 
-  const { data, isLoading } = useQuery<{
-    logs: ActivityEntry[];
-    total: number;
-    page: number;
-    pageSize: number;
-  }>({
-    queryKey: [api.admin.activityLog.list.path, page],
+  function buildQuery() {
+    const q: Record<string, string | number> = { page, pageSize };
+    if (appliedFilters.search) q.search = appliedFilters.search;
+    if (appliedFilters.startDate) q.startDate = appliedFilters.startDate;
+    if (appliedFilters.endDate) q.endDate = appliedFilters.endDate;
+    return q;
+  }
+
+  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate];
+
+  const { data, isLoading } = useQuery<ActivityLogResponse>({
+    queryKey,
     queryFn: () =>
-      fetch(buildUrlWithQuery(api.admin.activityLog.list.path, undefined, { page, pageSize }))
-        .then((r) => r.json()),
+      fetch(buildUrlWithQuery(ACTIVITY_LOG_PATH, undefined, buildQuery()), { credentials: "include" })
+        .then((r) => {
+          if (!r.ok) throw new Error(`${r.status}: ${r.statusText}`);
+          return r.json() as Promise<ActivityLogResponse>;
+        }),
   });
 
   const logs = data?.logs ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
 
+  const applyFilters = useCallback(() => {
+    setPage(1);
+    setAppliedFilters({ ...filters });
+  }, [filters]);
+
+  function clearFilters() {
+    const blank: Filters = { search: "", startDate: "", endDate: "" };
+    setFilters(blank);
+    setAppliedFilters(blank);
+    setPage(1);
+  }
+
+  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate;
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
       <main className="flex-1 ml-64 p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <Activity className="w-6 h-6 text-amber-500" />
               Activity Log
@@ -100,7 +143,61 @@ export default function AdminActivityLog() {
             </p>
           </div>
 
-          {/* Table */}
+          {/* Filters */}
+          <Card className="mb-4">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-48 space-y-1">
+                  <Label htmlFor="log-search">Search</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="log-search"
+                      data-testid="input-log-search"
+                      placeholder="Search action, entity, description..."
+                      className="pl-8"
+                      value={filters.search}
+                      onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                      onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="log-start-date">From</Label>
+                  <Input
+                    id="log-start-date"
+                    data-testid="input-log-start-date"
+                    type="date"
+                    value={filters.startDate}
+                    onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="log-end-date">To</Label>
+                  <Input
+                    id="log-end-date"
+                    data-testid="input-log-end-date"
+                    type="date"
+                    value={filters.endDate}
+                    onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button data-testid="button-apply-filters" onClick={applyFilters}>
+                    <Search className="w-4 h-4 mr-1" />
+                    Filter
+                  </Button>
+                  {hasActiveFilters && (
+                    <Button variant="outline" data-testid="button-clear-filters" onClick={clearFilters}>
+                      <X className="w-4 h-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
@@ -108,7 +205,7 @@ export default function AdminActivityLog() {
           ) : logs.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
-                No activity logged yet.
+                {hasActiveFilters ? "No activity matches your filters." : "No activity logged yet."}
               </CardContent>
             </Card>
           ) : (
@@ -157,7 +254,9 @@ export default function AdminActivityLog() {
                             </div>
                           </TableCell>
                           <TableCell className="max-w-xs">
-                            {log.details ? (
+                            {log.description ? (
+                              <span className="text-sm text-gray-600">{log.description}</span>
+                            ) : log.details ? (
                               <pre className="text-xs text-gray-500 bg-gray-50 rounded p-1 overflow-hidden text-ellipsis max-h-16">
                                 {JSON.stringify(log.details, null, 2)}
                               </pre>
@@ -175,7 +274,6 @@ export default function AdminActivityLog() {
                 </Table>
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                   <p className="text-sm text-gray-500">

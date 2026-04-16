@@ -255,6 +255,7 @@ export const announcements = pgTable("announcements", {
   target: announcementTargetEnum("target").default("all").notNull(),
   isPinned: boolean("is_pinned").default(false).notNull(),
   isPublished: boolean("is_published").default(false).notNull(),
+  priority: integer("priority").default(0).notNull(),
   
   publishAt: timestamp("publish_at"),
   expiresAt: timestamp("expires_at"),
@@ -355,6 +356,7 @@ export const activityLog = pgTable("activity_log", {
   entityType: text("entity_type").notNull(), // 'agent', 'deal', 'commission', 'payout'
   entityId: integer("entity_id").notNull(),
   
+  description: text("description"), // Human-readable summary of the action
   details: jsonb("details"), // JSON with before/after or additional context
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),

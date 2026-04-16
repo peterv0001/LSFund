@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -38,13 +38,16 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
 
+type AnnouncementTarget = "all" | "agents_only" | "builders_plus" | "leaders_plus" | "directors_plus" | "partners_only";
+
 type Announcement = {
   id: number;
   title: string;
   content: string;
-  target: string;
+  target: AnnouncementTarget;
   isPinned: boolean;
   isPublished: boolean;
+  priority: number;
   publishAt: string | null;
   expiresAt: string | null;
   createdById: number;
@@ -52,7 +55,16 @@ type Announcement = {
   updatedAt: string;
 };
 
-const TARGET_LABELS: Record<string, string> = {
+type AnnouncementForm = {
+  title: string;
+  content: string;
+  target: AnnouncementTarget;
+  isPinned: boolean;
+  isPublished: boolean;
+  priority: number;
+};
+
+const TARGET_LABELS: Record<AnnouncementTarget, string> = {
   all: "All Members",
   agents_only: "Agents Only",
   builders_plus: "Builders+",
@@ -61,12 +73,13 @@ const TARGET_LABELS: Record<string, string> = {
   partners_only: "Partners Only",
 };
 
-const BLANK_FORM = {
+const BLANK_FORM: AnnouncementForm = {
   title: "",
   content: "",
-  target: "all" as const,
+  target: "all",
   isPinned: false,
   isPublished: false,
+  priority: 0,
 };
 
 export default function AdminAnnouncements() {
@@ -74,7 +87,7 @@ export default function AdminAnnouncements() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState<Announcement | null>(null);
-  const [form, setForm] = useState(BLANK_FORM);
+  const [form, setForm] = useState<AnnouncementForm>(BLANK_FORM);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const { data: announcements = [], isLoading } = useQuery<Announcement[]>({
@@ -82,7 +95,7 @@ export default function AdminAnnouncements() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof BLANK_FORM) =>
+    mutationFn: (data: AnnouncementForm) =>
       apiRequest("POST", api.admin.announcements.create.path, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.admin.announcements.list.path] });
@@ -94,7 +107,7 @@ export default function AdminAnnouncements() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<typeof BLANK_FORM> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<AnnouncementForm> }) =>
       apiRequest("PATCH", buildUrl(api.admin.announcements.update.path, { id }), data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.admin.announcements.list.path] });
@@ -138,9 +151,10 @@ export default function AdminAnnouncements() {
     setForm({
       title: a.title,
       content: a.content,
-      target: a.target as any,
+      target: a.target,
       isPinned: a.isPinned,
       isPublished: a.isPublished,
+      priority: a.priority,
     });
     setIsOpen(true);
   }
@@ -164,7 +178,6 @@ export default function AdminAnnouncements() {
       <AdminSidebar />
       <main className="flex-1 ml-64 p-8">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -179,7 +192,6 @@ export default function AdminAnnouncements() {
             </Button>
           </div>
 
-          {/* List */}
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
@@ -203,6 +215,11 @@ export default function AdminAnnouncements() {
                             <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
                               <Pin className="w-3 h-3 mr-1" />
                               Pinned
+                            </Badge>
+                          )}
+                          {a.priority > 0 && (
+                            <Badge variant="outline" className="text-purple-600 border-purple-300 bg-purple-50">
+                              Priority {a.priority}
                             </Badge>
                           )}
                           <Badge
@@ -273,7 +290,6 @@ export default function AdminAnnouncements() {
         </div>
       </main>
 
-      {/* Create / Edit Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -306,17 +322,30 @@ export default function AdminAnnouncements() {
                 <Label>Target Audience</Label>
                 <Select
                   value={form.target}
-                  onValueChange={(v) => setForm({ ...form, target: v as any })}
+                  onValueChange={(v) => setForm({ ...form, target: v as AnnouncementTarget })}
                 >
                   <SelectTrigger data-testid="select-target">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(TARGET_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    {(Object.keys(TARGET_LABELS) as AnnouncementTarget[]).map((k) => (
+                      <SelectItem key={k} value={k}>{TARGET_LABELS[k]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ann-priority">Priority (0 = normal, higher = more prominent)</Label>
+                <Input
+                  id="ann-priority"
+                  data-testid="input-announcement-priority"
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="0"
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 0 })}
+                />
               </div>
             </div>
             <div className="flex items-center gap-6">
@@ -350,7 +379,6 @@ export default function AdminAnnouncements() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm Dialog */}
       <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>

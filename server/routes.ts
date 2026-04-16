@@ -1529,7 +1529,7 @@ export async function registerRoutes(
       // @ts-ignore
       const announcement = await storage.createAnnouncement({ ...input, createdById: req.user!.id });
       // @ts-ignore
-      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'announcement', entityId: announcement.id, details: { title: announcement.title } });
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'announcement', entityId: announcement.id, description: `Created announcement: "${announcement.title}"`, details: { title: announcement.title } });
       res.status(201).json(announcement);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -1544,7 +1544,7 @@ export async function registerRoutes(
       const input = api.admin.announcements.update.input.parse(req.body);
       const updated = await storage.updateAnnouncement(Number(req.params.id), input);
       // @ts-ignore
-      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), details: input });
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), description: `Updated announcement #${req.params.id}`, details: input });
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update announcement" });
@@ -1577,7 +1577,7 @@ export async function registerRoutes(
       // @ts-ignore
       const resource = await storage.createResource({ ...input, createdById: req.user!.id });
       // @ts-ignore
-      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'resource', entityId: resource.id, details: { title: resource.title, type: resource.type } });
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'resource', entityId: resource.id, description: `Created resource: "${resource.title}" (${resource.type})`, details: { title: resource.title, type: resource.type } });
       res.status(201).json(resource);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -1663,8 +1663,17 @@ export async function registerRoutes(
   app.get(api.admin.activityLog.list.path, requireAdmin, async (req, res) => {
     const page = Number(req.query.page) || 1;
     const pageSize = Number(req.query.pageSize) || 50;
+    const search = typeof req.query.search === 'string' && req.query.search.trim()
+      ? req.query.search.trim()
+      : undefined;
+    const startDate = typeof req.query.startDate === 'string' && req.query.startDate
+      ? new Date(req.query.startDate)
+      : undefined;
+    const endDate = typeof req.query.endDate === 'string' && req.query.endDate
+      ? new Date(req.query.endDate)
+      : undefined;
     
-    const result = await storage.getActivityLogs(page, pageSize);
+    const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate });
     res.json({ ...result, page, pageSize });
   });
 

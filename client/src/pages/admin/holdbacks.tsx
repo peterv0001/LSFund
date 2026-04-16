@@ -7,17 +7,13 @@ import {
   Loader2,
   Unlock,
   AlertTriangle,
-  DollarSign,
   RefreshCw,
-  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -47,7 +43,14 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
 
-type Holdback = {
+type HoldbackAgent = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
+type HoldbackEntry = {
   id: number;
   dealId: number;
   agentId: number;
@@ -61,6 +64,13 @@ type Holdback = {
   clawbackReason: string | null;
   createdAt: string;
   updatedAt: string;
+  agent: HoldbackAgent;
+  dealName: string | null;
+};
+
+type ReleaseEligibleResponse = {
+  released: number;
+  processed: number;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -81,11 +91,11 @@ export default function AdminHoldbacks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [clawbackDialog, setClawbackDialog] = useState<Holdback | null>(null);
+  const [clawbackDialog, setClawbackDialog] = useState<HoldbackEntry | null>(null);
   const [clawbackReason, setClawbackReason] = useState("");
   const [clawbackPct, setClawbackPct] = useState("100");
 
-  const { data: holdbacks = [], isLoading } = useQuery<Holdback[]>({
+  const { data: holdbacks = [], isLoading } = useQuery<HoldbackEntry[]>({
     queryKey: [api.admin.holdbacks.list.path],
   });
 
@@ -101,8 +111,10 @@ export default function AdminHoldbacks() {
 
   const releaseEligibleMutation = useMutation({
     mutationFn: () =>
-      apiRequest("POST", api.admin.holdbacks.releaseEligible.path),
-    onSuccess: (data: any) => {
+      apiRequest("POST", api.admin.holdbacks.releaseEligible.path).then(
+        (res): Promise<ReleaseEligibleResponse> => res.json()
+      ),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [api.admin.holdbacks.list.path] });
       toast({ title: `Released ${data.released} eligible holdbacks` });
     },
@@ -138,12 +150,22 @@ export default function AdminHoldbacks() {
     (h) => (h.status === "held" || h.status === "partially_released") && h.releaseDate && new Date(h.releaseDate) <= new Date()
   ).length;
 
+  function releasePercent(h: HoldbackEntry): string {
+    const total = Number(h.totalAmount);
+    if (total === 0) return "0%";
+    return `${((Number(h.releasedAmount) / total) * 100).toFixed(0)}%`;
+  }
+
+  function agentName(h: HoldbackEntry): string {
+    if (!h.agent) return `Agent #${h.agentId}`;
+    return `${h.agent.firstName} ${h.agent.lastName}`;
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
       <main className="flex-1 ml-64 p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -165,7 +187,6 @@ export default function AdminHoldbacks() {
             </Button>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <Card>
               <CardContent className="p-5">
@@ -193,7 +214,6 @@ export default function AdminHoldbacks() {
             </Card>
           </div>
 
-          {/* Filter */}
           <div className="flex gap-2 mb-4">
             {["all", "held", "partially_released", "released", "clawed_back"].map((s) => (
               <Button
@@ -209,28 +229,21 @@ export default function AdminHoldbacks() {
             ))}
           </div>
 
-          {/* Table */}
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
             </div>
-          ) : filtered.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-gray-500">
-                No holdbacks found matching the selected filter.
-              </CardContent>
-            </Card>
           ) : (
             <Card>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Deal ID</TableHead>
-                      <TableHead>Agent ID</TableHead>
-                      <TableHead>Total</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Deal / Merchant</TableHead>
+                      <TableHead>Total Held</TableHead>
                       <TableHead>Released</TableHead>
+                      <TableHead>Release %</TableHead>
                       <TableHead>Clawback</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Release Date</TableHead>
@@ -238,69 +251,80 @@ export default function AdminHoldbacks() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((h) => {
-                      const isReleasable = (h.status === "held" || h.status === "partially_released") && h.releaseDate && new Date(h.releaseDate) <= new Date();
-                      return (
-                        <TableRow key={h.id} data-testid={`row-holdback-${h.id}`}>
-                          <TableCell className="font-mono text-sm">#{h.id}</TableCell>
-                          <TableCell>
-                            <a href={`/admin/deals?id=${h.dealId}`} className="text-amber-600 hover:underline">
-                              #{h.dealId}
-                            </a>
-                          </TableCell>
-                          <TableCell>#{h.agentId}</TableCell>
-                          <TableCell className="font-medium">
-                            ${Number(h.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell className="text-green-600">
-                            ${Number(h.releasedAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell className="text-red-600">
-                            ${Number(h.clawbackAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={STATUS_COLORS[h.status] ?? ""}>
-                              {STATUS_LABELS[h.status] ?? h.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-500">
-                            {h.releaseDate ? format(new Date(h.releaseDate), "MMM d, yyyy") : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              {(h.status === "held" || h.status === "partially_released") && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-green-700 border-green-300 hover:bg-green-50"
-                                    data-testid={`button-release-${h.id}`}
-                                    onClick={() => releaseMutation.mutate(h.id)}
-                                    disabled={releaseMutation.isPending}
-                                  >
-                                    <Unlock className="w-3 h-3 mr-1" />
-                                    Release
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-red-700 border-red-300 hover:bg-red-50"
-                                    data-testid={`button-clawback-${h.id}`}
-                                    onClick={() => setClawbackDialog(h)}
-                                  >
-                                    <AlertTriangle className="w-3 h-3 mr-1" />
-                                    Clawback
-                                  </Button>
-                                </>
-                              )}
-                              {h.clawbackReason && (
-                                <span className="text-xs text-red-500 italic">{h.clawbackReason}</span>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {filtered.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="py-12 text-center text-gray-500">
+                          No holdbacks found matching the selected filter.
+                        </TableCell>
+                      </TableRow>
+                    ) : filtered.map((h) => (
+                      <TableRow key={h.id} data-testid={`row-holdback-${h.id}`}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{agentName(h)}</span>
+                            <span className="text-xs text-gray-400">{h.agent?.email ?? ""}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{h.dealName ?? "—"}</span>
+                            <span className="text-xs text-gray-400">Deal #{h.dealId}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          ${Number(h.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-green-600">
+                          ${Number(h.releasedAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {releasePercent(h)}
+                        </TableCell>
+                        <TableCell className="text-red-600">
+                          ${Number(h.clawbackAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={STATUS_COLORS[h.status] ?? ""}>
+                            {STATUS_LABELS[h.status] ?? h.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {h.releaseDate ? format(new Date(h.releaseDate), "MMM d, yyyy") : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {(h.status === "held" || h.status === "partially_released") && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-green-700 border-green-300 hover:bg-green-50"
+                                  data-testid={`button-release-${h.id}`}
+                                  onClick={() => releaseMutation.mutate(h.id)}
+                                  disabled={releaseMutation.isPending}
+                                >
+                                  <Unlock className="w-3 h-3 mr-1" />
+                                  Release
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-700 border-red-300 hover:bg-red-50"
+                                  data-testid={`button-clawback-${h.id}`}
+                                  onClick={() => setClawbackDialog(h)}
+                                >
+                                  <AlertTriangle className="w-3 h-3 mr-1" />
+                                  Clawback
+                                </Button>
+                              </>
+                            )}
+                            {h.clawbackReason && (
+                              <span className="text-xs text-red-500 italic">{h.clawbackReason}</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
@@ -309,7 +333,6 @@ export default function AdminHoldbacks() {
         </div>
       </main>
 
-      {/* Clawback Dialog */}
       <Dialog open={clawbackDialog !== null} onOpenChange={() => setClawbackDialog(null)}>
         <DialogContent>
           <DialogHeader>
@@ -318,7 +341,9 @@ export default function AdminHoldbacks() {
           {clawbackDialog && (
             <div className="space-y-4 py-2">
               <p className="text-sm text-gray-600">
-                Holdback #{clawbackDialog.id} — Total: ${Number(clawbackDialog.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {agentName(clawbackDialog)} — {clawbackDialog.dealName ?? `Deal #${clawbackDialog.dealId}`}
+                <br />
+                Total: ${Number(clawbackDialog.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </p>
               <div className="space-y-1">
                 <Label>Clawback Percentage</Label>

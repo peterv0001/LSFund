@@ -81,8 +81,10 @@ export default function AdminSubscriptions() {
   });
 
   const calcCommissionsMutation = useMutation({
-    mutationFn: () => apiRequest("POST", api.admin.subscriptions.calculateCommissions.path),
-    onSuccess: (data: any) => {
+    mutationFn: () =>
+      apiRequest("POST", api.admin.subscriptions.calculateCommissions.path)
+        .then((res): Promise<{ processed: number; totalActive: number }> => res.json()),
+    onSuccess: (data) => {
       toast({ title: `Calculated commissions for ${data.processed} of ${data.totalActive} active subscriptions` });
     },
     onError: () => toast({ title: "Failed to calculate commissions", variant: "destructive" }),

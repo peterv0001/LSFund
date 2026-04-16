@@ -69,12 +69,25 @@ const TYPE_COLORS: Record<string, string> = {
   document: "bg-gray-100 text-gray-700",
 };
 
+type ResourceType = "video" | "pdf" | "link" | "document";
+
+type ResourceForm = {
+  title: string;
+  description: string;
+  type: ResourceType;
+  url: string;
+  thumbnailUrl: string;
+  category: string;
+  sortOrder: number;
+  isPublished: boolean;
+};
+
 const CATEGORIES = ["general", "training", "marketing", "compliance"];
 
-const BLANK_FORM = {
+const BLANK_FORM: ResourceForm = {
   title: "",
   description: "",
-  type: "link" as const,
+  type: "link",
   url: "",
   thumbnailUrl: "",
   category: "general",
@@ -321,7 +334,7 @@ export default function AdminResources() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as any })}>
+                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as ResourceType })}>
                   <SelectTrigger data-testid="select-resource-type">
                     <SelectValue />
                   </SelectTrigger>
