@@ -1393,6 +1393,18 @@ export async function registerRoutes(
   app.post("/api/admin/holdbacks/:id/release", requireAdmin, async (req, res) => {
     try {
       const released = await storage.releaseHoldback(Number(req.params.id));
+      // @ts-ignore
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'release',
+        entityType: 'holdback',
+        entityId: Number(req.params.id),
+        description: `Released holdback #${req.params.id} — $${Number(released.totalAmount).toFixed(2)}`,
+        details: { releasedAmount: released.totalAmount, status: released.status },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers['user-agent'] ?? null,
+      });
       res.json(released);
     } catch (err) {
       res.status(500).json({ message: "Failed to release holdback" });
@@ -1409,9 +1421,67 @@ export async function registerRoutes(
         await storage.voidCommission(result.commissionId, req.user!.id, `Clawback: ${reason}`);
       }
       
+      // @ts-ignore
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'clawback',
+        entityType: 'holdback',
+        entityId: Number(req.params.id),
+        description: `Applied ${percentage || 100}% clawback to holdback #${req.params.id}: ${reason || 'Default clawback'}`,
+        details: { reason: reason || 'Default clawback', percentage: percentage || 100, clawbackAmount: result.clawbackAmount },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers['user-agent'] ?? null,
+      });
+      
       res.json(result);
     } catch (err) {
       res.status(500).json({ message: "Failed to apply clawback" });
+    }
+  });
+
+  // PATCH endpoint for holdback status updates (release or clawback via status field)
+  app.patch("/api/admin/holdbacks/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { status, reason, percentage } = req.body as { status: string; reason?: string; percentage?: number };
+      if (status === 'released') {
+        const result = await storage.releaseHoldback(id);
+        // @ts-ignore
+        await storage.logActivity({
+          actorId: req.user!.id,
+          actorType: 'admin',
+          action: 'release',
+          entityType: 'holdback',
+          entityId: id,
+          description: `Status update: released holdback #${id}`,
+          details: { status: 'released' },
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent'] ?? null,
+        });
+        return res.json(result);
+      }
+      if (status === 'clawed_back') {
+        const pct = percentage ?? 100;
+        const rsn = reason ?? 'Admin clawback';
+        const result = await storage.applyClawback(id, rsn, pct);
+        // @ts-ignore
+        await storage.logActivity({
+          actorId: req.user!.id,
+          actorType: 'admin',
+          action: 'clawback',
+          entityType: 'holdback',
+          entityId: id,
+          description: `Status update: clawback ${pct}% on holdback #${id} — ${rsn}`,
+          details: { status: 'clawed_back', reason: rsn, percentage: pct },
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent'] ?? null,
+        });
+        return res.json(result);
+      }
+      res.status(400).json({ message: "Invalid status. Use 'released' or 'clawed_back'." });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update holdback status" });
     }
   });
 
@@ -1421,6 +1491,17 @@ export async function registerRoutes(
       let released = 0;
       for (const holdback of eligible) {
         await storage.releaseHoldback(holdback.id);
+        // @ts-ignore
+        await storage.logActivity({
+          actorId: req.user!.id,
+          actorType: 'admin',
+          action: 'release',
+          entityType: 'holdback',
+          entityId: holdback.id,
+          description: `Batch release: released holdback #${holdback.id}`,
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent'] ?? null,
+        });
         released++;
       }
       res.json({ message: `Released ${released} holdbacks`, released });
@@ -1659,8 +1740,8 @@ export async function registerRoutes(
     }
   });
 
-  // Admin Activity Log
-  app.get(api.admin.activityLog.list.path, requireAdmin, async (req, res) => {
+  // Admin Activity Log — accessible at both /api/admin/activity-log and /api/admin/activity
+  async function activityLogHandler(req: Request, res: Response) {
     const page = Number(req.query.page) || 1;
     const pageSize = Number(req.query.pageSize) || 50;
     const search = typeof req.query.search === 'string' && req.query.search.trim()
@@ -1675,7 +1756,10 @@ export async function registerRoutes(
     
     const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate });
     res.json({ ...result, page, pageSize });
-  });
+  }
+
+  app.get(api.admin.activityLog.list.path, requireAdmin, activityLogHandler);
+  app.get('/api/admin/activity', requireAdmin, activityLogHandler);
 
   // ==================== LEADS MANAGEMENT ====================
 
