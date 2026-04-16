@@ -128,8 +128,8 @@ export default function AdminResources() {
     mutationFn: ({ id, data }: { id: number; data: Partial<typeof BLANK_FORM> }) =>
       apiRequest("PATCH", buildUrl(api.admin.resources.update.path, { id }), {
         ...data,
-        description: data.description || null,
-        thumbnailUrl: data.thumbnailUrl || null,
+        ...('description' in data ? { description: data.description || null } : {}),
+        ...('thumbnailUrl' in data ? { thumbnailUrl: data.thumbnailUrl || null } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.admin.resources.list.path] });
