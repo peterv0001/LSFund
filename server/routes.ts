@@ -1393,7 +1393,6 @@ export async function registerRoutes(
   app.post("/api/admin/holdbacks/:id/release", requireAdmin, async (req, res) => {
     try {
       const released = await storage.releaseHoldback(Number(req.params.id));
-      // @ts-ignore
       await storage.logActivity({
         actorId: req.user!.id,
         actorType: 'admin',
@@ -1417,11 +1416,9 @@ export async function registerRoutes(
       const result = await storage.applyClawback(Number(req.params.id), reason || "Default clawback", percentage || 100);
       
       if (result.commissionId) {
-        // @ts-ignore
         await storage.voidCommission(result.commissionId, req.user!.id, `Clawback: ${reason}`);
       }
       
-      // @ts-ignore
       await storage.logActivity({
         actorId: req.user!.id,
         actorType: 'admin',
@@ -1447,7 +1444,6 @@ export async function registerRoutes(
       const { status, reason, percentage } = req.body as { status: string; reason?: string; percentage?: number };
       if (status === 'released') {
         const result = await storage.releaseHoldback(id);
-        // @ts-ignore
         await storage.logActivity({
           actorId: req.user!.id,
           actorType: 'admin',
@@ -1465,7 +1461,6 @@ export async function registerRoutes(
         const pct = percentage ?? 100;
         const rsn = reason ?? 'Admin clawback';
         const result = await storage.applyClawback(id, rsn, pct);
-        // @ts-ignore
         await storage.logActivity({
           actorId: req.user!.id,
           actorType: 'admin',
@@ -1491,7 +1486,6 @@ export async function registerRoutes(
       let released = 0;
       for (const holdback of eligible) {
         await storage.releaseHoldback(holdback.id);
-        // @ts-ignore
         await storage.logActivity({
           actorId: req.user!.id,
           actorType: 'admin',

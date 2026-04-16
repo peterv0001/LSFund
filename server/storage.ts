@@ -1049,7 +1049,7 @@ export class DatabaseStorage {
   }): Promise<{ logs: (typeof activityLog.$inferSelect)[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
-    const conditions: SQL<boolean>[] = [];
+    const conditions: SQL<unknown>[] = [];
     
     if (filters?.actorId) {
       conditions.push(eq(activityLog.actorId, filters.actorId));
