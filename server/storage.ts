@@ -1,13 +1,13 @@
 import { db } from "./db";
 import { 
   agents, deals, commissions, payouts, notifications, announcements, resources, rankQualifications, activityLog,
-  courseModules, courseProgress, leads, leadRequests, subscriptions, holdbacks, fulfillmentTiers,
+  courseModules, courseProgress, leads, leadRequests, subscriptions, holdbacks, fulfillmentTiers, platformSettings,
   type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource,
   type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress,
   type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest,
   type Subscription, type Holdback, type FulfillmentTier
 } from "@shared/schema";
-import { eq, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum } from "drizzle-orm";
+import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum } from "drizzle-orm";
 
 // Helper to get start of current week (Monday)
 function getWeekStart(date: Date = new Date()): Date {
@@ -655,6 +655,16 @@ export class DatabaseStorage {
     return { agents: agentsData, totalAmount };
   }
 
+  async processPayout(id: number, processedById: number): Promise<Payout> {
+    const [payout] = await db.select().from(payouts).where(eq(payouts.id, id));
+    if (!payout) throw new Error("Payout not found");
+    const [updated] = await db.update(payouts)
+      .set({ status: 'processing', processedById, processedAt: new Date(), updatedAt: new Date() })
+      .where(eq(payouts.id, id))
+      .returning();
+    return updated;
+  }
+
   async markPayoutComplete(id: number, externalId?: string): Promise<Payout> {
     const payout = await db.select().from(payouts).where(eq(payouts.id, id)).then(r => r[0]);
     if (!payout) throw new Error("Payout not found");
@@ -950,6 +960,37 @@ export class DatabaseStorage {
       profileImageUrl: r.profileImageUrl,
       currentRank: r.currentRank!,
       totalEarned: Number(r.totalEarned || 0),
+    }));
+  }
+
+  async getRankAdvances(limit: number = 20): Promise<{
+    agentId: number;
+    firstName: string;
+    lastName: string;
+    profileImageUrl: string | null;
+    newRank: string;
+    advancedAt: string;
+  }[]> {
+    const results = await db.select({
+      id: agents.id,
+      firstName: agents.firstName,
+      lastName: agents.lastName,
+      profileImageUrl: agents.profileImageUrl,
+      currentRank: agents.currentRank,
+      updatedAt: agents.updatedAt,
+    })
+      .from(agents)
+      .where(ne(agents.currentRank, 'agent'))
+      .orderBy(desc(agents.updatedAt))
+      .limit(limit);
+
+    return results.map(r => ({
+      agentId: r.id,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      profileImageUrl: r.profileImageUrl,
+      newRank: r.currentRank,
+      advancedAt: r.updatedAt.toISOString(),
     }));
   }
 
@@ -1475,6 +1516,33 @@ export class DatabaseStorage {
       'tier_4': 0.40,
     };
     return rates[tier?.tier || 'tier_1'] || 0.30;
+  }
+
+  // ==================== PLATFORM SETTINGS ====================
+
+  async getPlatformSetting(key: string): Promise<any | null> {
+    const [row] = await db.select().from(platformSettings).where(eq(platformSettings.key, key));
+    return row ? row.value : null;
+  }
+
+  async savePlatformSetting(key: string, value: any, updatedById?: number): Promise<void> {
+    const existing = await db.select().from(platformSettings).where(eq(platformSettings.key, key));
+    if (existing.length > 0) {
+      await db.update(platformSettings)
+        .set({ value, updatedAt: new Date(), updatedById: updatedById ?? null })
+        .where(eq(platformSettings.key, key));
+    } else {
+      await db.insert(platformSettings).values({ key, value, updatedById: updatedById ?? null });
+    }
+  }
+
+  async getAllPlatformSettings(): Promise<Record<string, any>> {
+    const rows = await db.select().from(platformSettings);
+    const result: Record<string, any> = {};
+    for (const row of rows) {
+      result[row.key] = row.value;
+    }
+    return result;
   }
 }
 

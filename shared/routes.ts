@@ -592,6 +592,7 @@ export const api = {
         responses: {
           200: z.object({ token: z.string() }),
           403: errorSchemas.forbidden,
+          501: z.object({ message: z.string() }),
         },
       },
     },
@@ -865,6 +866,77 @@ export const api = {
       },
     },
 
+    // Subscription Management
+    subscriptions: {
+      list: {
+        method: 'GET' as const,
+        path: '/api/admin/subscriptions',
+        responses: {
+          200: z.array(z.any()),
+        },
+      },
+      updateStatus: {
+        method: 'PATCH' as const,
+        path: '/api/admin/subscriptions/:id/status',
+        input: z.object({
+          status: z.enum(['active', 'paused', 'cancelled', 'expired']),
+        }),
+        responses: {
+          200: z.any(),
+        },
+      },
+      calculateCommissions: {
+        method: 'POST' as const,
+        path: '/api/admin/subscriptions/calculate-commissions',
+        responses: {
+          200: z.object({ message: z.string(), processed: z.number(), totalActive: z.number() }),
+        },
+      },
+    },
+
+    // Holdback Management
+    holdbacks: {
+      list: {
+        method: 'GET' as const,
+        path: '/api/admin/holdbacks',
+        responses: {
+          200: z.array(z.any()),
+        },
+      },
+      pending: {
+        method: 'GET' as const,
+        path: '/api/admin/holdbacks/pending',
+        responses: {
+          200: z.array(z.any()),
+        },
+      },
+      release: {
+        method: 'POST' as const,
+        path: '/api/admin/holdbacks/:id/release',
+        responses: {
+          200: z.any(),
+        },
+      },
+      clawback: {
+        method: 'POST' as const,
+        path: '/api/admin/holdbacks/:id/clawback',
+        input: z.object({
+          reason: z.string().optional(),
+          percentage: z.number().min(0).max(100).optional(),
+        }),
+        responses: {
+          200: z.any(),
+        },
+      },
+      releaseEligible: {
+        method: 'POST' as const,
+        path: '/api/admin/holdbacks/release-eligible',
+        responses: {
+          200: z.object({ message: z.string(), released: z.number() }),
+        },
+      },
+    },
+
     // Activity Log
     activityLog: {
       list: {
@@ -1001,6 +1073,41 @@ export const api = {
         responses: {
           200: z.object({ success: z.boolean() }),
         },
+      },
+    },
+  },
+
+  // === SUBSCRIPTIONS ===
+  subscriptions: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/subscriptions',
+      responses: {
+        200: z.array(z.any()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/subscriptions',
+      input: z.object({
+        merchantName: z.string(),
+        merchantEmail: z.string().email().optional(),
+        tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+        mcaPairedDealId: z.number().optional(),
+      }),
+      responses: {
+        201: z.any(),
+      },
+    },
+  },
+
+  // === HOLDBACKS (Agent Portal) ===
+  holdbacks: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/holdbacks',
+      responses: {
+        200: z.array(z.any()),
       },
     },
   },

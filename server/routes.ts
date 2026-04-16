@@ -1024,6 +1024,11 @@ export async function registerRoutes(
     res.json(recruiters);
   });
 
+  app.get(api.leaderboards.rankAdvances.path, requireAuth, async (req, res) => {
+    const advances = await storage.getRankAdvances(20);
+    res.json(advances);
+  });
+
   // ==================== ADMIN ROUTES ====================
 
   // Admin Dashboard
@@ -1104,6 +1109,10 @@ export async function registerRoutes(
     });
     
     res.json({ success: true });
+  });
+
+  app.post(api.admin.agents.impersonate.path, requireAdmin, async (req, res) => {
+    res.status(501).json({ message: "Agent impersonation is not currently enabled on this platform. Contact your system administrator if you need this capability." });
   });
 
   // Admin Deal Management
@@ -1491,6 +1500,17 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.admin.payouts.process.path, requireAdmin, async (req, res) => {
+    try {
+      // @ts-ignore
+      await storage.processPayout(Number(req.params.id), req.user!.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      if (err.message === "Payout not found") return res.status(404).json({ message: "Payout not found" });
+      res.status(500).json({ message: "Failed to process payout" });
+    }
+  });
+
   app.post(api.admin.payouts.markPaid.path, requireAdmin, async (req, res) => {
     const { externalId, notes } = api.admin.payouts.markPaid.input.parse(req.body);
     await storage.markPayoutComplete(Number(req.params.id), externalId);
@@ -1574,15 +1594,55 @@ export async function registerRoutes(
 
   // Admin Settings
   app.get(api.admin.settings.get.path, requireAdmin, async (req, res) => {
+    const saved = await storage.getAllPlatformSettings();
     res.json({
-      commissionRates: CONFIG.personalCommission,
-      rankRequirements: CONFIG.rankRequirements,
-      binaryBonusCaps: CONFIG.binaryBonus,
-      companyInfo: {
+      commissionRates: saved.commissionRates ?? CONFIG.gbrWaterfall,
+      rankRequirements: saved.rankRequirements ?? CONFIG.rankRequirements,
+      binaryBonusCaps: saved.binaryBonusCaps ?? CONFIG.binaryBonus,
+      companyInfo: saved.companyInfo ?? {
         name: "Leadershield Network",
         supportEmail: "support@leadershield.com",
       },
     });
+  });
+
+  app.patch(api.admin.settings.update.path, requireAdmin, async (req, res) => {
+    try {
+      const { commissionRates, rankRequirements, binaryBonusCaps, companyInfo } = api.admin.settings.update.input.parse(req.body);
+
+      // Persist each provided key to the DB
+      if (commissionRates !== undefined) {
+        await storage.savePlatformSetting('commissionRates', commissionRates, req.user!.id);
+      }
+      if (rankRequirements !== undefined) {
+        await storage.savePlatformSetting('rankRequirements', rankRequirements, req.user!.id);
+        Object.assign(CONFIG.rankRequirements, rankRequirements);
+      }
+      if (binaryBonusCaps !== undefined) {
+        await storage.savePlatformSetting('binaryBonusCaps', binaryBonusCaps, req.user!.id);
+        Object.assign(CONFIG.binaryBonus, binaryBonusCaps);
+      }
+      if (companyInfo !== undefined) {
+        await storage.savePlatformSetting('companyInfo', companyInfo, req.user!.id);
+      }
+
+      // @ts-ignore
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'settings',
+        entityId: 0,
+        details: { commissionRates, rankRequirements, binaryBonusCaps, companyInfo },
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to save settings" });
+    }
   });
 
   // Admin Activity Log

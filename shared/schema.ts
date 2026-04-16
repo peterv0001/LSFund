@@ -487,6 +487,18 @@ export const leadRequests = pgTable("lead_requests", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// === PLATFORM SETTINGS ===
+
+export const platformSettings = pgTable("platform_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedById: integer("updated_by_id"),
+});
+
+export type PlatformSetting = typeof platformSettings.$inferSelect;
+
 // === RELATIONS ===
 
 export const agentsRelations = relations(agents, ({ one, many }) => ({
