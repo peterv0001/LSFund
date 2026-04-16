@@ -38,6 +38,12 @@ import AdminPayouts from "@/pages/admin/payouts";
 import AdminLeads from "@/pages/admin/leads";
 import AdminAIQueue from "@/pages/admin/ai-queue";
 import AdminDeals from "@/pages/admin/deals";
+import AdminAnnouncements from "@/pages/admin/announcements";
+import AdminResources from "@/pages/admin/resources";
+import AdminHoldbacks from "@/pages/admin/holdbacks";
+import AdminActivityLog from "@/pages/admin/activity-log";
+import AdminSettings from "@/pages/admin/settings";
+import AdminSubscriptions from "@/pages/admin/subscriptions";
 
 // Protected Route Wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -143,12 +149,12 @@ function Router() {
       
       <Route path="/admin/deals" component={() => <AdminRoute component={AdminDeals} />} />
       
-      {/* Placeholder admin routes - will redirect to main admin for now */}
-      <Route path="/admin/subscriptions" component={() => <AdminRoute component={AdminCommissions} />} />
-      <Route path="/admin/announcements" component={() => <AdminRoute component={AdminDashboard} />} />
-      <Route path="/admin/resources" component={() => <AdminRoute component={AdminDashboard} />} />
-      <Route path="/admin/activity" component={() => <AdminRoute component={AdminDashboard} />} />
-      <Route path="/admin/settings" component={() => <AdminRoute component={AdminDashboard} />} />
+      <Route path="/admin/subscriptions" component={() => <AdminRoute component={AdminSubscriptions} />} />
+      <Route path="/admin/announcements" component={() => <AdminRoute component={AdminAnnouncements} />} />
+      <Route path="/admin/resources" component={() => <AdminRoute component={AdminResources} />} />
+      <Route path="/admin/holdbacks" component={() => <AdminRoute component={AdminHoldbacks} />} />
+      <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivityLog} />} />
+      <Route path="/admin/settings" component={() => <AdminRoute component={AdminSettings} />} />
 
       {/* Fallback */}
       <Route component={NotFound} />

@@ -1528,6 +1528,8 @@ export async function registerRoutes(
       const input = api.admin.announcements.create.input.parse(req.body);
       // @ts-ignore
       const announcement = await storage.createAnnouncement({ ...input, createdById: req.user!.id });
+      // @ts-ignore
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'announcement', entityId: announcement.id, details: { title: announcement.title } });
       res.status(201).json(announcement);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -1541,6 +1543,8 @@ export async function registerRoutes(
     try {
       const input = api.admin.announcements.update.input.parse(req.body);
       const updated = await storage.updateAnnouncement(Number(req.params.id), input);
+      // @ts-ignore
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), details: input });
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update announcement" });
@@ -1549,11 +1553,15 @@ export async function registerRoutes(
 
   app.delete(api.admin.announcements.delete.path, requireAdmin, async (req, res) => {
     await storage.deleteAnnouncement(Number(req.params.id));
+    // @ts-ignore
+    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'announcement', entityId: Number(req.params.id) });
     res.json({ success: true });
   });
 
   app.post(api.admin.announcements.publish.path, requireAdmin, async (req, res) => {
     await storage.updateAnnouncement(Number(req.params.id), { isPublished: true, publishAt: new Date() });
+    // @ts-ignore
+    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), details: { isPublished: true } });
     res.json({ success: true });
   });
 
@@ -1568,6 +1576,8 @@ export async function registerRoutes(
       const input = api.admin.resources.create.input.parse(req.body);
       // @ts-ignore
       const resource = await storage.createResource({ ...input, createdById: req.user!.id });
+      // @ts-ignore
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'resource', entityId: resource.id, details: { title: resource.title, type: resource.type } });
       res.status(201).json(resource);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -1581,6 +1591,8 @@ export async function registerRoutes(
     try {
       const input = api.admin.resources.update.input.parse(req.body);
       const updated = await storage.updateResource(Number(req.params.id), input);
+      // @ts-ignore
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'resource', entityId: Number(req.params.id), details: input });
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update resource" });
@@ -1589,6 +1601,8 @@ export async function registerRoutes(
 
   app.delete(api.admin.resources.delete.path, requireAdmin, async (req, res) => {
     await storage.deleteResource(Number(req.params.id));
+    // @ts-ignore
+    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'resource', entityId: Number(req.params.id) });
     res.json({ success: true });
   });
 

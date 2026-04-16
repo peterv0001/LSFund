@@ -16,6 +16,7 @@ import {
   UserPlus,
   Bot,
   RefreshCw,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +28,7 @@ const adminNavItems = [
   { href: "/admin/deals", icon: Briefcase, label: "Deals" },
   { href: "/admin/commissions", icon: DollarSign, label: "Commissions" },
   { href: "/admin/payouts", icon: CreditCard, label: "Payouts" },
+  { href: "/admin/holdbacks", icon: Lock, label: "Holdbacks" },
   { href: "/admin/subscriptions", icon: RefreshCw, label: "Subscriptions" },
   { href: "/admin/announcements", icon: Megaphone, label: "Announcements" },
   { href: "/admin/resources", icon: BookOpen, label: "Resources" },
