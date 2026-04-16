@@ -7,7 +7,7 @@ import {
   type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest,
   type Subscription, type Holdback, type FulfillmentTier
 } from "@shared/schema";
-import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum } from "drizzle-orm";
+import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum, SQL } from "drizzle-orm";
 
 // Helper to get start of current week (Monday)
 function getWeekStart(date: Date = new Date()): Date {
@@ -1049,7 +1049,7 @@ export class DatabaseStorage {
   }): Promise<{ logs: (typeof activityLog.$inferSelect)[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
-    const conditions: ReturnType<typeof eq>[] = [];
+    const conditions: SQL<boolean>[] = [];
     
     if (filters?.actorId) {
       conditions.push(eq(activityLog.actorId, filters.actorId));
@@ -1062,17 +1062,21 @@ export class DatabaseStorage {
     }
     if (filters?.search) {
       const term = `%${filters.search}%`;
-      conditions.push(or(
+      const searchCond = or(
         like(activityLog.action, term),
         like(activityLog.entityType, term),
         like(activityLog.description, term),
-      ) as ReturnType<typeof eq>);
+      );
+      if (searchCond) conditions.push(searchCond);
     }
     if (filters?.startDate) {
-      conditions.push(gte(activityLog.createdAt, filters.startDate) as ReturnType<typeof eq>);
+      conditions.push(gte(activityLog.createdAt, filters.startDate));
     }
     if (filters?.endDate) {
-      conditions.push(lte(activityLog.createdAt, filters.endDate) as ReturnType<typeof eq>);
+      // Inclusive of the full selected day (end at 23:59:59.999)
+      const endOfDay = new Date(filters.endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(activityLog.createdAt, endOfDay));
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
