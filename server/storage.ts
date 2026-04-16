@@ -346,20 +346,55 @@ export class DatabaseStorage {
 
   // ==================== DEALS ====================
 
+  async getDeal(id: number): Promise<Deal | undefined> {
+    const [deal] = await db.select().from(deals).where(eq(deals.id, id));
+    return deal;
+  }
+
   async createDeal(deal: Partial<Deal> & { agentId: number; merchantName: string; loanAmount: string; companyRevenue: string }): Promise<Deal> {
     const [newDeal] = await db.insert(deals).values({
       agentId: deal.agentId,
       merchantName: deal.merchantName,
+      merchantDba: deal.merchantDba ?? null,
       merchantEmail: deal.merchantEmail ?? null,
       merchantPhone: deal.merchantPhone ?? null,
+      businessType: deal.businessType ?? null,
+      ein: deal.ein ?? null,
+      businessStartDate: deal.businessStartDate ?? null,
+      industry: deal.industry ?? null,
+      businessAddress: deal.businessAddress ?? null,
+      businessCity: deal.businessCity ?? null,
+      businessState: deal.businessState ?? null,
+      businessZip: deal.businessZip ?? null,
+      ownerFirstName: deal.ownerFirstName ?? null,
+      ownerLastName: deal.ownerLastName ?? null,
+      ownerEmail: deal.ownerEmail ?? null,
+      ownerPhone: deal.ownerPhone ?? null,
+      ownerDob: deal.ownerDob ?? null,
+      ownerSsn: deal.ownerSsn ?? null,
+      ownerOwnershipPct: deal.ownerOwnershipPct ?? null,
+      ownerAddress: deal.ownerAddress ?? null,
+      ownerCity: deal.ownerCity ?? null,
+      ownerState: deal.ownerState ?? null,
+      ownerZip: deal.ownerZip ?? null,
+      requestedAmount: deal.requestedAmount ?? null,
+      useOfFunds: deal.useOfFunds ?? null,
       loanAmount: deal.loanAmount,
       companyRevenue: deal.companyRevenue,
+      avgMonthlyRevenue: deal.avgMonthlyRevenue ?? null,
       gbrAmount: deal.gbrAmount ?? null,
+      programType: (deal.programType as any) ?? 'pmf_funding',
+      documents: deal.documents ?? [],
+      isVaMerchant: deal.isVaMerchant ?? false,
+      isCaMerchant: deal.isCaMerchant ?? false,
+      isUtMerchant: deal.isUtMerchant ?? false,
+      stateDisclosureConfirmed: deal.stateDisclosureConfirmed ?? false,
+      pmfSubmissionStatus: deal.pmfSubmissionStatus ?? 'pending',
       fulfillmentAgentId: deal.fulfillmentAgentId ?? null,
-      status: deal.status ?? 'funded',
+      status: deal.status ?? 'pending',
       notes: deal.notes ?? null,
       approvedById: deal.approvedById ?? null,
-      fundedAt: deal.fundedAt ?? new Date(),
+      fundedAt: deal.fundedAt ?? null,
     }).returning();
     
     // Update agent's personal volume

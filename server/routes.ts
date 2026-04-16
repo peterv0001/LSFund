@@ -593,20 +593,140 @@ export async function registerRoutes(
       const companyRevenue = Number(input.loanAmount) * 0.10;
       const gbrAmount = input.gbrAmount ? Number(input.gbrAmount) : companyRevenue;
       
+      // Detect state compliance flags from business state
+      const businessState = (input.businessState || '').toUpperCase();
+      const isVaMerchant = businessState === 'VA';
+      const isCaMerchant = businessState === 'CA';
+      const isUtMerchant = businessState === 'UT';
+
+      // Deals start as 'pending' — closed by the closing team, not the submitting agent
       const deal = await storage.createDeal({
         ...input,
         agentId,
         loanAmount: input.loanAmount.toString(),
         companyRevenue: companyRevenue.toString(),
         gbrAmount: gbrAmount.toString(),
-        status: 'funded',
-        fundedAt: input.fundedAt || new Date(),
+        avgMonthlyRevenue: input.avgMonthlyRevenue ? input.avgMonthlyRevenue.toString() : null,
+        requestedAmount: input.requestedAmount ? input.requestedAmount.toString() : null,
+        isVaMerchant,
+        isCaMerchant,
+        isUtMerchant,
+        status: 'pending',
+        pmfSubmissionStatus: 'pending',
+        documents: input.documents || [],
       });
       
+      // Stub PMF API submission (replace with real API call when endpoint is available)
+      submitToPmf(deal, agentId).catch(err => 
+        console.error(`PMF submission error for deal ${deal.id}:`, err)
+      );
+      
       const agent = await storage.getAgent(agentId);
-      const periodDate = new Date().toISOString().split('T')[0];
-      const releaseDate = new Date();
-      releaseDate.setDate(releaseDate.getDate() + CONFIG.holdback.deferralDays);
+      
+      // Notify agent their deal was submitted (not funded yet — that happens when admin approves)
+      await storage.createNotification({
+        agentId,
+        type: 'deal_funded',
+        title: 'Deal Submitted to Closing Team',
+        message: `Your MCA application for ${deal.merchantName} has been submitted. The closing team will review and update you on status.`,
+        dealId: deal.id,
+        isRead: false,
+        emailSent: false,
+      });
+
+      res.status(201).json(deal);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, errors: err.errors });
+      }
+      console.error(err);
+      res.status(500).json({ message: "Failed to create deal" });
+    }
+  });
+
+  // PMF stub submission function — replace with real API call when PMF provides endpoint
+  async function submitToPmf(deal: any, agentId: number): Promise<void> {
+    const PMF_API_URL = process.env.PMF_API_URL;
+    const PMF_API_KEY = process.env.PMF_API_KEY;
+
+    const payload = {
+      merchantName: deal.merchantName,
+      merchantDba: deal.merchantDba,
+      merchantEmail: deal.merchantEmail,
+      merchantPhone: deal.merchantPhone,
+      businessType: deal.businessType,
+      ein: deal.ein,
+      businessStartDate: deal.businessStartDate,
+      industry: deal.industry,
+      businessAddress: deal.businessAddress,
+      businessCity: deal.businessCity,
+      businessState: deal.businessState,
+      businessZip: deal.businessZip,
+      ownerFirstName: deal.ownerFirstName,
+      ownerLastName: deal.ownerLastName,
+      ownerEmail: deal.ownerEmail,
+      ownerPhone: deal.ownerPhone,
+      ownerDob: deal.ownerDob,
+      ownerOwnershipPct: deal.ownerOwnershipPct,
+      ownerAddress: deal.ownerAddress,
+      ownerCity: deal.ownerCity,
+      ownerState: deal.ownerState,
+      ownerZip: deal.ownerZip,
+      requestedAmount: deal.requestedAmount,
+      useOfFunds: deal.useOfFunds,
+      avgMonthlyRevenue: deal.avgMonthlyRevenue,
+      programType: deal.programType,
+      documents: deal.documents,
+      stateDisclosureConfirmed: deal.stateDisclosureConfirmed,
+      // NOTE: Submitting agent identity is intentionally NOT included in the PMF payload
+      // The closing agent identity is managed internally by the platform
+    };
+
+    if (!PMF_API_URL || !PMF_API_KEY) {
+      // PMF API not yet configured — log and mark as submitted for internal tracking
+      console.log(`[PMF STUB] Deal ${deal.id} submission queued. PMF_API_URL/PMF_API_KEY not set.`);
+      console.log(`[PMF STUB] Payload:`, JSON.stringify(payload, null, 2));
+      // Mark as submitted in DB
+      await storage.updateDeal(deal.id, { pmfSubmissionStatus: 'submitted', pmfSubmittedAt: new Date() });
+      return;
+    }
+
+    // Real PMF API call (activate when endpoint is configured)
+    const { default: fetch } = await import('node-fetch');
+    const response = await fetch(PMF_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PMF_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`[PMF] Submission failed: ${response.status} ${text}`);
+      await storage.updateDeal(deal.id, { pmfSubmissionStatus: 'error' });
+      return;
+    }
+
+    const result = await response.json() as any;
+    await storage.updateDeal(deal.id, {
+      pmfSubmissionStatus: 'submitted',
+      pmfSubmittedAt: new Date(),
+      pmfSubmissionId: result.id || result.submissionId || null,
+    });
+  }
+
+  // Admin-only: when a deal is funded by PMF, trigger commissions waterfall
+  async function triggerCommissionWaterfall(dealId: number): Promise<void> {
+    const deal = await storage.getDeal(dealId);
+    if (!deal) return;
+    const agentId = deal.agentId;
+    const gbrAmount = Number(deal.gbrAmount) || Number(deal.companyRevenue);
+    const agent = await storage.getAgent(agentId);
+    const periodDate = new Date().toISOString().split('T')[0];
+    const releaseDate = new Date();
+    releaseDate.setDate(releaseDate.getDate() + CONFIG.holdback.deferralDays);
       
       // === GBR WATERFALL: MAC (Merchant Acquisition Compensation) ===
       // MAC = 30% of GBR, split: Primary 22%, Senior Sponsor L1 5%, Executive Sponsor L2 3%
@@ -736,17 +856,8 @@ export async function registerRoutes(
           });
         }
       }
+  }
 
-      res.status(201).json(deal);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      console.error(err);
-      res.status(500).json({ message: "Failed to create deal" });
-    }
-  });
-  
   app.get(api.deals.list.path, requireAuth, async (req, res) => {
     // @ts-ignore
     const deals = await storage.getDealsByAgent(req.user!.id);
@@ -1021,6 +1132,61 @@ export async function registerRoutes(
         return res.status(400).json({ message: err.errors[0].message });
       }
       res.status(500).json({ message: "Failed to update deal" });
+    }
+  });
+
+  // Admin: Approve deal — marks as funded, sets fundedAt, triggers commission waterfall
+  app.post('/api/admin/deals/:id/approve', requireAdmin, async (req, res) => {
+    try {
+      const dealId = Number(req.params.id);
+      const deal = await storage.getDeal(dealId);
+      if (!deal) return res.status(404).json({ message: "Deal not found" });
+      if (deal.status === 'funded') return res.status(400).json({ message: "Deal already funded" });
+      
+      await storage.updateDeal(dealId, { status: 'funded', fundedAt: new Date(), approvedById: req.user!.id });
+      await triggerCommissionWaterfall(dealId);
+      
+      await storage.createNotification({
+        agentId: deal.agentId,
+        type: 'deal_funded',
+        title: 'Deal Funded!',
+        message: `Great news! Your MCA application for ${deal.merchantName} has been funded. Your commissions are now being processed.`,
+        dealId: deal.id,
+        isRead: false,
+        emailSent: false,
+      });
+      
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to approve deal" });
+    }
+  });
+
+  // Admin: Reject deal
+  app.post('/api/admin/deals/:id/reject', requireAdmin, async (req, res) => {
+    try {
+      const dealId = Number(req.params.id);
+      const deal = await storage.getDeal(dealId);
+      if (!deal) return res.status(404).json({ message: "Deal not found" });
+      const { reason } = req.body;
+      
+      await storage.updateDeal(dealId, { status: 'rejected', notes: reason ? `Rejected: ${reason}` : deal.notes });
+      
+      await storage.createNotification({
+        agentId: deal.agentId,
+        type: 'deal_funded',
+        title: 'Deal Update',
+        message: `Your MCA application for ${deal.merchantName} was not approved${reason ? `: ${reason}` : '. Please contact support for details.'}.`,
+        dealId: deal.id,
+        isRead: false,
+        emailSent: false,
+      });
+      
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to reject deal" });
     }
   });
 

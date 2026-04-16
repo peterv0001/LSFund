@@ -91,23 +91,77 @@ export const agents = pgTable("agents", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const dealProgramTypeEnum = pgEnum("deal_program_type", ['pmf_funding', 'iso_broker', 'iso_referral']);
+
 export const deals = pgTable("deals", {
   id: serial("id").primaryKey(),
   agentId: integer("agent_id").notNull(),
   
+  // === BUSINESS INFORMATION ===
   merchantName: text("merchant_name").notNull(),
+  merchantDba: text("merchant_dba"),
   merchantEmail: text("merchant_email"),
   merchantPhone: text("merchant_phone"),
+  businessType: text("business_type"), // LLC, Corp, Sole Prop, Partnership
+  ein: text("ein"), // Employer Identification Number (stored encrypted conceptually)
+  businessStartDate: text("business_start_date"), // YYYY-MM
+  industry: text("industry"),
+  
+  // === BUSINESS ADDRESS ===
+  businessAddress: text("business_address"),
+  businessCity: text("business_city"),
+  businessState: text("business_state"), // 2-letter state code
+  businessZip: text("business_zip"),
+  
+  // === OWNER INFORMATION ===
+  ownerFirstName: text("owner_first_name"),
+  ownerLastName: text("owner_last_name"),
+  ownerEmail: text("owner_email"),
+  ownerPhone: text("owner_phone"),
+  ownerDob: text("owner_dob"), // YYYY-MM-DD
+  ownerSsn: text("owner_ssn"), // Last 4 digits only stored for display; full SSN handled securely
+  ownerOwnershipPct: integer("owner_ownership_pct"), // 0-100
+  ownerAddress: text("owner_address"),
+  ownerCity: text("owner_city"),
+  ownerState: text("owner_state"),
+  ownerZip: text("owner_zip"),
+  
+  // === FUNDING REQUEST ===
+  requestedAmount: decimal("requested_amount", { precision: 12, scale: 2 }),
+  useOfFunds: text("use_of_funds"), // Working capital, equipment, expansion, etc.
+  
+  // === FINANCIALS ===
   loanAmount: decimal("loan_amount", { precision: 12, scale: 2 }).notNull(),
   companyRevenue: decimal("company_revenue", { precision: 10, scale: 2 }).notNull(),
+  avgMonthlyRevenue: decimal("avg_monthly_revenue", { precision: 12, scale: 2 }),
   gbrAmount: decimal("gbr_amount", { precision: 12, scale: 2 }),
+  
+  // === PMF PROGRAM ===
+  programType: dealProgramTypeEnum("program_type").default("pmf_funding"),
+  
+  // === DOCUMENTS (stored as JSON array of file metadata) ===
+  // Each entry: { name, url, type: 'bank_statement' | 'tax_return' | 'voided_check' | 'other', uploadedAt }
+  documents: jsonb("documents").default([]),
+  
+  // === STATE COMPLIANCE FLAGS ===
+  isVaMerchant: boolean("is_va_merchant").default(false),
+  isCaMerchant: boolean("is_ca_merchant").default(false),
+  isUtMerchant: boolean("is_ut_merchant").default(false),
+  stateDisclosureConfirmed: boolean("state_disclosure_confirmed").default(false),
+  
+  // === PMF SUBMISSION ===
+  pmfSubmittedAt: timestamp("pmf_submitted_at"),
+  pmfSubmissionId: text("pmf_submission_id"), // External ID from PMF when API is live
+  pmfSubmissionStatus: text("pmf_submission_status").default("pending"), // pending, submitted, error
+  
+  // === CLOSING TEAM (hidden from agents) ===
   fulfillmentAgentId: integer("fulfillment_agent_id"),
-  status: dealStatusEnum("status").default("funded").notNull(),
+  status: dealStatusEnum("status").default("pending").notNull(),
   
   notes: text("notes"),
   approvedById: integer("approved_by_id"),
   
-  fundedAt: timestamp("funded_at").defaultNow().notNull(),
+  fundedAt: timestamp("funded_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -644,6 +698,7 @@ export const updatePayoutMethodSchema = z.object({
 
 export const insertDealSchema = createInsertSchema(deals).omit({ 
   id: true, 
+  agentId: true,
   createdAt: true,
   updatedAt: true,
   status: true,
@@ -651,10 +706,26 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   fundedAt: true,
   approvedById: true,
   fulfillmentAgentId: true,
+  pmfSubmittedAt: true,
+  pmfSubmissionId: true,
+  pmfSubmissionStatus: true,
 }).extend({
-  loanAmount: z.coerce.number().min(0, "Amount must be positive"),
+  loanAmount: z.coerce.number().min(1000, "Loan amount must be at least $1,000"),
+  requestedAmount: z.coerce.number().min(1000).optional(),
+  avgMonthlyRevenue: z.coerce.number().min(0).optional(),
   gbrAmount: z.coerce.number().min(0).optional(),
-  fundedAt: z.coerce.date().optional(),
+  ownerOwnershipPct: z.coerce.number().min(0).max(100).optional(),
+  ein: z.string().regex(/^\d{2}-\d{7}$/, "EIN format: XX-XXXXXXX").optional().or(z.literal('')),
+  ownerSsn: z.string().regex(/^\d{4}$/, "Enter last 4 digits only").optional().or(z.literal('')),
+  ownerDob: z.string().optional(),
+  businessStartDate: z.string().optional(),
+  documents: z.array(z.object({
+    name: z.string(),
+    url: z.string(),
+    type: z.enum(['bank_statement', 'tax_return', 'voided_check', 'other']),
+    uploadedAt: z.string(),
+  })).optional(),
+  stateDisclosureConfirmed: z.boolean().optional(),
 });
 
 export const insertCommissionSchema = createInsertSchema(commissions).omit({
