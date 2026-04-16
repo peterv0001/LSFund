@@ -288,7 +288,10 @@ function MCADealDialog() {
   const isVA = watchedState === "VA";
   const isCA = watchedState === "CA";
   const isUT = watchedState === "UT";
-  const needsDisclosure = isVA || isCA || isUT;
+  const isNY = watchedState === "NY";
+  const isCT = watchedState === "CT";
+  const needsDisclosure = isVA || isCA || isUT || isNY || isCT;
+  const disclosureStateName = isCA ? "California" : isVA ? "Virginia" : isUT ? "Utah" : isNY ? "New York" : "Connecticut";
 
   const loanAmount = form.watch("loanAmount");
   const avgMonthly = form.watch("avgMonthlyRevenue");
@@ -517,12 +520,14 @@ function MCADealDialog() {
                         <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                         <div>
                           <p className="text-sm font-semibold text-amber-800">
-                            {isCA ? "California" : isVA ? "Virginia" : "Utah"} State Disclosure Required
+                            {disclosureStateName} State Disclosure Required
                           </p>
                           <p className="text-xs text-amber-700 mt-1">
-                            {isCA && "Per California's Commercial Financing Disclosure Law, PMF will provide required disclosures. Do not transmit any specific offer to this merchant without PMF's prior written consent."}
-                            {isVA && "Per Virginia's Sales-Based Financing Disclosure Law, you must be registered as a sales-based financing broker with the Virginia Bureau of Financial Institutions."}
-                            {isUT && "Per Utah's Commercial Financing Registration and Disclosure Act, PMF will provide required disclosures for this merchant."}
+                            {isCA && "Per California's Commercial Finance Disclosure Law (SB1235), PMF will provide all required APR and cost disclosures. Do not transmit any specific offer, rate, or term to this merchant without PMF's prior written consent."}
+                            {isVA && "Per Virginia's Sales-Based Financing Disclosure Law, you must be registered as a sales-based financing broker with the Virginia Bureau of Financial Institutions before soliciting Virginia merchants."}
+                            {isUT && "Per Utah's Commercial Financing Registration and Disclosure Act, PMF will provide required disclosures for this merchant. Ensure you are registered with the Utah DFI if required."}
+                            {isNY && "Per New York's Commercial Finance Disclosure Law (SB5470, effective August 1, 2023), PMF will provide required APR disclosures for transactions of $2.5M or less. Do not quote rates or costs to the merchant prior to receiving PMF's formal disclosure document."}
+                            {isCT && "Per Connecticut's Commercial Financing Disclosure Law (Public Act 21-37), PMF will provide required disclosures for this transaction. Do not make representations about financing terms without PMF's provided disclosures."}
                           </p>
                         </div>
                       </div>
@@ -794,7 +799,7 @@ function MCADealDialog() {
                           {...form.register("stateDisclosureConfirmed")}
                         />
                         <span className="text-xs text-amber-800">
-                          I acknowledge the state disclosure requirements for {isCA ? "California" : isVA ? "Virginia" : "Utah"} merchants and confirm I am compliant with all applicable regulations. I understand PMF will provide the required disclosures.
+                          I acknowledge the state disclosure requirements for {disclosureStateName} merchants and confirm I am compliant with all applicable regulations. I understand PMF will provide the required disclosures to the merchant.
                         </span>
                       </label>
                     </div>
