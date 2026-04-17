@@ -92,7 +92,7 @@ export default function AdminSettings() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Settings className="w-6 h-6 text-amber-500" />
+              <Settings className="w-6 h-6 text-primary" />
               Platform Settings
             </h1>
             <p className="text-gray-500 mt-1">Configure platform-wide settings and compensation parameters</p>
@@ -100,7 +100,7 @@ export default function AdminSettings() {
 
           {isLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
             <div className="space-y-6">
@@ -108,7 +108,7 @@ export default function AdminSettings() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Building className="w-5 h-5 text-amber-500" />
+                    <Building className="w-5 h-5 text-primary" />
                     Company Information
                   </CardTitle>
                   <CardDescription>Basic platform identity and contact details</CardDescription>
@@ -148,7 +148,7 @@ export default function AdminSettings() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingUp className="w-5 h-5 text-amber-500" />
+                    <TrendingUp className="w-5 h-5 text-primary" />
                     Rank Qualification Requirements
                   </CardTitle>
                   <CardDescription>Minimum personal volume and weak-leg volume needed to qualify for each rank</CardDescription>
@@ -195,7 +195,7 @@ export default function AdminSettings() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <DollarSign className="w-5 h-5 text-amber-500" />
+                    <DollarSign className="w-5 h-5 text-primary" />
                     Commission Configuration (Reference)
                   </CardTitle>
                   <CardDescription>
@@ -238,7 +238,7 @@ export default function AdminSettings() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Zap className="w-5 h-5 text-amber-500" />
+                    <Zap className="w-5 h-5 text-primary" />
                     Quick Actions
                   </CardTitle>
                   <CardDescription>Trigger on-demand calculations</CardDescription>

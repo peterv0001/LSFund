@@ -492,7 +492,7 @@ export default function AdminCommissions() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Total Held Amount</CardDescription>
-                  <CardTitle className="text-3xl text-yellow-600" data-testid="text-held-amount">${totalHeld.toLocaleString(undefined, { minimumFractionDigits: 2 })}</CardTitle>
+                  <CardTitle className="text-3xl text-primary" data-testid="text-held-amount">${totalHeld.toLocaleString(undefined, { minimumFractionDigits: 2 })}</CardTitle>
                 </CardHeader>
               </Card>
               <Card className="flex flex-col justify-center">

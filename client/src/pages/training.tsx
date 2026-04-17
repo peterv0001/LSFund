@@ -464,13 +464,13 @@ export default function TrainingPage() {
             </div>
 
             {completedCount === modules.length && (
-              <Card className="mt-8 bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200">
+              <Card className="mt-8 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
                 <CardContent className="py-8 text-center">
-                  <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-                  <h2 className="text-2xl font-bold text-yellow-800 mb-2">
+                  <Trophy className="w-16 h-16 mx-auto mb-4 text-primary" />
+                  <h2 className="text-2xl font-bold text-primary mb-2">
                     Congratulations!
                   </h2>
-                  <p className="text-yellow-700">
+                  <p className="text-muted-foreground">
                     You've completed all training modules. You're now a Certified Leadershield Agent!
                   </p>
                 </CardContent>

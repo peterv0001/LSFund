@@ -1,61 +1,98 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Manrope:wght@200;300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-display: 'Cinzel', serif;
-  --font-body: 'Manrope', sans-serif;
+  --font-display: 'Montserrat', sans-serif;
+  --font-body: 'Open Sans', sans-serif;
 
-  /* Leadershield Network Palette - Deep Navy & Gold */
-  --background: 222 47% 98%;
-  --foreground: 222 47% 11%;
-  
-  --primary: 222 47% 15%; /* Deep Navy */
-  --primary-foreground: 210 40% 98%;
-  
-  --secondary: 45 93% 47%; /* Gold */
-  --secondary-foreground: 222 47% 15%;
-  
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  
-  --accent: 142 76% 36%; /* Emerald Success */
-  --accent-foreground: 210 40% 98%;
-  
+  /* Leadershield Network — Deep Navy (#002147) & Platinum (#E5E4E2) */
+  --background: 210 20% 98%;
+  --foreground: 212 60% 12%;
+
+  --primary: 212 100% 14%;         /* #002147 Deep Navy */
+  --primary-foreground: 0 0% 98%;
+
+  --secondary: 40 6% 89%;          /* #E5E4E2 Platinum */
+  --secondary-foreground: 212 100% 14%;
+
+  --muted: 210 18% 95%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 212 45% 30%;           /* Mid-navy accent */
+  --accent-foreground: 0 0% 98%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 212 60% 12%;
+  --card-border: 212 20% 91%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 212 60% 12%;
+  --popover-border: 212 20% 91%;
+
   --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 47.4% 15.2%;
-  
-  --radius: 0.75rem;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 212 18% 91%;
+  --input: 212 18% 91%;
+  --ring: 212 100% 14%;
+
+  --radius: 0.5rem;
+
+  /* Sidebar */
+  --sidebar: 212 100% 14%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-border: 212 70% 20%;
+  --sidebar-ring: 40 6% 89%;
+  --sidebar-primary: 40 6% 89%;
+  --sidebar-primary-foreground: 212 100% 14%;
+  --sidebar-accent: 212 60% 22%;
+  --sidebar-accent-foreground: 0 0% 98%;
+
+  /* Charts */
+  --chart-1: 212 100% 14%;
+  --chart-2: 212 55% 38%;
+  --chart-3: 40 6% 65%;
+  --chart-4: 142 60% 40%;
+  --chart-5: 0 72% 55%;
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
-  
-  --primary: 210 40% 98%;
-  --primary-foreground: 222 47.4% 15.2%;
-  
-  --secondary: 45 93% 47%;
-  --secondary-foreground: 222 47% 15%;
-  
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  
-  --accent: 142 76% 36%;
-  --accent-foreground: 210 40% 98%;
-  
+  --background: 212 50% 10%;
+  --foreground: 210 20% 96%;
+
+  --primary: 40 6% 89%;
+  --primary-foreground: 212 100% 14%;
+
+  --secondary: 212 60% 22%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 212 40% 17%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 212 45% 28%;
+  --accent-foreground: 0 0% 98%;
+
+  --card: 212 50% 12%;
+  --card-foreground: 210 20% 96%;
+  --card-border: 212 40% 18%;
+
+  --popover: 212 50% 12%;
+  --popover-foreground: 210 20% 96%;
+  --popover-border: 212 40% 18%;
+
   --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 212 40% 18%;
+  --input: 212 40% 18%;
+  --ring: 40 6% 89%;
+
+  --sidebar: 212 60% 10%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-border: 212 40% 16%;
 }
 
 @layer base {
@@ -68,35 +105,37 @@
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    @apply font-bold tracking-tight text-primary;
+    @apply font-bold tracking-tight;
   }
 }
 
 @layer utilities {
-  .text-gold {
-    color: hsl(45 93% 47%);
+  .text-platinum {
+    color: hsl(40 6% 89%);
   }
-  .bg-gold {
-    background-color: hsl(45 93% 47%);
+  .bg-platinum {
+    background-color: hsl(40 6% 89%);
   }
-  .border-gold {
-    border-color: hsl(45 93% 47%);
+  .border-platinum {
+    border-color: hsl(40 6% 89%);
   }
-  
+  .text-navy {
+    color: hsl(212 100% 14%);
+  }
+  .bg-navy {
+    background-color: hsl(212 100% 14%);
+  }
+
   .glass-panel {
     @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
   }
-  
+
   .dark .glass-panel {
     @apply bg-black/40 backdrop-blur-lg border border-white/10;
   }
 
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
-  }
-  
-  .text-gradient-gold {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-amber-700;
   }
 
   .animate-float {
@@ -127,8 +166,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(212, 175, 55, 0.6); }
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 33, 71, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(0, 33, 71, 0.4); }
 }
 
 @keyframes gradient-shift {

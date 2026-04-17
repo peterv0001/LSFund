@@ -169,7 +169,7 @@ export default function AdminHoldbacks() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Lock className="w-6 h-6 text-amber-500" />
+                <Lock className="w-6 h-6 text-primary" />
                 Holdbacks & Clawbacks
               </h1>
               <p className="text-gray-500 mt-1">Manage deferred commissions and clawback enforcement</p>
@@ -231,7 +231,7 @@ export default function AdminHoldbacks() {
 
           {isLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
             <Card>

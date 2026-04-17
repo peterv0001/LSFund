@@ -170,7 +170,7 @@ export default function Dashboard() {
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
               
               <h3 className="font-bold text-lg mb-1 relative z-10">Current Rank</h3>
-              <div className="text-4xl font-display font-bold text-yellow-400 mb-2 relative z-10 capitalize" data-testid="text-current-rank">
+              <div className="text-4xl font-display font-bold text-white mb-2 relative z-10 capitalize" data-testid="text-current-rank">
                 {user?.currentRank}
               </div>
               <p className="text-white/60 text-sm relative z-10">
@@ -183,7 +183,7 @@ export default function Dashboard() {
                   <span>65%</span>
                 </div>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full w-[65%] bg-yellow-400 rounded-full" />
+                  <div className="h-full w-[65%] bg-white/80 rounded-full" />
                 </div>
               </div>
             </div>

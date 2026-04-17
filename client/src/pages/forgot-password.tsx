@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
-import { Shield, ArrowLeft, Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,10 +47,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-md space-y-8">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+          <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain" />
         </div>
 
         <div className="bg-card border border-border/50 shadow-xl shadow-black/5 rounded-2xl p-6 lg:p-8">
@@ -104,7 +101,7 @@ export default function ForgotPasswordPage() {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20"
+                  className="w-full h-12 text-base font-semibold"
                   disabled={isSubmitting}
                   data-testid="button-send-reset"
                 >

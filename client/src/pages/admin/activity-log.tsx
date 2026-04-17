@@ -134,7 +134,7 @@ export default function AdminActivityLog() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Activity className="w-6 h-6 text-amber-500" />
+              <Activity className="w-6 h-6 text-primary" />
               Activity Log
             </h1>
             <p className="text-gray-500 mt-1">
@@ -200,7 +200,7 @@ export default function AdminActivityLog() {
 
           {isLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : logs.length === 0 ? (
             <Card>
@@ -235,7 +235,7 @@ export default function AdminActivityLog() {
                               <span className="text-sm font-medium">#{log.actorId}</span>
                               <Badge
                                 variant="outline"
-                                className={`text-xs w-fit ${log.actorType === "admin" ? "border-amber-300 text-amber-700" : log.actorType === "system" ? "border-gray-300 text-gray-600" : "border-blue-300 text-blue-700"}`}
+                                className={`text-xs w-fit ${log.actorType === "admin" ? "border-primary/30 text-primary" : log.actorType === "system" ? "border-gray-300 text-gray-600" : "border-blue-300 text-blue-700"}`}
                               >
                                 {log.actorType}
                               </Badge>

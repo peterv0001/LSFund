@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Shield, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function TermsOfServicePage() {
   return (
@@ -8,10 +8,7 @@ export default function TermsOfServicePage() {
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+            <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain" />
           </div>
           <Link href="/">
             <Button variant="ghost" size="sm" data-testid="button-back-home">

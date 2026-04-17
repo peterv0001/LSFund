@@ -34,22 +34,19 @@ export default function AuthPage() {
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
       {/* Left Panel - Immersive Hero */}
       <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden bg-gradient-to-br from-[#0A1628] via-[#0f1f3a] to-[#0A1628]">
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-yellow-400/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-yellow-500/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/3 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-white/3 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(10,22,40,0.6)_70%)]" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-16">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20 animate-pulse-glow">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-display font-bold text-white tracking-wide">Leadershield</h1>
+            <img src="/logo.png" alt="Leadershield Network" className="h-10 w-auto object-contain brightness-0 invert" />
           </div>
 
           <h2 className="text-5xl font-display font-bold text-white leading-tight mb-6">
             Build Your
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">
               Financial Legacy
             </span>
           </h2>
@@ -61,7 +58,7 @@ export default function AuthPage() {
             {[
               { icon: DollarSign, text: "22% MCA commission on every funded deal", color: "text-emerald-400" },
               { icon: Repeat, text: "50-70% recurring subscription commissions", color: "text-blue-400" },
-              { icon: Zap, text: "+5% pairing enhancement bonus", color: "text-yellow-400" },
+              { icon: Zap, text: "+5% pairing enhancement bonus", color: "text-[#E5E4E2]" },
               { icon: Users, text: "Override income from your team", color: "text-purple-400" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -77,15 +74,15 @@ export default function AuthPage() {
         <div className="relative z-10">
           <div className="grid grid-cols-3 gap-6 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-400">$200B+</p>
+              <p className="text-2xl font-bold text-white">$200B+</p>
               <p className="text-xs text-white/40 mt-1">Industry Size</p>
             </div>
             <div className="text-center border-x border-white/10">
-              <p className="text-2xl font-bold text-yellow-400">70%</p>
+              <p className="text-2xl font-bold text-white">70%</p>
               <p className="text-xs text-white/40 mt-1">Max Commission</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-400">48hr</p>
+              <p className="text-2xl font-bold text-white">48hr</p>
               <p className="text-xs text-white/40 mt-1">Avg Funding</p>
             </div>
           </div>
@@ -97,11 +94,8 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md space-y-8">
           {/* Mobile branding */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+          <div className="lg:hidden flex items-center justify-center mb-4">
+            <img src="/logo.png" alt="Leadershield Network" className="h-10 w-auto object-contain" />
           </div>
 
           <div className="text-center lg:text-left">
@@ -188,7 +182,7 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
         )}
       </div>
 
-      <Button type="submit" className="w-full h-12 text-base font-semibold bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20" disabled={isLoading}>
+      <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isLoading}>
         {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
         Sign In
       </Button>
@@ -437,7 +431,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
         )}
       </div>
 
-      <Button type="submit" className="w-full h-12 text-base font-semibold mt-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20" disabled={isLoading} data-testid="button-create-account">
+      <Button type="submit" className="w-full h-12 text-base font-semibold mt-4" disabled={isLoading} data-testid="button-create-account">
         {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
         Create Account
       </Button>

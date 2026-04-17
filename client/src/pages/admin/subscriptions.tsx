@@ -122,7 +122,7 @@ export default function AdminSubscriptions() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <RefreshCw className="w-6 h-6 text-amber-500" />
+                <RefreshCw className="w-6 h-6 text-primary" />
                 Subscriptions
               </h1>
               <p className="text-gray-500 mt-1">Manage merchant subscriptions and commission payouts</p>
@@ -158,8 +158,8 @@ export default function AdminSubscriptions() {
             <Card>
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-amber-600" />
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">MRR</p>
@@ -214,7 +214,7 @@ export default function AdminSubscriptions() {
           {/* Table */}
           {isLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : filteredSubscriptions.length === 0 ? (
             <Card>
@@ -271,7 +271,7 @@ export default function AdminSubscriptions() {
                         </TableCell>
                         <TableCell>
                           {sub.mcaPairedDealId ? (
-                            <span className="text-amber-600">#{sub.mcaPairedDealId}</span>
+                            <span className="text-primary font-medium">#{sub.mcaPairedDealId}</span>
                           ) : (
                             <span className="text-gray-300">—</span>
                           )}

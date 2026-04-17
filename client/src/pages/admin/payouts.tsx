@@ -205,7 +205,7 @@ export default function AdminPayoutsPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Pending Payouts</CardDescription>
-              <CardTitle className="text-2xl text-amber-600">
+              <CardTitle className="text-2xl text-primary">
                 ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </CardTitle>
             </CardHeader>

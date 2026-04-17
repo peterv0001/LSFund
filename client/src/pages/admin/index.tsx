@@ -97,7 +97,7 @@ export default function AdminDashboard() {
             title="Pending Commissions" 
             value={`$${(stats?.pendingCommissions || 0).toLocaleString()}`}
             icon={<Clock className="w-6 h-6" />}
-            className="border-yellow-100 bg-yellow-50/30"
+            className="border-secondary/40 bg-secondary/10"
           />
           <StatsCard 
             title="Pending Payouts" 

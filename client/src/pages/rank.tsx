@@ -78,7 +78,7 @@ export default function RankPage() {
                 </div>
                 <div>
                   <p className="text-white/60 text-sm mb-1">Current Rank</p>
-                  <h2 className="text-4xl font-bold text-yellow-400 capitalize">
+                  <h2 className="text-4xl font-bold text-white capitalize">
                     {user?.currentRank}
                   </h2>
                   {rankProgress?.nextRank && (
@@ -94,7 +94,7 @@ export default function RankPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-500" />
+                <Trophy className="w-5 h-5 text-primary" />
                 Highest Achieved
               </CardTitle>
             </CardHeader>
@@ -234,7 +234,7 @@ export default function RankPage() {
 
         {/* Already at Top Rank */}
         {!rankProgress?.nextRank && (
-          <Card className="bg-gradient-to-br from-purple-50 to-amber-50 border-purple-200">
+          <Card className="bg-gradient-to-br from-purple-50 to-slate-50 border-purple-200">
             <CardContent className="p-8 text-center">
               <div className="text-6xl mb-4">👑</div>
               <h3 className="text-2xl font-bold text-primary mb-2">You've reached the top!</h3>

@@ -181,7 +181,7 @@ export default function AdminAnnouncements() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Megaphone className="w-6 h-6 text-amber-500" />
+                <Megaphone className="w-6 h-6 text-primary" />
                 Announcements
               </h1>
               <p className="text-gray-500 mt-1">Create and manage platform-wide announcements</p>
@@ -194,7 +194,7 @@ export default function AdminAnnouncements() {
 
           {isLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : announcements.length === 0 ? (
             <Card>
@@ -212,7 +212,7 @@ export default function AdminAnnouncements() {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-semibold text-gray-900">{a.title}</h3>
                           {a.isPinned && (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                            <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">
                               <Pin className="w-3 h-3 mr-1" />
                               Pinned
                             </Badge>

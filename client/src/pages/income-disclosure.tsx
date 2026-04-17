@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, ArrowLeft, AlertTriangle, BarChart3, Users, TrendingUp } from "lucide-react";
+import { ArrowLeft, AlertTriangle, BarChart3, Users, TrendingUp } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -28,10 +28,7 @@ export default function IncomeDisclosurePage() {
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+            <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain" />
           </div>
           <Link href="/">
             <Button variant="ghost" size="sm" data-testid="button-back-home">
@@ -76,7 +73,7 @@ export default function IncomeDisclosurePage() {
 
         <section className="mb-10">
           <h2 className="text-2xl font-bold text-primary mb-4 flex items-center gap-3" data-testid="heading-purpose">
-            <BarChart3 className="w-6 h-6 text-yellow-500" />
+            <BarChart3 className="w-6 h-6 text-primary" />
             Purpose of This Disclosure
           </h2>
           <p className="text-muted-foreground leading-relaxed mb-4">
@@ -96,7 +93,7 @@ export default function IncomeDisclosurePage() {
 
         <section className="mb-10">
           <h2 className="text-2xl font-bold text-primary mb-4 flex items-center gap-3" data-testid="heading-key-findings">
-            <TrendingUp className="w-6 h-6 text-yellow-500" />
+            <TrendingUp className="w-6 h-6 text-primary" />
             Key Findings Summary
           </h2>
           <div className="grid sm:grid-cols-3 gap-4 mb-6">
@@ -130,7 +127,7 @@ export default function IncomeDisclosurePage() {
 
         <section className="mb-10">
           <h2 className="text-2xl font-bold text-primary mb-4 flex items-center gap-3" data-testid="heading-earnings-by-rank">
-            <Users className="w-6 h-6 text-yellow-500" />
+            <Users className="w-6 h-6 text-primary" />
             Earnings by Rank
           </h2>
           <p className="text-sm text-muted-foreground mb-4 leading-relaxed">

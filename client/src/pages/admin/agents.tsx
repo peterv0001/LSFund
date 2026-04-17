@@ -136,7 +136,7 @@ export default function AdminAgents() {
       case 'partner': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'director': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'leader': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'builder': return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'builder': return 'bg-primary/10 text-primary border-primary/20';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };

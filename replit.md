@@ -6,8 +6,9 @@ Leadershield Network is a full-stack network marketing (MLM) platform designed f
 
 **Brand:** Leadershield Network (formerly PSL Capital)
 **Domain:** leadershield.com
-**Color Palette:** Deep navy (#0A1628) + metallic gold (#D4AF37)
-**Fonts:** Cinzel (display) + Manrope (body)
+**Color Palette:** Deep navy (#002147 / HSL 212 100% 14%) primary + platinum (#E5E4E2 / HSL 40 6% 89%) secondary
+**Fonts:** Montserrat (display/headings) + Open Sans (body)
+**Logo:** `/client/public/logo.png` — used with `brightness-0 invert` filter on dark backgrounds
 
 **Core Business Logic:**
 - Binary tree placement for agent hierarchy

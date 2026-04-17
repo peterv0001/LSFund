@@ -123,10 +123,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/95 backdrop-blur-xl shadow-sm border-b border-border' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20 animate-pulse-glow">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+            <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain" />
           </div>
 
           <div className="hidden md:flex items-center gap-8">
@@ -141,7 +138,7 @@ export default function LandingPage() {
               <Button variant="ghost" size="sm" data-testid="button-login">Agent Login</Button>
             </Link>
             <Link href="/signup">
-              <Button size="sm" className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-primary font-semibold hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/25" data-testid="button-join">
+              <Button size="sm" className="bg-white text-primary font-semibold hover:bg-white/90 shadow-md" data-testid="button-join">
                 Join Now
               </Button>
             </Link>
@@ -152,8 +149,8 @@ export default function LandingPage() {
       {/* Hero Section — Full-width immersive dark */}
       <section className="relative min-h-[100vh] flex items-center pt-16 overflow-hidden bg-gradient-to-br from-[#0A1628] via-[#0f1f3a] to-[#0A1628]">
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 -right-32 w-[600px] h-[600px] bg-yellow-400/8 rounded-full blur-[120px] animate-float" />
-          <div className="absolute bottom-1/4 -left-32 w-[500px] h-[500px] bg-yellow-500/6 rounded-full blur-[100px] animate-float-delayed" />
+          <div className="absolute top-1/4 -right-32 w-[600px] h-[600px] bg-white/5 rounded-full blur-[120px] animate-float" />
+          <div className="absolute bottom-1/4 -left-32 w-[500px] h-[500px] bg-white/4 rounded-full blur-[100px] animate-float-delayed" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(10,22,40,0.8)_70%)]" />
         </div>
@@ -165,15 +162,15 @@ export default function LandingPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-8">
-                <Sparkles className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm font-medium text-yellow-400">The $200B+ Opportunity is Here</span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8">
+                <Sparkles className="w-4 h-4 text-white/60" />
+                <span className="text-sm font-medium text-white/80">The $200B+ Opportunity is Here</span>
               </div>
 
               <h1 className="text-5xl lg:text-7xl font-display font-bold text-white leading-[1.1] mb-8">
                 Build Your
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 animate-gradient">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">
                   Financial Legacy
                 </span>
               </h1>
@@ -184,7 +181,7 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
                 <Link href="/signup">
-                  <Button size="lg" className="h-16 px-10 text-lg font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#0A1628] shadow-2xl shadow-yellow-500/30 hover:from-yellow-300 hover:to-yellow-400 transition-all hover:scale-105" data-testid="button-get-started">
+                  <Button size="lg" className="h-16 px-10 text-lg font-bold bg-white text-primary font-bold shadow-2xl hover:bg-white/90 transition-all hover:scale-105" data-testid="button-get-started">
                     Start Your Journey
                     <ArrowRight className="w-6 h-6 ml-3" />
                   </Button>
@@ -207,10 +204,10 @@ export default function LandingPage() {
               className="relative hidden lg:block"
             >
               <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-3xl blur-2xl" />
+                <div className="absolute -inset-4 bg-gradient-to-br from-white/10 to-transparent rounded-3xl blur-2xl" />
                 <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 space-y-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse" />
+                    <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
                     <span className="text-white/60 text-sm font-medium uppercase tracking-wider">Live Earning Potential</span>
                   </div>
 
@@ -235,14 +232,14 @@ export default function LandingPage() {
                       <span className="text-xl font-bold text-blue-400">50-70%</span>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
+                    <div className="flex items-center justify-between p-4 bg-white/8 rounded-2xl border border-white/15">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center">
-                          <Zap className="w-5 h-5 text-yellow-400" />
+                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                          <Zap className="w-5 h-5 text-[#E5E4E2]" />
                         </div>
                         <span className="text-white/80">Pairing Bonus</span>
                       </div>
-                      <span className="text-xl font-bold text-yellow-400">+5%</span>
+                      <span className="text-xl font-bold text-[#E5E4E2]">+5%</span>
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
@@ -257,7 +254,7 @@ export default function LandingPage() {
                   </div>
 
                   <Link href="/signup">
-                    <Button className="w-full h-14 bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#0A1628] font-bold text-lg hover:from-yellow-300 hover:to-yellow-400 shadow-xl shadow-yellow-500/20 mt-4">
+                    <Button className="w-full h-14 bg-white text-primary font-bold text-lg hover:bg-white/90 shadow-xl mt-4">
                       Claim Your Spot
                     </Button>
                   </Link>
@@ -267,7 +264,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
       </section>
 
       {/* Social Proof Stats Bar */}
@@ -282,7 +279,7 @@ export default function LandingPage() {
             ].map((stat, i) => (
               <AnimatedSection key={i} delay={i * 0.1}>
                 <div className="flex flex-col items-center" data-testid={`social-stat-${i}`}>
-                  <stat.icon className="w-6 h-6 text-yellow-500 mb-3" />
+                  <stat.icon className="w-6 h-6 text-primary mb-3" />
                   <p className="text-4xl font-bold text-primary mb-1">
                     <CountUp end={stat.value} prefix={stat.prefix || ""} suffix={stat.suffix} />
                   </p>
@@ -318,7 +315,7 @@ export default function LandingPage() {
             {[
               { step: "01", title: "Join & Learn", desc: "Complete our training academy, set up your agent portal, and get certified. We give you everything you need to hit the ground running.", icon: GraduationCap, color: "from-blue-500 to-blue-600" },
               { step: "02", title: "Sell & Earn", desc: "Present MCA funding and subscription products to merchants. Earn immediate MCA commissions plus monthly recurring platform revenue.", icon: DollarSign, color: "from-emerald-500 to-emerald-600" },
-              { step: "03", title: "Build & Scale", desc: "Recruit and mentor your own team of agents. Earn override commissions and watch your income multiply as your team produces.", icon: Users, color: "from-yellow-500 to-amber-500" },
+              { step: "03", title: "Build & Scale", desc: "Recruit and mentor your own team of agents. Earn override commissions and watch your income multiply as your team produces.", icon: Users, color: "from-primary to-slate-700" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.15}>
                 <Card className="relative overflow-hidden border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 group h-full" data-testid={`how-it-works-${i}`}>
@@ -340,12 +337,12 @@ export default function LandingPage() {
 
       {/* Two Revenue Streams — Visual Split */}
       <section className="py-24 px-6 bg-gradient-to-br from-[#0A1628] via-[#0f1f3a] to-[#0A1628] text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-yellow-400/5 rounded-full blur-[100px]" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/4 rounded-full blur-[100px]" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-400/5 rounded-full blur-[100px]" />
         <div className="max-w-7xl mx-auto relative z-10">
           <AnimatedSection>
             <div className="text-center mb-16">
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-sm font-medium text-yellow-400 mb-6">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80 mb-6">
                 <Zap className="w-4 h-4" />
                 Double the Earning Power
               </span>
@@ -411,12 +408,12 @@ export default function LandingPage() {
           </div>
 
           <AnimatedSection delay={0.3}>
-            <div className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6" data-testid="card-pairing-enhancement">
-              <div className="w-16 h-16 rounded-2xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0 animate-pulse-glow">
-                <Zap className="w-8 h-8 text-yellow-400" />
+            <div className="bg-white/8 border border-white/20 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6" data-testid="card-pairing-enhancement">
+              <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 animate-pulse-glow">
+                <Zap className="w-8 h-8 text-[#E5E4E2]" />
               </div>
               <div className="text-center md:text-left">
-                <h3 className="text-xl font-bold text-yellow-400 mb-1">The Power of Pairing: +5% Enhancement</h3>
+                <h3 className="text-xl font-bold text-white mb-1">The Power of Pairing: +5% Enhancement</h3>
                 <p className="text-white/60">
                   Bundle an MCA with a subscription and earn an extra 5% commission on the subscription for the first 3 months.
                   This is the compound advantage that sets Leadershield apart.
@@ -462,7 +459,7 @@ export default function LandingPage() {
                 name: "Growth Accelerator",
                 price: "$429",
                 pool: "60%",
-                color: "yellow",
+                color: "blue",
                 icon: Rocket,
                 popular: true,
                 ideal: "Businesses with stable operations looking to accelerate revenue growth",
@@ -481,7 +478,7 @@ export default function LandingPage() {
             ].map((item, i) => {
               const colorMap: Record<string, { bg: string; text: string; border: string; badge: string; iconBg: string }> = {
                 blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", badge: "bg-blue-100 text-blue-700", iconBg: "bg-blue-100" },
-                yellow: { bg: "bg-yellow-50", text: "text-yellow-600", border: "border-yellow-300", badge: "bg-yellow-100 text-yellow-700", iconBg: "bg-yellow-100" },
+                yellow: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-300", badge: "bg-blue-100 text-blue-700", iconBg: "bg-blue-100" },
                 purple: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200", badge: "bg-purple-100 text-purple-700", iconBg: "bg-purple-100" },
               };
               const c = colorMap[item.color];
@@ -490,7 +487,7 @@ export default function LandingPage() {
                   <Card className={`relative overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 h-full ${item.popular ? `border-2 ${c.border} shadow-lg` : 'border-border/50'}`} data-testid={`card-tier-${i}`}>
                     {item.popular && (
                       <div className="absolute -top-0 left-0 right-0">
-                        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#0A1628] text-xs font-bold px-4 py-1.5 text-center">
+                        <div className="bg-primary text-white text-xs font-bold px-4 py-1.5 text-center">
                           MOST POPULAR
                         </div>
                       </div>
@@ -544,14 +541,14 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8 mb-12">
             {[
               { title: "Part-Time Agent", subtitle: "10-15 hrs/week", income: "$2,500-$4,000", timeframe: "/month", desc: "2 MCA deals + 3 subscriptions per month. Perfect for side income while keeping your day job.", color: "border-blue-200 bg-blue-50/50" },
-              { title: "Full-Time Producer", subtitle: "40 hrs/week", income: "$8,000-$15,000", timeframe: "/month", desc: "4 MCA deals + 6 subscriptions per month. Full-time focus with compounding platform residuals.", color: "border-yellow-300 bg-yellow-50/50", featured: true },
+              { title: "Full-Time Producer", subtitle: "40 hrs/week", income: "$8,000-$15,000", timeframe: "/month", desc: "4 MCA deals + 6 subscriptions per month. Full-time focus with compounding platform residuals.", color: "border-primary/20 bg-primary/5", featured: true },
               { title: "Team Builder", subtitle: "Team of 5-10", income: "$25,000+", timeframe: "/month", desc: "Personal production plus override commissions from your growing team. This is where legacy income begins.", color: "border-emerald-200 bg-emerald-50/50" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.15}>
                 <Card className={`h-full border-2 ${item.color} ${item.featured ? 'shadow-xl scale-[1.02]' : 'shadow-sm'}`} data-testid={`income-scenario-${i}`}>
                   <CardContent className="p-8 text-center">
                     {item.featured && (
-                      <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold mb-4">
+                      <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-white text-xs font-bold mb-4">
                         <Star className="w-3 h-3" />
                         Most Common Path
                       </div>
@@ -568,7 +565,7 @@ export default function LandingPage() {
           </div>
 
           <AnimatedSection delay={0.3}>
-            <div className="bg-gradient-to-r from-primary/5 to-yellow-500/5 border border-primary/10 rounded-2xl p-6 md:p-8">
+            <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10 rounded-2xl p-6 md:p-8">
               <h3 className="text-xl font-bold text-primary mb-4 text-center">Monthly Income Projection: 4 Subscriptions + 1 MCA Deal</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
@@ -599,7 +596,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto relative z-10">
           <AnimatedSection>
             <div className="text-center mb-16">
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-sm font-medium text-yellow-400 mb-6">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80 mb-6">
                 <Award className="w-4 h-4" />
                 Compensation Plan
               </span>
@@ -616,7 +613,7 @@ export default function LandingPage() {
             {[
               { icon: DollarSign, title: "MCA Commission", rate: "22% GBR", desc: "Earn on every funded deal you refer", color: "from-emerald-400 to-emerald-500" },
               { icon: Repeat, title: "Platform Residuals", rate: "50-70%", desc: "Monthly recurring subscription commissions", color: "from-blue-400 to-blue-500" },
-              { icon: Zap, title: "Pairing Bonus", rate: "+5%", desc: "Enhancement when you bundle MCA + subscription", color: "from-yellow-400 to-amber-500" },
+              { icon: Zap, title: "Pairing Bonus", rate: "+5%", desc: "Enhancement when you bundle MCA + subscription", color: "from-[#E5E4E2] to-white/70" },
               { icon: Users, title: "Team Overrides", rate: "Up to 8%", desc: "Earn on your team's production as a sponsor", color: "from-purple-400 to-purple-500" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.1}>
@@ -625,7 +622,7 @@ export default function LandingPage() {
                     <item.icon className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white mb-1">{item.title}</h3>
-                  <p className="text-3xl font-bold text-yellow-400 mb-2">{item.rate}</p>
+                  <p className="text-3xl font-bold text-primary mb-2">{item.rate}</p>
                   <p className="text-sm text-white/50">{item.desc}</p>
                 </div>
               </AnimatedSection>
@@ -665,8 +662,8 @@ export default function LandingPage() {
 
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center">
-                    <Award className="w-5 h-5 text-yellow-400" />
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                    <Award className="w-5 h-5 text-primary" />
                   </div>
                   Quarterly Accelerators
                 </h3>
@@ -679,7 +676,7 @@ export default function LandingPage() {
                   ].map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
                       <span className="text-white/70">{item.volume} quarterly volume</span>
-                      <span className="font-bold text-yellow-400">{item.bonus}</span>
+                      <span className="font-bold text-primary">{item.bonus}</span>
                     </div>
                   ))}
                 </div>
@@ -690,7 +687,7 @@ export default function LandingPage() {
           <AnimatedSection delay={0.5}>
             <div className="text-center mt-12">
               <Link href="/signup">
-                <Button size="lg" className="h-16 px-10 text-lg font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#0A1628] shadow-2xl shadow-yellow-500/30 hover:from-yellow-300 hover:to-yellow-400 transition-all hover:scale-105">
+                <Button size="lg" className="h-16 px-10 text-lg font-bold shadow-2xl transition-all hover:scale-105">
                   Start Earning Today
                   <ChevronRight className="w-6 h-6 ml-2" />
                 </Button>
@@ -724,7 +721,7 @@ export default function LandingPage() {
               <AnimatedSection key={i} delay={i * 0.15}>
                 <Card className="h-full border-border/50 shadow-sm hover:shadow-lg transition-all" data-testid={`testimonial-${i}`}>
                   <CardContent className="p-8">
-                    <Quote className="w-8 h-8 text-yellow-400/40 mb-4" />
+                    <Quote className="w-8 h-8 text-white/20 mb-4" />
                     <p className="text-muted-foreground leading-relaxed mb-6 italic">"{item.quote}"</p>
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-bold text-lg">
@@ -733,7 +730,7 @@ export default function LandingPage() {
                       <div>
                         <p className="font-bold text-primary">{item.name}</p>
                         <p className="text-sm text-muted-foreground">{item.role} - {item.location}</p>
-                        <p className="text-xs text-yellow-600">{item.months} with Leadershield</p>
+                        <p className="text-xs text-muted-foreground">{item.months} with Leadershield</p>
                       </div>
                     </div>
                   </CardContent>
@@ -826,17 +823,17 @@ export default function LandingPage() {
           </AnimatedSection>
 
           <div className="grid md:grid-cols-4 gap-6 relative">
-            <div className="hidden md:block absolute top-16 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-blue-200 via-yellow-200 to-purple-200 z-0" />
+            <div className="hidden md:block absolute top-16 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-blue-200 via-blue-200 to-purple-200 z-0" />
             {[
               { week: "Week 1", title: "Foundation", icon: GraduationCap, color: "blue", items: ["Complete Academy training modules", "Setup CRM & email signature", "Review compliance guidelines", "Shadow experienced agents"] },
               { week: "Week 2", title: "Activation", icon: Rocket, color: "emerald", items: ["Build 100-lead prospect list", "Launch email outreach campaign", "Begin daily call block (2 hrs)", "Submit your first lead"] },
-              { week: "Week 3", title: "Momentum", icon: TrendingUp, color: "yellow", items: ["Conduct 5 merchant demos", "Generate 3 subscription quotes", "Collect 1st MCA application", "Follow up on pipeline"] },
+              { week: "Week 3", title: "Momentum", icon: TrendingUp, color: "indigo", items: ["Conduct 5 merchant demos", "Generate 3 subscription quotes", "Collect 1st MCA application", "Follow up on pipeline"] },
               { week: "Week 4", title: "Results", icon: Trophy, color: "purple", items: ["Close 1st subscription deal", "Fund 1st MCA deal", "Receive first commission payout", "Set goals for month 2"] },
             ].map((item, i) => {
               const colors: Record<string, { bg: string; text: string; dot: string; iconBg: string }> = {
                 blue: { bg: "bg-blue-50", text: "text-blue-600", dot: "bg-blue-500", iconBg: "bg-blue-100" },
                 emerald: { bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500", iconBg: "bg-emerald-100" },
-                yellow: { bg: "bg-yellow-50", text: "text-yellow-600", dot: "bg-yellow-500", iconBg: "bg-yellow-100" },
+                indigo: { bg: "bg-indigo-50", text: "text-indigo-600", dot: "bg-indigo-500", iconBg: "bg-indigo-100" },
                 purple: { bg: "bg-purple-50", text: "text-purple-600", dot: "bg-purple-500", iconBg: "bg-purple-100" },
               };
               const c = colors[item.color];
@@ -962,24 +959,24 @@ export default function LandingPage() {
       {/* Final CTA */}
       <section className="py-24 px-6 bg-gradient-to-br from-[#0A1628] via-[#0f1f3a] to-[#0A1628] relative overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-400/5 rounded-full blur-[120px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/4 rounded-full blur-[120px]" />
         </div>
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <AnimatedSection>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-sm font-medium text-yellow-400 mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80 mb-8">
               <Sparkles className="w-4 h-4" />
               Your future starts here
             </div>
             <h2 className="text-4xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
               Ready to Build Something<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500">That Pays You for Life?</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">That Pays You for Life?</span>
             </h2>
             <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto">
               Join Leadershield Network. Build two revenue streams. Create financial freedom for you and your family. No experience needed — we'll train you every step of the way.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
-                <Button size="lg" className="h-16 px-12 text-lg font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 text-[#0A1628] shadow-2xl shadow-yellow-500/30 hover:from-yellow-300 hover:to-yellow-400 transition-all hover:scale-105" data-testid="button-final-cta">
+                <Button size="lg" className="h-16 px-12 text-lg font-bold bg-white text-primary shadow-2xl hover:bg-white/90 transition-all hover:scale-105" data-testid="button-final-cta">
                   Apply Now — Free to Join
                   <ArrowRight className="w-6 h-6 ml-3" />
                 </Button>
@@ -1044,10 +1041,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-5 gap-10 mb-12">
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-display font-bold text-xl text-white">Leadershield Network</span>
+                <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain brightness-0 invert" />
               </div>
               <p className="text-white/40 max-w-sm leading-relaxed">
                 Empowering agents. Transforming merchants. Building legacies. Two revenue streams, one powerful platform.
@@ -1056,27 +1050,27 @@ export default function LandingPage() {
             <div>
               <h4 className="font-bold text-white/80 mb-4">Quick Links</h4>
               <div className="space-y-2 text-sm">
-                <a href="#opportunity" className="block text-white/40 hover:text-yellow-400 transition-colors">Opportunity</a>
-                <a href="#platform" className="block text-white/40 hover:text-yellow-400 transition-colors">Platform</a>
-                <a href="#compensation" className="block text-white/40 hover:text-yellow-400 transition-colors">Earnings</a>
-                <a href="#faq" className="block text-white/40 hover:text-yellow-400 transition-colors">FAQ</a>
-                <a href="#disclaimers" className="block text-white/40 hover:text-yellow-400 transition-colors">Disclosures</a>
+                <a href="#opportunity" className="block text-white/40 hover:text-white transition-colors">Opportunity</a>
+                <a href="#platform" className="block text-white/40 hover:text-white transition-colors">Platform</a>
+                <a href="#compensation" className="block text-white/40 hover:text-white transition-colors">Earnings</a>
+                <a href="#faq" className="block text-white/40 hover:text-white transition-colors">FAQ</a>
+                <a href="#disclaimers" className="block text-white/40 hover:text-white transition-colors">Disclosures</a>
               </div>
             </div>
             <div>
               <h4 className="font-bold text-white/80 mb-4">Legal</h4>
               <div className="space-y-2 text-sm">
-                <Link href="/income-disclosure"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-income-disclosure">Income Disclosure</span></Link>
-                <Link href="/terms"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-terms">Terms of Service</span></Link>
-                <Link href="/privacy"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-privacy">Privacy Policy</span></Link>
-                <Link href="/refund-policy"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-link-refund">Refund Policy</span></Link>
+                <Link href="/income-disclosure"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-income-disclosure">Income Disclosure</span></Link>
+                <Link href="/terms"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-terms">Terms of Service</span></Link>
+                <Link href="/privacy"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-privacy">Privacy Policy</span></Link>
+                <Link href="/refund-policy"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-refund">Refund Policy</span></Link>
               </div>
             </div>
             <div>
               <h4 className="font-bold text-white/80 mb-4">Get Started</h4>
               <div className="space-y-2 text-sm">
-                <Link href="/signup"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer">Join Now</span></Link>
-                <Link href="/login"><span className="block text-white/40 hover:text-yellow-400 transition-colors cursor-pointer">Agent Login</span></Link>
+                <Link href="/signup"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer">Join Now</span></Link>
+                <Link href="/login"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer">Agent Login</span></Link>
               </div>
             </div>
           </div>
@@ -1085,10 +1079,10 @@ export default function LandingPage() {
               &copy; 2026 Leadershield Network. All rights reserved.
             </p>
             <div className="flex flex-wrap items-center justify-center md:justify-end gap-4 text-xs text-white/30">
-              <Link href="/income-disclosure"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-income-disclosure">Income Disclosure</span></Link>
-              <Link href="/terms"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-terms">Terms</span></Link>
-              <Link href="/privacy"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-privacy">Privacy</span></Link>
-              <Link href="/refund-policy"><span className="hover:text-yellow-400 transition-colors cursor-pointer" data-testid="footer-bottom-refund">Refund Policy</span></Link>
+              <Link href="/income-disclosure"><span className="hover:text-white transition-colors cursor-pointer" data-testid="footer-bottom-income-disclosure">Income Disclosure</span></Link>
+              <Link href="/terms"><span className="hover:text-white transition-colors cursor-pointer" data-testid="footer-bottom-terms">Terms</span></Link>
+              <Link href="/privacy"><span className="hover:text-white transition-colors cursor-pointer" data-testid="footer-bottom-privacy">Privacy</span></Link>
+              <Link href="/refund-policy"><span className="hover:text-white transition-colors cursor-pointer" data-testid="footer-bottom-refund">Refund Policy</span></Link>
             </div>
           </div>
         </div>
