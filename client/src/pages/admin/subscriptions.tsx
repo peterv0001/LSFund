@@ -9,6 +9,7 @@ import {
   Users,
   TrendingUp,
   Zap,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,10 +34,19 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useState } from "react";
+
+type Agent = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
 
 type Subscription = {
   id: number;
   agentId: number;
+  agent?: Agent;
   merchantName: string;
   merchantEmail: string | null;
   tier: "tier_1" | "tier_2" | "tier_3";
@@ -62,9 +72,12 @@ const STATUS_COLORS: Record<string, string> = {
   expired: "bg-gray-100 text-gray-500",
 };
 
+type StatusFilter = "all" | "active" | "paused" | "cancelled" | "expired";
+
 export default function AdminSubscriptions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const { data: subscriptions = [], isLoading } = useQuery<Subscription[]>({
     queryKey: [api.admin.subscriptions.list.path],
@@ -95,6 +108,10 @@ export default function AdminSubscriptions() {
     .filter((s) => s.status === "active")
     .reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
   const totalSubs = subscriptions.length;
+
+  const filteredSubscriptions = statusFilter === "all"
+    ? subscriptions
+    : subscriptions.filter((s) => s.status === statusFilter);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -168,15 +185,41 @@ export default function AdminSubscriptions() {
             </Card>
           </div>
 
+          {/* Filter Bar */}
+          <div className="flex items-center gap-3 mb-4">
+            <Filter className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-medium text-gray-600">Filter by status:</span>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+            >
+              <SelectTrigger className="w-44 h-9 text-sm" data-testid="select-status-filter">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="expired">Expired</SelectItem>
+              </SelectContent>
+            </Select>
+            {statusFilter !== "all" && (
+              <span className="text-sm text-gray-500" data-testid="text-filter-count">
+                {filteredSubscriptions.length} result{filteredSubscriptions.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
           {/* Table */}
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
             </div>
-          ) : subscriptions.length === 0 ? (
+          ) : filteredSubscriptions.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
-                No subscriptions found.
+                {statusFilter === "all" ? "No subscriptions found." : `No ${statusFilter} subscriptions found.`}
               </CardContent>
             </Card>
           ) : (
@@ -187,7 +230,7 @@ export default function AdminSubscriptions() {
                     <TableRow>
                       <TableHead>ID</TableHead>
                       <TableHead>Merchant</TableHead>
-                      <TableHead>Agent ID</TableHead>
+                      <TableHead>Agent</TableHead>
                       <TableHead>Tier</TableHead>
                       <TableHead>Monthly</TableHead>
                       <TableHead>Paired Deal</TableHead>
@@ -197,7 +240,7 @@ export default function AdminSubscriptions() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {subscriptions.map((sub) => (
+                    {filteredSubscriptions.map((sub) => (
                       <TableRow key={sub.id} data-testid={`row-subscription-${sub.id}`}>
                         <TableCell className="font-mono text-sm">#{sub.id}</TableCell>
                         <TableCell>
@@ -208,7 +251,18 @@ export default function AdminSubscriptions() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>#{sub.agentId}</TableCell>
+                        <TableCell>
+                          <div>
+                            {sub.agent?.firstName ? (
+                              <>
+                                <p className="font-medium text-sm" data-testid={`text-agent-name-${sub.id}`}>{sub.agent.firstName} {sub.agent.lastName}</p>
+                                <p className="text-xs text-gray-400">#{sub.agentId}</p>
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-500">#{sub.agentId}</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-sm">
                           {TIER_LABELS[sub.tier] ?? sub.tier}
                         </TableCell>
@@ -226,9 +280,21 @@ export default function AdminSubscriptions() {
                           {format(new Date(sub.startDate), "MMM d, yyyy")}
                         </TableCell>
                         <TableCell>
-                          <Badge className={STATUS_COLORS[sub.status] ?? ""}>
-                            {sub.status}
-                          </Badge>
+                          <div>
+                            <Badge className={STATUS_COLORS[sub.status] ?? ""}>
+                              {sub.status}
+                            </Badge>
+                            {sub.status === "cancelled" && sub.cancelledAt && (
+                              <p className="text-xs text-gray-400 mt-1" data-testid={`text-cancelled-at-${sub.id}`}>
+                                {format(new Date(sub.cancelledAt), "MMM d, yyyy")}
+                              </p>
+                            )}
+                            {sub.status === "paused" && (
+                              <p className="text-xs text-gray-400 mt-1" data-testid={`text-paused-at-${sub.id}`}>
+                                {format(new Date(sub.updatedAt), "MMM d, yyyy")}
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Select
