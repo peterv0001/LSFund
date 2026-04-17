@@ -56,6 +56,7 @@ type Subscription = {
   mcaPairedDealId: number | null;
   startDate: string;
   cancelledAt: string | null;
+  pausedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -324,9 +325,9 @@ export default function AdminSubscriptions() {
                                 {format(new Date(sub.cancelledAt), "MMM d, yyyy")}
                               </p>
                             )}
-                            {sub.status === "paused" && (
+                            {sub.status === "paused" && sub.pausedAt && (
                               <p className="text-xs text-gray-400 mt-1" data-testid={`text-paused-at-${sub.id}`}>
-                                {format(new Date(sub.updatedAt), "MMM d, yyyy")}
+                                {format(new Date(sub.pausedAt), "MMM d, yyyy")}
                               </p>
                             )}
                           </div>

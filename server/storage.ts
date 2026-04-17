@@ -1377,6 +1377,7 @@ export class DatabaseStorage {
   async updateSubscriptionStatus(id: number, status: 'active' | 'paused' | 'cancelled' | 'expired'): Promise<Subscription> {
     const updates: any = { status, updatedAt: new Date() };
     if (status === 'cancelled') updates.cancelledAt = new Date();
+    if (status === 'paused') updates.pausedAt = new Date();
     const [updated] = await db.update(subscriptions)
       .set(updates)
       .where(eq(subscriptions.id, id))
