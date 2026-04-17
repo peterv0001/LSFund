@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Zap,
   Filter,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,11 +74,18 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 type StatusFilter = "all" | "active" | "paused" | "cancelled" | "expired";
+type DateRangeFilter = "all" | "7d" | "30d";
+
+function getChangedAt(sub: Subscription): Date {
+  if (sub.status === "cancelled" && sub.cancelledAt) return new Date(sub.cancelledAt);
+  return new Date(sub.updatedAt);
+}
 
 export default function AdminSubscriptions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
 
   const { data: subscriptions = [], isLoading } = useQuery<Subscription[]>({
     queryKey: [api.admin.subscriptions.list.path],
@@ -109,9 +117,15 @@ export default function AdminSubscriptions() {
     .reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
   const totalSubs = subscriptions.length;
 
-  const filteredSubscriptions = statusFilter === "all"
-    ? subscriptions
-    : subscriptions.filter((s) => s.status === statusFilter);
+  const dateThreshold = dateRangeFilter === "all"
+    ? null
+    : new Date(Date.now() - (dateRangeFilter === "7d" ? 7 : 30) * 24 * 60 * 60 * 1000);
+
+  const filteredSubscriptions = subscriptions.filter((s) => {
+    if (statusFilter !== "all" && s.status !== statusFilter) return false;
+    if (dateThreshold && getChangedAt(s) < dateThreshold) return false;
+    return true;
+  });
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -186,7 +200,7 @@ export default function AdminSubscriptions() {
           </div>
 
           {/* Filter Bar */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <Filter className="w-4 h-4 text-gray-400" />
             <span className="text-sm font-medium text-gray-600">Filter by status:</span>
             <Select
@@ -204,7 +218,26 @@ export default function AdminSubscriptions() {
                 <SelectItem value="expired">Expired</SelectItem>
               </SelectContent>
             </Select>
-            {statusFilter !== "all" && (
+
+            <div className="flex items-center gap-2 ml-2">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium text-gray-600">Recently changed:</span>
+              <Select
+                value={dateRangeFilter}
+                onValueChange={(v) => setDateRangeFilter(v as DateRangeFilter)}
+              >
+                <SelectTrigger className="w-40 h-9 text-sm" data-testid="select-date-range-filter">
+                  <SelectValue placeholder="All time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All time</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(statusFilter !== "all" || dateRangeFilter !== "all") && (
               <span className="text-sm text-gray-500" data-testid="text-filter-count">
                 {filteredSubscriptions.length} result{filteredSubscriptions.length !== 1 ? "s" : ""}
               </span>
@@ -219,7 +252,9 @@ export default function AdminSubscriptions() {
           ) : filteredSubscriptions.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
-                {statusFilter === "all" ? "No subscriptions found." : `No ${statusFilter} subscriptions found.`}
+                {statusFilter === "all" && dateRangeFilter === "all"
+                  ? "No subscriptions found."
+                  : `No ${statusFilter === "all" ? "" : statusFilter + " "}subscriptions found${dateRangeFilter !== "all" ? ` in the last ${dateRangeFilter === "7d" ? "7" : "30"} days` : ""}.`}
               </CardContent>
             </Card>
           ) : (
