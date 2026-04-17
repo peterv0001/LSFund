@@ -28,6 +28,7 @@ import ResourcesPage from "@/pages/resources";
 import TrainingPage from "@/pages/training";
 import ReportsPage from "@/pages/reports";
 import LeadsPage from "@/pages/leads";
+import SubscriptionsPage from "@/pages/subscriptions";
 import NotFound from "@/pages/not-found";
 
 // Admin Pages
@@ -138,6 +139,7 @@ function Router() {
       <Route path="/reports" component={() => <ProtectedRoute component={ReportsPage} />} />
       <Route path="/training" component={() => <ProtectedRoute component={TrainingPage} />} />
       <Route path="/leads" component={() => <ProtectedRoute component={LeadsPage} />} />
+      <Route path="/subscriptions" component={() => <ProtectedRoute component={SubscriptionsPage} />} />
 
       {/* Admin Routes */}
       <Route path="/admin" component={() => <AdminRoute component={AdminDashboard} />} />

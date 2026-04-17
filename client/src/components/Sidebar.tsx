@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   BarChart3,
-  UserPlus
+  UserPlus,
+  RefreshCw
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ export function Sidebar() {
     { href: "/leads", label: "My Leads", icon: UserPlus },
     { href: "/team", label: "My Team", icon: Users },
     { href: "/deals", label: "Deals", icon: Briefcase },
+    { href: "/subscriptions", label: "Subscriptions", icon: RefreshCw },
     { href: "/earnings", label: "Earnings", icon: DollarSign },
     { href: "/reports", label: "Reports", icon: BarChart3 },
     { href: "/rank", label: "Rank Progress", icon: TrendingUp },

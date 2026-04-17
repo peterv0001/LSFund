@@ -78,6 +78,10 @@ const CONFIG = {
     postMonth12: 0.10,
   },
   mcaPairingBonus: 0.05,
+  subscriptionUplinesOverride: {
+    l1Rate: 0.10, // L1 sponsor earns 10% of the subscription pool × decay
+    l2Rate: 0.05, // L2 sponsor earns 5% of the subscription pool × decay
+  },
   subscriptionTierPrices: {
     tier_1: 199,
     tier_2: 429,
@@ -1292,22 +1296,113 @@ export async function registerRoutes(
     try {
       // @ts-ignore
       const agentId = req.user!.id;
-      const { merchantName, merchantEmail, tier, mcaPairedDealId } = req.body;
-      
+
+      const createSubSchema = z.object({
+        merchantName: z.string().min(2),
+        merchantEmail: z.string().email().optional().or(z.literal('')),
+        tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+        startDate: z.string().optional().refine((val) => {
+          if (!val) return true;
+          const d = new Date(val);
+          return !isNaN(d.getTime()) && d <= new Date();
+        }, { message: 'Start date must be a valid date and not in the future' }),
+        mcaPairedDealId: z.number().int().positive().optional(),
+      });
+
+      const input = createSubSchema.parse(req.body);
+
+      // If a paired deal is provided, validate it exists, is funded, and belongs to this agent
+      let verifiedPairedDealId: number | undefined;
+      if (input.mcaPairedDealId) {
+        const deal = await storage.getDeal(input.mcaPairedDealId);
+        if (!deal) {
+          return res.status(400).json({ message: 'Paired deal not found' });
+        }
+        if (deal.agentId !== agentId) {
+          return res.status(403).json({ message: 'You can only pair subscriptions with your own deals' });
+        }
+        if (deal.status !== 'funded') {
+          return res.status(400).json({ message: 'Only funded deals can be paired with a subscription' });
+        }
+        verifiedPairedDealId = deal.id;
+      }
+
       const tierPrices: Record<string, number> = CONFIG.subscriptionTierPrices;
-      const monthlyAmount = tierPrices[tier] || 199;
+      const monthlyAmount = tierPrices[input.tier] || 199;
+
+      const startDate = input.startDate ? new Date(input.startDate) : new Date();
       
       const sub = await storage.createSubscription({
         agentId,
-        merchantName,
-        merchantEmail,
-        tier,
+        merchantName: input.merchantName,
+        merchantEmail: input.merchantEmail || undefined,
+        tier: input.tier,
         monthlyAmount: monthlyAmount.toString(),
-        mcaPairedDealId: mcaPairedDealId || undefined,
+        mcaPairedDealId: verifiedPairedDealId,
+        startDate,
       });
+
+      // Fire initial subscription commission for the logging agent
+      const now = new Date();
+      const monthsSinceStart = Math.floor(
+        (now.getTime() - startDate.getTime()) / (30.44 * 24 * 60 * 60 * 1000)
+      );
+      let decayRate: number;
+      if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
+      else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;
+      else if (monthsSinceStart < 9) decayRate = CONFIG.subscriptionDecay.months7to9;
+      else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
+      else decayRate = CONFIG.subscriptionDecay.postMonth12;
+
+      const poolRate = CONFIG.subscriptionPools[input.tier] || 0.50;
+      let commissionRate = poolRate * decayRate;
+      // Only apply MCA pairing bonus when deal is verified and subscription is in its first 3 months
+      if (verifiedPairedDealId && monthsSinceStart < 3) {
+        commissionRate += CONFIG.mcaPairingBonus;
+      }
+
+      const commissionAmount = monthlyAmount * commissionRate;
+      const commType = monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
+      const periodDate = now.toISOString().split('T')[0];
+
+      if (commissionAmount > 0) {
+        await storage.createCommission({
+          agentId,
+          type: commType,
+          amount: commissionAmount.toFixed(2),
+          periodDate,
+          status: 'pending',
+        });
+
+        // Fire subscription commission waterfall to sponsoring upline agents
+        // L1 sponsor earns CONFIG.subscriptionUplinesOverride.l1Rate of pool × decay
+        // L2 sponsor earns CONFIG.subscriptionUplinesOverride.l2Rate of pool × decay
+        const upline = await storage.getUpline(agentId);
+        const uplineRates = [
+          CONFIG.subscriptionUplinesOverride.l1Rate,
+          CONFIG.subscriptionUplinesOverride.l2Rate,
+        ];
+        for (let i = 0; i < upline.length && i < uplineRates.length; i++) {
+          const sponsor = upline[i];
+          const uplineAmount = monthlyAmount * poolRate * uplineRates[i] * decayRate;
+          if (uplineAmount > 0) {
+            await storage.createCommission({
+              agentId: sponsor.id,
+              type: 'subscription_residual',
+              amount: uplineAmount.toFixed(2),
+              periodDate,
+              sourceAgentId: agentId,
+              status: 'pending',
+            });
+          }
+        }
+      }
       
       res.status(201).json(sub);
     } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
       console.error(err);
       res.status(500).json({ message: "Failed to create subscription" });
     }
