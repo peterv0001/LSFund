@@ -1408,6 +1408,47 @@ export async function registerRoutes(
     }
   });
 
+  // Agent self-service subscription status update
+  app.patch("/api/subscriptions/:id/status", requireAuth, async (req, res) => {
+    try {
+      const agentId = req.user!.id;
+      const subId = Number(req.params.id);
+
+      if (!subId || subId <= 0) {
+        return res.status(400).json({ message: 'Invalid subscription ID' });
+      }
+
+      const updateStatusSchema = z.object({
+        status: z.enum(['paused', 'cancelled', 'active']),
+      });
+      const { status } = updateStatusSchema.parse(req.body);
+
+      const existing = await storage.getSubscriptionsByAgent(agentId);
+      const sub = existing.find((s) => s.id === subId);
+      if (!sub) {
+        return res.status(404).json({ message: 'Subscription not found or you do not have permission to update it' });
+      }
+
+      if (sub.status === 'cancelled') {
+        return res.status(400).json({ message: 'Cannot update a cancelled subscription' });
+      }
+      if (sub.status === 'expired') {
+        return res.status(400).json({ message: 'Cannot update an expired subscription' });
+      }
+      if (status === 'active' && sub.status !== 'paused') {
+        return res.status(400).json({ message: 'Only paused subscriptions can be reactivated' });
+      }
+
+      const updated = await storage.updateSubscriptionStatus(subId, status);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: 'Failed to update subscription' });
+    }
+  });
+
   // Admin subscription management
   app.get("/api/admin/subscriptions", requireAdmin, async (req, res) => {
     const subs = await storage.getAllSubscriptions();

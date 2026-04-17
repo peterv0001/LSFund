@@ -30,11 +30,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Plus, RefreshCw, TrendingDown, Info } from "lucide-react";
+import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInMonths } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // === Types ===
 
@@ -425,8 +442,54 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
   const months = getMonthsActive(sub.startDate);
   const decay = getDecayRate(months);
   const estimatedComm = getEstimatedCommission(sub);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const statusMutation = useMutation({
+    mutationFn: async (status: "paused" | "cancelled" | "active") => {
+      const res = await apiRequest("PATCH", `/api/subscriptions/${sub.id}/status`, { status });
+      return res.json();
+    },
+    onSuccess: (_data, status) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      const labels: Record<string, string> = {
+        paused: "Subscription paused",
+        cancelled: "Subscription cancelled",
+        active: "Subscription reactivated",
+      };
+      toast({ title: labels[status] || "Subscription updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message || "Failed to update subscription", variant: "destructive" });
+    },
+  });
+
+  const isEditable = sub.status !== "cancelled" && sub.status !== "expired";
 
   return (
+    <>
+    <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will cancel the subscription for <strong>{sub.merchantName}</strong>. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid={`button-cancel-dialog-cancel-${sub.id}`}>Keep subscription</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => statusMutation.mutate("cancelled")}
+            data-testid={`button-cancel-dialog-confirm-${sub.id}`}
+          >
+            Yes, cancel it
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <div
       className="bg-white rounded-2xl border border-border shadow-sm p-6 hover:shadow-md transition-shadow"
       data-testid={`card-subscription-${sub.id}`}
@@ -440,13 +503,63 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
             <p className="text-sm text-muted-foreground">{sub.merchantEmail}</p>
           )}
         </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <Badge className={`text-xs border ${STATUS_COLORS[sub.status]}`} data-testid={`badge-status-${sub.id}`}>
-            {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
-          </Badge>
-          <span className="text-[10px] text-muted-foreground">
-            #{sub.id}
-          </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col items-end gap-1">
+            <Badge className={`text-xs border ${STATUS_COLORS[sub.status]}`} data-testid={`badge-status-${sub.id}`}>
+              {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+            </Badge>
+            <span className="text-[10px] text-muted-foreground">
+              #{sub.id}
+            </span>
+          </div>
+          {isEditable && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  disabled={statusMutation.isPending}
+                  data-testid={`button-subscription-actions-${sub.id}`}
+                >
+                  {statusMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <MoreVertical className="w-4 h-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {sub.status === "active" && (
+                  <DropdownMenuItem
+                    onClick={() => statusMutation.mutate("paused")}
+                    data-testid={`menu-pause-${sub.id}`}
+                  >
+                    <Pause className="w-4 h-4 mr-2 text-yellow-500" />
+                    Pause subscription
+                  </DropdownMenuItem>
+                )}
+                {sub.status === "paused" && (
+                  <DropdownMenuItem
+                    onClick={() => statusMutation.mutate("active")}
+                    data-testid={`menu-reactivate-${sub.id}`}
+                  >
+                    <Play className="w-4 h-4 mr-2 text-green-500" />
+                    Reactivate subscription
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red-600 focus:text-red-600"
+                  onClick={() => setCancelDialogOpen(true)}
+                  data-testid={`menu-cancel-${sub.id}`}
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Cancel subscription
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -492,6 +605,7 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
 
       <DecayScheduleBar sub={sub} />
     </div>
+    </>
   );
 }
 
