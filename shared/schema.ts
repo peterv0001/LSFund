@@ -828,6 +828,7 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   createdAt: true,
   updatedAt: true,
   cancelledAt: true,
+  pausedAt: true,
 }).extend({
   monthlyAmount: z.coerce.number().min(0),
 });

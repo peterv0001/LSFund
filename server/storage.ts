@@ -1378,6 +1378,7 @@ export class DatabaseStorage {
     const updates: any = { status, updatedAt: new Date() };
     if (status === 'cancelled') updates.cancelledAt = new Date();
     if (status === 'paused') updates.pausedAt = new Date();
+    if (status === 'active') updates.pausedAt = null;
     const [updated] = await db.update(subscriptions)
       .set(updates)
       .where(eq(subscriptions.id, id))
