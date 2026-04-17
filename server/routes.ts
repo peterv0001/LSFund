@@ -1440,6 +1440,43 @@ export async function registerRoutes(
       }
 
       const updated = await storage.updateSubscriptionStatus(subId, status);
+
+      if (status === 'paused' || status === 'cancelled') {
+        const agent = await storage.getAgent(agentId);
+        const effectiveDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+        const notificationTitle = status === 'paused'
+          ? `Subscription Paused: ${sub.merchantName}`
+          : `Subscription Cancelled: ${sub.merchantName}`;
+        const notificationMessage = status === 'paused'
+          ? `Your ${tierLabel} subscription for ${sub.merchantName} has been paused as of ${effectiveDate}. Commission accrual is on hold until reactivated.`
+          : `Your ${tierLabel} subscription for ${sub.merchantName} has been cancelled as of ${effectiveDate}.`;
+
+        storage.createNotification({
+          agentId,
+          type: 'system',
+          title: notificationTitle,
+          message: notificationMessage,
+        }).catch((err) => console.error('[Notification] Failed to create subscription status notification:', err));
+
+        if (agent) {
+          const emailData = {
+            firstName: agent.firstName,
+            merchantName: sub.merchantName,
+            tier: tierLabel,
+            effectiveDate,
+          };
+          if (status === 'paused') {
+            emailService.sendSubscriptionPausedEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send subscription paused email:', err));
+          } else {
+            emailService.sendSubscriptionCancelledEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send subscription cancelled email:', err));
+          }
+        }
+      }
+
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
