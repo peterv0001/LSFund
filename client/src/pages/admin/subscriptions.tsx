@@ -265,6 +265,18 @@ export default function AdminSubscriptions() {
     URL.revokeObjectURL(url);
   }
 
+  const activeFilterCount = [
+    statusFilter !== "all",
+    dateRangeFilter !== "all",
+    agentFilter !== null,
+  ].filter(Boolean).length;
+
+  function clearAllFilters() {
+    setStatusFilter("all");
+    setDateRangeFilter("all");
+    setAgentFilter(null);
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
@@ -481,6 +493,19 @@ export default function AdminSubscriptions() {
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
+            )}
+
+            {activeFilterCount >= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-clear-all-filters"
+                onClick={clearAllFilters}
+                className="h-9 text-sm gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear all filters
+              </Button>
             )}
 
             {hasActiveFilters && (
