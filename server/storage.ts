@@ -1044,6 +1044,7 @@ export class DatabaseStorage {
     actorId?: number;
     entityType?: string;
     entityId?: number;
+    action?: string;
     search?: string;
     startDate?: Date;
     endDate?: Date;
@@ -1057,6 +1058,9 @@ export class DatabaseStorage {
     }
     if (filters?.entityType) {
       conditions.push(eq(activityLog.entityType, filters.entityType));
+    }
+    if (filters?.action) {
+      conditions.push(eq(activityLog.action, filters.action));
     }
     if (filters?.entityId) {
       conditions.push(eq(activityLog.entityId, filters.entityId));

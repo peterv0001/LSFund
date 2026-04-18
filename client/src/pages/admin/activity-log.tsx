@@ -68,7 +68,23 @@ type Filters = {
   startDate: string;
   endDate: string;
   entityType: string;
+  action: string;
 };
+
+const ACTION_OPTIONS = [
+  { value: "create", label: "Create" },
+  { value: "update", label: "Update" },
+  { value: "delete", label: "Delete" },
+  { value: "approve", label: "Approve" },
+  { value: "reject", label: "Reject" },
+  { value: "suspend", label: "Suspend" },
+  { value: "activate", label: "Activate" },
+  { value: "pause", label: "Pause" },
+  { value: "cancel", label: "Cancel" },
+  { value: "void", label: "Void" },
+  { value: "release", label: "Release" },
+  { value: "clawback", label: "Clawback" },
+];
 
 const ENTITY_TYPE_OPTIONS = [
   { value: "agent", label: "Agent" },
@@ -112,8 +128,8 @@ const ACTIVITY_LOG_PATH = "/api/admin/activity-log";
 export default function AdminActivityLog() {
   const [page, setPage] = useState(1);
   const pageSize = 50;
-  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "" });
-  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "" });
+  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "" });
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "" });
 
   function buildQuery() {
     const q: Record<string, string | number> = { page, pageSize };
@@ -121,10 +137,11 @@ export default function AdminActivityLog() {
     if (appliedFilters.startDate) q.startDate = appliedFilters.startDate;
     if (appliedFilters.endDate) q.endDate = appliedFilters.endDate;
     if (appliedFilters.entityType) q.entityType = appliedFilters.entityType;
+    if (appliedFilters.action) q.action = appliedFilters.action;
     return q;
   }
 
-  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate, appliedFilters.entityType];
+  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate, appliedFilters.entityType, appliedFilters.action];
 
   const { data, isLoading } = useQuery<ActivityLogResponse>({
     queryKey,
@@ -146,13 +163,13 @@ export default function AdminActivityLog() {
   }, [filters]);
 
   function clearFilters() {
-    const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "" };
+    const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "", action: "" };
     setFilters(blank);
     setAppliedFilters(blank);
     setPage(1);
   }
 
-  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate || appliedFilters.entityType;
+  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate || appliedFilters.entityType || appliedFilters.action;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -202,6 +219,25 @@ export default function AdminActivityLog() {
                     <SelectContent>
                       <SelectItem value="all">All types</SelectItem>
                       {ENTITY_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="log-action">Action</Label>
+                  <Select
+                    value={filters.action}
+                    onValueChange={(val) => setFilters({ ...filters, action: val === "all" ? "" : val })}
+                  >
+                    <SelectTrigger id="log-action" data-testid="select-action" className="w-40">
+                      <SelectValue placeholder="All actions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All actions</SelectItem>
+                      {ACTION_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>
