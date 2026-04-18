@@ -1,6 +1,6 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Database, CheckCircle2, Clock, RotateCcw, AlertTriangle } from "lucide-react";
+import { Database, CheckCircle2, Clock, RotateCcw, AlertTriangle, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -72,6 +72,39 @@ export default function AdminMigrations() {
       const message =
         err instanceof Error ? err.message : "Failed to revert migration";
       toast({ title: "Revert failed", description: message, variant: "destructive" });
+    },
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch(
+        `/api/admin/migrations/${encodeURIComponent(name)}/apply`,
+        { method: "POST", credentials: "include" }
+      );
+      const body: unknown = await res.json();
+      if (!res.ok) {
+        const serverMessage =
+          typeof body === "object" &&
+          body !== null &&
+          "message" in body &&
+          typeof (body as Record<string, unknown>).message === "string"
+            ? (body as Record<string, unknown>).message as string
+            : "Failed to apply migration";
+        throw new Error(serverMessage);
+      }
+      return body;
+    },
+    onSuccess: (_data, name) => {
+      toast({
+        title: "Migration applied",
+        description: `"${name}" was applied successfully.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/migrations"] });
+    },
+    onError: (err: unknown) => {
+      const message =
+        err instanceof Error ? err.message : "Failed to apply migration";
+      toast({ title: "Apply failed", description: message, variant: "destructive" });
     },
   });
 
@@ -222,9 +255,38 @@ export default function AdminMigrations() {
                             </p>
                             <p className="text-xs text-gray-400 mt-0.5">Not yet applied</p>
                           </div>
-                          <Badge variant="outline" className="ml-4 text-yellow-600 border-yellow-200">
-                            Pending
-                          </Badge>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="ml-4 text-green-700 border-green-200 hover:bg-green-50 hover:text-green-800"
+                                disabled={applyMutation.isPending}
+                                data-testid={`button-apply-${m.name}`}
+                              >
+                                <Play className="w-3.5 h-3.5 mr-1.5" />
+                                Apply
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Apply migration?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will run the forward migration for <span className="font-mono font-semibold">{m.name}</span>. This action modifies the database schema and cannot be undone without reverting the migration.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel data-testid="button-cancel-apply">Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-green-700 hover:bg-green-800 focus:ring-green-700"
+                                  onClick={() => applyMutation.mutate(m.name)}
+                                  data-testid="button-confirm-apply"
+                                >
+                                  Apply migration
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </li>
                       ))}
                     </ul>

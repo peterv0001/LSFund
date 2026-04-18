@@ -182,6 +182,60 @@ export async function runMigrations(options?: {
 }
 
 /**
+ * Applies a single named migration that has not yet been applied. Runs its
+ * `run` function inside a transaction. On success the row is inserted into
+ * `schema_migrations`. On failure the transaction is rolled back.
+ */
+export async function applyMigration(
+  name: string,
+  options?: {
+    pool?: Pool;
+    migrations?: Migration[];
+  }
+): Promise<void> {
+  const pool = options?.pool ?? defaultPool;
+  const migrationList = options?.migrations ?? migrations;
+
+  const migration = migrationList.find((m) => m.name === name);
+  if (!migration) {
+    throw new Error(`Migration "${name}" not found`);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query(`SELECT pg_advisory_lock($1)`, [ADVISORY_LOCK_KEY]);
+    try {
+      await ensureMigrationsTable(client);
+
+      const alreadyApplied = await hasRun(client, name);
+      if (alreadyApplied) {
+        throw new Error(`Migration "${name}" has already been applied`);
+      }
+
+      console.log(`[migrations] Applying ${name}…`);
+      await client.query("BEGIN");
+      try {
+        await migration.run(client);
+        await markRun(client, name);
+        await client.query("COMMIT");
+        console.log(`[migrations] ${name} applied`);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error(
+          `[migrations] ${name} failed — transaction rolled back`,
+          err
+        );
+        throw err;
+      }
+    } finally {
+      await client.query(`SELECT pg_advisory_unlock($1)`, [ADVISORY_LOCK_KEY]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Reverts a previously applied migration by running its `down` function inside
  * a transaction. On success the row is removed from `schema_migrations`.
  * On failure the transaction is rolled back, leaving the database unchanged.

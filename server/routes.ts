@@ -12,7 +12,7 @@ import { pool } from "./db";
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
-import { migrations, revertMigration } from "./migrations";
+import { migrations, revertMigration, applyMigration } from "./migrations";
 import { emailService } from "./email";
 
 // Extend Express User type
@@ -2350,6 +2350,42 @@ export async function registerRoutes(
       res.json(list);
     } catch {
       res.status(500).json({ message: "Failed to fetch migrations" });
+    }
+  });
+
+  // Admin: Apply a pending migration
+  app.post("/api/admin/migrations/:name/apply", requireAdmin, async (req, res) => {
+    const { name } = req.params;
+
+    const migration = migrations.find((m) => m.name === name);
+    if (!migration) {
+      return res.status(400).json({ message: `Migration "${name}" not found` });
+    }
+    const appliedResult = await pool.query<{ exists: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE name = $1) AS exists`,
+      [name]
+    );
+    if (appliedResult.rows[0].exists) {
+      return res.status(400).json({ message: `Migration "${name}" has already been applied` });
+    }
+
+    try {
+      await applyMigration(name);
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: "admin",
+        action: "apply_migration",
+        entityType: "migration",
+        entityId: 0,
+        description: `Applied migration: ${name}`,
+        details: { migration: name },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers["user-agent"] ?? null,
+      });
+      res.json({ message: `Migration "${name}" applied successfully` });
+    } catch (err: unknown) {
+      console.error(`[migrations] apply "${name}" failed`, err);
+      res.status(500).json({ message: "Migration apply failed due to a server error" });
     }
   });
 
