@@ -92,7 +92,7 @@ const ACTION_OPTIONS = [
   { value: "void", label: "Void" },
   { value: "release", label: "Release" },
   { value: "clawback", label: "Clawback" },
-  { value: "apply_migration", label: "Apply Migration" },
+  { value: "run_migration", label: "Run Migration" },
   { value: "revert_migration", label: "Revert Migration" },
 ];
 
@@ -133,7 +133,7 @@ const ACTION_COLORS: Record<string, string> = {
   pause: "bg-amber-100 text-amber-700",
   cancel: "bg-red-100 text-red-700",
   reactivate: "bg-green-100 text-green-700",
-  apply_migration: "bg-purple-100 text-purple-700",
+  run_migration: "bg-green-100 text-green-700",
   revert_migration: "bg-orange-100 text-orange-700",
 };
 

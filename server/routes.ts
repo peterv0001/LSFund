@@ -2382,7 +2382,7 @@ export async function registerRoutes(
       await storage.logActivity({
         actorId: req.user!.id,
         actorType: "admin",
-        action: "apply_migration",
+        action: "run_migration",
         entityType: "migration",
         entityId: 0,
         description: `Applied migration: ${name}`,
