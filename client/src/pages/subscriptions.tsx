@@ -66,6 +66,7 @@ type Subscription = {
   mcaPairedDealId: number | null;
   startDate: string;
   cancelledAt: string | null;
+  pausedAt: string | null;
   createdAt: string;
 };
 
@@ -602,6 +603,12 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         <span>Started {format(new Date(sub.startDate), "MMM d, yyyy")}</span>
         <span className="font-medium text-gray-600">Decay: {(decay * 100).toFixed(0)}%</span>
       </div>
+
+      {sub.status === "paused" && sub.pausedAt && (
+        <p className="mt-1 text-xs text-yellow-600 font-medium" data-testid={`text-paused-since-${sub.id}`}>
+          Paused since {format(new Date(sub.pausedAt), "MMM d, yyyy")}
+        </p>
+      )}
 
       <DecayScheduleBar sub={sub} />
     </div>
