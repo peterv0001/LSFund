@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import pg from "pg";
-import { runMigrations, revertMigration, type Migration } from "./migrations.js";
+import { runMigrations, revertMigration, applyMigration, type Migration } from "./migrations.js";
 
 const { Pool } = pg;
 
@@ -380,5 +380,102 @@ describe("003_add_reactivated_columns rollback", () => {
     expect(await columnExists("subscriptions", "reactivated_at")).toBe(false);
     expect(await columnExists("subscriptions", "reactivated_by_id")).toBe(false);
     expect(await migrationRecorded(MIGRATION_NAME)).toBe(false);
+  });
+});
+
+describe("applyMigration – ordering check", () => {
+  const ts = Date.now();
+  const NAME_A = `test_ordering_a_${ts}`;
+  const NAME_B = `test_ordering_b_${ts}`;
+  const NAME_C = `test_ordering_c_${ts}`;
+
+  const noopMigration = (name: string): Migration => ({
+    name,
+    async run(client) {
+      // no schema change needed for ordering tests
+    },
+    async down(client) {
+      // no-op
+    },
+  });
+
+  const orderedMigrations: Migration[] = [
+    noopMigration(NAME_A),
+    noopMigration(NAME_B),
+    noopMigration(NAME_C),
+  ];
+
+  async function removeRecord(name: string) {
+    const client = await testPool.connect();
+    try {
+      await client.query(`DELETE FROM schema_migrations WHERE name = $1`, [name]);
+    } finally {
+      client.release();
+    }
+  }
+
+  afterEach(async () => {
+    // Clean up any records created during tests
+    for (const name of [NAME_A, NAME_B, NAME_C]) {
+      await removeRecord(name);
+    }
+  });
+
+  it("applies successfully when all earlier migrations are already applied", async () => {
+    // Mark A and B as applied first
+    const client = await testPool.connect();
+    try {
+      await client.query(
+        `INSERT INTO schema_migrations (name) VALUES ($1), ($2) ON CONFLICT DO NOTHING`,
+        [NAME_A, NAME_B]
+      );
+    } finally {
+      client.release();
+    }
+
+    await expect(
+      applyMigration(NAME_C, { pool: testPool, migrations: orderedMigrations })
+    ).resolves.toBeUndefined();
+
+    expect(await migrationRecorded(NAME_C)).toBe(true);
+  });
+
+  it("throws when an earlier migration has not been applied", async () => {
+    // Only A is applied; B is missing; try to apply C
+    const client = await testPool.connect();
+    try {
+      await client.query(
+        `INSERT INTO schema_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING`,
+        [NAME_A]
+      );
+    } finally {
+      client.release();
+    }
+
+    await expect(
+      applyMigration(NAME_C, { pool: testPool, migrations: orderedMigrations })
+    ).rejects.toThrow(NAME_B);
+
+    // C should not have been recorded
+    expect(await migrationRecorded(NAME_C)).toBe(false);
+  });
+
+  it("includes all missing predecessor names in the error message", async () => {
+    // Neither A nor B are applied; try to apply C
+    await expect(
+      applyMigration(NAME_C, { pool: testPool, migrations: orderedMigrations })
+    ).rejects.toSatisfy((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      return msg.includes(NAME_A) && msg.includes(NAME_B);
+    });
+  });
+
+  it("applies the first migration in the list without any ordering check", async () => {
+    // A is first — no predecessors to check
+    await expect(
+      applyMigration(NAME_A, { pool: testPool, migrations: orderedMigrations })
+    ).resolves.toBeUndefined();
+
+    expect(await migrationRecorded(NAME_A)).toBe(true);
   });
 });

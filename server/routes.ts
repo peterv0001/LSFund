@@ -2422,6 +2422,27 @@ export async function registerRoutes(
       return res.status(400).json({ message: `Migration "${name}" has already been applied` });
     }
 
+    // Check ordering: all earlier migrations in the list must be applied first
+    const migrationIndex = migrations.findIndex((m) => m.name === name);
+    const earlierMigrations = migrations.slice(0, migrationIndex);
+    const unappliedEarlier: string[] = [];
+    for (const earlier of earlierMigrations) {
+      const earlierResult = await pool.query<{ exists: boolean }>(
+        `SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE name = $1) AS exists`,
+        [earlier.name]
+      );
+      if (!earlierResult.rows[0].exists) {
+        unappliedEarlier.push(earlier.name);
+      }
+    }
+    if (unappliedEarlier.length > 0) {
+      const list = unappliedEarlier.map((n) => `"${n}"`).join(", ");
+      const plural = unappliedEarlier.length > 1 ? "s" : "";
+      return res.status(400).json({
+        message: `Cannot apply "${name}" — the following earlier migration${plural} must be applied first: ${list}`,
+      });
+    }
+
     try {
       await applyMigration(name);
       await storage.logActivity({
@@ -2437,6 +2458,15 @@ export async function registerRoutes(
       });
       res.json({ message: `Migration "${name}" applied successfully` });
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      // Known validation errors from applyMigration — return 400 with the original message
+      const isValidationError =
+        message.startsWith(`Migration "${name}" has already been applied`) ||
+        message.startsWith(`Cannot apply "${name}"`) ||
+        message.startsWith(`Migration "${name}" not found`);
+      if (isValidationError) {
+        return res.status(400).json({ message });
+      }
       console.error(`[migrations] apply "${name}" failed`, err);
       res.status(500).json({ message: "Migration apply failed due to a server error" });
     }

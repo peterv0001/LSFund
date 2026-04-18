@@ -239,6 +239,22 @@ export async function applyMigration(
         throw new Error(`Migration "${name}" has already been applied`);
       }
 
+      // Enforce ordering: all earlier migrations in the list must be applied first
+      const migrationIndex = migrationList.findIndex((m) => m.name === name);
+      const unappliedEarlier: string[] = [];
+      for (const earlier of migrationList.slice(0, migrationIndex)) {
+        if (!(await hasRun(client, earlier.name))) {
+          unappliedEarlier.push(earlier.name);
+        }
+      }
+      if (unappliedEarlier.length > 0) {
+        const list = unappliedEarlier.map((n) => `"${n}"`).join(", ");
+        const plural = unappliedEarlier.length > 1 ? "s" : "";
+        throw new Error(
+          `Cannot apply "${name}" — the following earlier migration${plural} must be applied first: ${list}`
+        );
+      }
+
       console.log(`[migrations] Applying ${name}…`);
       await client.query("BEGIN");
       try {
