@@ -288,6 +288,22 @@ export default function AdminSubscriptions() {
     const qs = params.toString();
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }, [setLocation]);
+
+  const updateAgentInUrl = useCallback((agentId: number | null) => {
+    const params = new URLSearchParams(window.location.search);
+    if (agentId === null) {
+      params.delete("agentId");
+    } else {
+      params.set("agentId", String(agentId));
+    }
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
+
+  const handleAgentFilterChange = useCallback((agentId: number | null) => {
+    setAgentFilter(agentId);
+    updateAgentInUrl(agentId);
+  }, [updateAgentInUrl]);
   const [selectedColumns, setSelectedColumns] = useState<Set<ExportColumnKey>>(
     new Set(DEFAULT_EXPORT_COLUMNS)
   );
@@ -517,7 +533,14 @@ export default function AdminSubscriptions() {
     setCustomStartDate("");
     setCustomEndDate("");
     setAgentFilter(null);
-    updateDateRangeInUrl("all", "", "");
+    persistDateFilter("all", "", "");
+    const params = new URLSearchParams(window.location.search);
+    params.delete("range");
+    params.delete("start");
+    params.delete("end");
+    params.delete("agentId");
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }
 
   function toggleColumn(key: ExportColumnKey) {
@@ -622,7 +645,7 @@ export default function AdminSubscriptions() {
                       <button
                         key={summary.agentId}
                         data-testid={`chip-agent-${summary.agentId}`}
-                        onClick={() => setAgentFilter(isSelected ? null : summary.agentId)}
+                        onClick={() => handleAgentFilterChange(isSelected ? null : summary.agentId)}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors cursor-pointer ${
                           isSelected
                             ? "bg-primary text-white border-primary shadow-sm"
@@ -751,7 +774,7 @@ export default function AdminSubscriptions() {
                 <span>{selectedAgentSummary?.agentName ?? `Agent #${agentFilter}`}</span>
                 <button
                   data-testid="button-clear-agent-filter"
-                  onClick={() => setAgentFilter(null)}
+                  onClick={() => handleAgentFilterChange(null)}
                   className="ml-0.5 hover:text-primary/70 transition-colors"
                   aria-label="Clear agent filter"
                 >
