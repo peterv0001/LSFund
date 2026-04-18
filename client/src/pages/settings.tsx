@@ -72,13 +72,14 @@ export default function SettingsPage() {
   });
 
   // Notification preferences state
-  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean } | null) ?? {};
+  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean } | null) ?? {};
   const [notifPrefs, setNotifPrefs] = useState({
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
     emailOnReactivated: defaultPrefs.emailOnReactivated !== false,
     emailOnDealFunded: defaultPrefs.emailOnDealFunded !== false,
     emailOnTeamSignup: defaultPrefs.emailOnTeamSignup !== false,
+    emailOnCommissionEarned: defaultPrefs.emailOnCommissionEarned !== false,
   });
 
   type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated';
@@ -526,6 +527,20 @@ export default function SettingsPage() {
                       data-testid="toggle-email-on-team-signup"
                       checked={notifPrefs.emailOnTeamSignup}
                       onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnTeamSignup: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Commission Earned</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when you earn a commission (sponsor overrides, fulfillment, binary bonuses).
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-commission-earned"
+                      checked={notifPrefs.emailOnCommissionEarned}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnCommissionEarned: checked }))}
                     />
                   </div>
                 </div>

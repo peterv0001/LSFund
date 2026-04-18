@@ -840,6 +840,15 @@ export async function registerRoutes(
             isRead: false,
             emailSent: false,
           });
+          const sponsorCommPrefs = (sponsor.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+          if (sponsorCommPrefs.emailOnCommissionEarned !== false) {
+            emailService.sendCommissionEarnedEmail(sponsor.email, {
+              firstName: sponsor.firstName,
+              commissionType: `L${sponsorLevel + 1} Sponsor Override`,
+              amount: sponsorImmediate,
+              description: `From ${agent!.firstName} ${agent!.lastName}'s deal (${deal.merchantName})`,
+            }).catch(console.error);
+          }
           
           sponsorLevel++;
         }
@@ -880,6 +889,18 @@ export async function registerRoutes(
             isRead: false,
             emailSent: false,
           });
+          const fulfillmentAgent = await storage.getAgent(fulfillmentAgentId);
+          if (fulfillmentAgent) {
+            const fulfillmentCommPrefs = (fulfillmentAgent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+            if (fulfillmentCommPrefs.emailOnCommissionEarned !== false) {
+              emailService.sendCommissionEarnedEmail(fulfillmentAgent.email, {
+                firstName: fulfillmentAgent.firstName,
+                commissionType: 'Transaction Fulfillment Compensation (TFC)',
+                amount: tfcImmediate,
+                description: `From ${deal.merchantName} deal`,
+              }).catch(console.error);
+            }
+          }
         }
       }
   }
@@ -1298,6 +1319,15 @@ export async function registerRoutes(
               isRead: false,
               emailSent: false,
             });
+            const binaryCommPrefs = (agent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+            if (binaryCommPrefs.emailOnCommissionEarned !== false) {
+              emailService.sendCommissionEarnedEmail(agent.email, {
+                firstName: agent.firstName,
+                commissionType: 'Binary Bonus',
+                amount: bonus,
+                description: 'Weekly binary bonus calculation',
+              }).catch(console.error);
+            }
             
             processed++;
           }

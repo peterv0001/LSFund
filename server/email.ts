@@ -415,6 +415,68 @@ const templates = {
     `,
   }),
 
+  commissionEarned: (data: { firstName: string; commissionType: string; amount: number; description: string; dashboardUrl: string }) => ({
+    subject: `💵 Commission Earned: $${data.amount.toFixed(2)} – ${data.commissionType}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">💵</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Commission Earned!</h1>
+    </div>
+
+    <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
+      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Great work, ${data.firstName}!</h2>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        You've earned a new commission. Here are the details:
+      </p>
+
+      <div style="background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 12px; padding: 24px; margin: 20px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Commission Type</span>
+          <strong style="color: #1e3a5f;">${data.commissionType}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Details</span>
+          <strong style="color: #1e3a5f;">${data.description}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #99f6e4;">
+          <span style="color: #718096;">Amount Earned</span>
+          <strong style="color: #0f766e; font-size: 20px;">$${data.amount.toFixed(2)}</strong>
+        </div>
+      </div>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 20px 0;">
+        This commission is pending approval and will be included in your next payout once approved.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          View Your Earnings →
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 14px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        You can manage your email preferences in your <a href="${data.dashboardUrl.replace('/earnings', '/settings')}" style="color: #1e3a5f;">account settings</a>.
+      </p>
+    </div>
+
+    <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
+      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
   teamSignup: (data: { firstName: string; newMemberName: string; dashboardUrl: string }) => ({
     subject: `🙌 New Team Member: ${data.newMemberName} joined your team!`,
     html: `
@@ -632,6 +694,31 @@ export const emailService = {
       console.log(`[Email] Subscription expired email sent to ${to}`);
     } catch (error) {
       console.error('[Email] Failed to send subscription expired email:', error);
+    }
+  },
+
+  async sendCommissionEarnedEmail(to: string, data: { firstName: string; commissionType: string; amount: number; description: string }) {
+    if (!process.env.RESEND_API_KEY) {
+      console.log('[Email] Skipping commission earned email - RESEND_API_KEY not set');
+      return;
+    }
+
+    try {
+      const template = templates.commissionEarned({
+        ...data,
+        dashboardUrl: `${APP_URL}/earnings`,
+      });
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+
+      console.log(`[Email] Commission earned email sent to ${to}`);
+    } catch (error) {
+      console.error('[Email] Failed to send commission earned email:', error);
     }
   },
 
