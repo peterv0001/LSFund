@@ -1626,7 +1626,7 @@ export async function registerRoutes(
           action,
           entityType: 'subscription',
           entityId: updated.id,
-          description: `Admin ${actionLabel} subscription #${updated.id}${existingSub ? ` for merchant "${existingSub.merchantName}"` : ''} (tier: ${updated.tier})`,
+          description: `Admin ${req.user!.firstName} ${req.user!.lastName} ${actionLabel} subscription #${updated.id}${existingSub ? ` for merchant "${existingSub.merchantName}"` : ''} (tier: ${updated.tier})`,
           details: {
             previousStatus: existingSub?.status ?? null,
             newStatus: status,
