@@ -13,6 +13,7 @@ import {
   CreditCard,
   Search,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -66,6 +67,7 @@ const ENTITY_ICONS: Record<string, React.ElementType> = {
   commission: DollarSign,
   payout: CreditCard,
   settings: Settings,
+  subscription: RefreshCw,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -79,6 +81,8 @@ const ACTION_COLORS: Record<string, string> = {
   void: "bg-red-100 text-red-700",
   release: "bg-cyan-100 text-cyan-700",
   clawback: "bg-red-100 text-red-700",
+  pause: "bg-amber-100 text-amber-700",
+  cancel: "bg-red-100 text-red-700",
 };
 
 const ACTIVITY_LOG_PATH = "/api/admin/activity-log";

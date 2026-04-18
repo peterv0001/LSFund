@@ -1497,6 +1497,27 @@ export async function registerRoutes(
       const { status } = req.body;
       const actorId = req.user?.id;
       const updated = await storage.updateSubscriptionStatus(Number(req.params.id), status, actorId);
+
+      if ((status === 'paused' || status === 'cancelled') && actorId) {
+        const action = status === 'paused' ? 'pause' : 'cancel';
+        await storage.logActivity({
+          actorId,
+          actorType: 'admin',
+          action,
+          entityType: 'subscription',
+          entityId: updated.id,
+          description: `Admin ${status} subscription #${updated.id} (merchant: ${updated.merchantName}, tier: ${updated.tier})`,
+          details: {
+            subscriptionId: updated.id,
+            merchantName: updated.merchantName,
+            tier: updated.tier,
+            status,
+          },
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent'] ?? null,
+        });
+      }
+
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update subscription" });
