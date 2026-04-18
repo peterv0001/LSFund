@@ -497,6 +497,433 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
 });
 
 // =========================================================
+// GET /api/subscriptions/history – All Activity timeline
+// These tests spin up the real Express app and verify the
+// combined history endpoint used by the AllActivityTimeline
+// component: authentication, entry content, merchant labels,
+// and pagination.
+// =========================================================
+
+const HISTORY_AGENT_EMAIL_PREFIX = `history-test-${Date.now()}`;
+const HISTORY_AGENT_PASSWORD = "HistoryTestPass1!";
+let historyAgentId: number;
+let historyAgentCookie: string[];
+
+beforeAll(async () => {
+  const [agent] = await db
+    .insert(schema.agents)
+    .values({
+      email: `${HISTORY_AGENT_EMAIL_PREFIX}@example.com`,
+      password: await hashPasswordForTest(HISTORY_AGENT_PASSWORD),
+      firstName: "History",
+      lastName: "Agent",
+      currentRank: "agent",
+      highestRank: "agent",
+      isAdmin: false,
+    })
+    .returning();
+  historyAgentId = agent.id;
+
+  const loginRes = await request(testApp)
+    .post("/api/login")
+    .send({
+      username: `${HISTORY_AGENT_EMAIL_PREFIX}@example.com`,
+      password: HISTORY_AGENT_PASSWORD,
+    });
+  historyAgentCookie = loginRes.headers["set-cookie"] as unknown as string[];
+}, 30000);
+
+afterAll(async () => {
+  // Per-test cleanups handle individual activity log entries.
+  // Clean up any leftover subscriptions and the test agent.
+  await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, historyAgentId));
+  await db.delete(schema.agents).where(eq(schema.agents.id, historyAgentId));
+});
+
+describe("GET /api/subscriptions/history – authentication", () => {
+  it("returns 401 when the request is not authenticated", async () => {
+    await request(testApp).get("/api/subscriptions/history").expect(401);
+  });
+
+  it("returns 200 with an authenticated agent session", async () => {
+    const res = await request(testApp)
+      .get("/api/subscriptions/history")
+      .set("Cookie", historyAgentCookie)
+      .expect(200);
+
+    expect(res.body).toHaveProperty("logs");
+    expect(res.body).toHaveProperty("total");
+    expect(res.body).toHaveProperty("page");
+    expect(res.body).toHaveProperty("pageSize");
+    expect(Array.isArray(res.body.logs)).toBe(true);
+  });
+});
+
+describe("GET /api/subscriptions/history – empty history", () => {
+  it("returns empty logs when the agent has no subscriptions", async () => {
+    const res = await request(testApp)
+      .get("/api/subscriptions/history")
+      .set("Cookie", historyAgentCookie)
+      .expect(200);
+
+    // This agent has no subscriptions yet at this point in the suite
+    expect(res.body.total).toBe(0);
+    expect(res.body.logs).toHaveLength(0);
+  });
+});
+
+describe("GET /api/subscriptions/history – activity entries after subscription actions", () => {
+  it("shows a create entry in the history after the agent logs a new subscription", async () => {
+    const merchantName = "New Merchant Create Test";
+
+    const createRes = await request(testApp)
+      .post("/api/subscriptions")
+      .set("Cookie", historyAgentCookie)
+      .send({ merchantName, tier: "tier_1" })
+      .expect(201);
+
+    const subId: number = createRes.body.id;
+
+    try {
+      // Fire-and-forget logActivity; poll until it lands
+      const entry = await pollForActivityLogEntry(subId, "create");
+      expect(entry).toBeDefined();
+      expect(entry?.action).toBe("create");
+      expect(entry?.entityType).toBe("subscription");
+      expect(entry?.entityId).toBe(subId);
+
+      // Verify the history endpoint surfaces it with the merchant name
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number; merchantName: string }) =>
+          l.action === "create" && l.entityId === subId
+      );
+      expect(match).toBeDefined();
+      expect(match.merchantName).toBe(merchantName);
+    } finally {
+      await cleanupActivityLog(subId);
+      // Also remove the commission created by the route
+      await db.delete(schema.commissions).where(eq(schema.commissions.agentId, historyAgentId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subId));
+    }
+  });
+
+  it("shows a pause entry in the history after an admin pauses the agent's subscription", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "History Merchant",
+        tier: "tier_1",
+        monthlyAmount: "199.00",
+        status: "active",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    try {
+      const adminCookie = await loginAsAdmin();
+      await request(testApp)
+        .patch(`/api/admin/subscriptions/${sub.id}/status`)
+        .set("Cookie", adminCookie)
+        .send({ status: "paused" })
+        .expect(200);
+
+      // Poll until the fire-and-forget logActivity write completes
+      const entry = await pollForActivityLogEntry(sub.id, "pause");
+      expect(entry).toBeDefined();
+
+      // Now verify the history endpoint returns it for the agent
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number }) =>
+          l.action === "pause" && l.entityId === sub.id
+      );
+      expect(match).toBeDefined();
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("shows a cancel entry in the history after an admin cancels the agent's subscription", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "History Merchant",
+        tier: "tier_1",
+        monthlyAmount: "199.00",
+        status: "active",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    try {
+      const adminCookie = await loginAsAdmin();
+      await request(testApp)
+        .patch(`/api/admin/subscriptions/${sub.id}/status`)
+        .set("Cookie", adminCookie)
+        .send({ status: "cancelled" })
+        .expect(200);
+
+      const entry = await pollForActivityLogEntry(sub.id, "cancel");
+      expect(entry).toBeDefined();
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number }) =>
+          l.action === "cancel" && l.entityId === sub.id
+      );
+      expect(match).toBeDefined();
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("shows a reactivate entry in the history after an admin reactivates a paused subscription", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "History Merchant",
+        tier: "tier_1",
+        monthlyAmount: "199.00",
+        status: "paused",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    try {
+      const adminCookie = await loginAsAdmin();
+      await request(testApp)
+        .patch(`/api/admin/subscriptions/${sub.id}/status`)
+        .set("Cookie", adminCookie)
+        .send({ status: "active" })
+        .expect(200);
+
+      const entry = await pollForActivityLogEntry(sub.id, "reactivate");
+      expect(entry).toBeDefined();
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number }) =>
+          l.action === "reactivate" && l.entityId === sub.id
+      );
+      expect(match).toBeDefined();
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+});
+
+describe("GET /api/subscriptions/history – merchant name label", () => {
+  it("includes the correct merchantName on each activity entry", async () => {
+    const merchantName = "Merchant Label Test Co";
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName,
+        tier: "tier_1",
+        monthlyAmount: "149.00",
+        status: "active",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    try {
+      // Insert an activity log entry directly for speed and control
+      await storage.logActivity({
+        actorId: historyAgentId,
+        actorType: "agent",
+        action: "pause",
+        entityType: "subscription",
+        entityId: sub.id,
+        description: "Test pause for merchant name assertion",
+      });
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number; merchantName: string }) =>
+          l.entityId === sub.id && l.action === "pause"
+      );
+      expect(match).toBeDefined();
+      expect(match.merchantName).toBe(merchantName);
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("does not expose other agents' subscriptions in the history", async () => {
+    // Create a second agent with its own subscription and activity
+    const [otherAgent] = await db
+      .insert(schema.agents)
+      .values({
+        email: `other-history-${Date.now()}@example.com`,
+        password: "not-a-real-hash",
+        firstName: "Other",
+        lastName: "Agent",
+        currentRank: "agent",
+        highestRank: "agent",
+      })
+      .returning();
+
+    const [otherSub] = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: otherAgent.id,
+        merchantName: "Other Agent Merchant",
+        tier: "tier_1",
+        monthlyAmount: "99.00",
+        status: "active",
+      })
+      .returning();
+
+    await storage.logActivity({
+      actorId: otherAgent.id,
+      actorType: "agent",
+      action: "pause",
+      entityType: "subscription",
+      entityId: otherSub.id,
+      description: "Should not appear in historyAgent history",
+    });
+
+    try {
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const leaked = res.body.logs.find(
+        (l: { entityId: number }) => l.entityId === otherSub.id
+      );
+      expect(leaked).toBeUndefined();
+    } finally {
+      await cleanupActivityLog(otherSub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, otherSub.id));
+      await db.delete(schema.agents).where(eq(schema.agents.id, otherAgent.id));
+    }
+  });
+});
+
+describe("GET /api/subscriptions/history – pagination", () => {
+  it("returns the first page of entries and correct total when there are more than 20 entries", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "Pagination Merchant",
+        tier: "tier_1",
+        monthlyAmount: "99.00",
+        status: "active",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    const TOTAL_ENTRIES = 25;
+    try {
+      // Insert 25 activity log entries directly for speed
+      for (let i = 0; i < TOTAL_ENTRIES; i++) {
+        await storage.logActivity({
+          actorId: historyAgentId,
+          actorType: "agent",
+          action: "pause",
+          entityType: "subscription",
+          entityId: sub.id,
+          description: `Pagination test entry ${i + 1}`,
+        });
+      }
+
+      const page1 = await request(testApp)
+        .get("/api/subscriptions/history?page=1&pageSize=20")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      expect(page1.body.total).toBeGreaterThanOrEqual(TOTAL_ENTRIES);
+      expect(page1.body.logs).toHaveLength(20);
+      expect(page1.body.page).toBe(1);
+      expect(page1.body.pageSize).toBe(20);
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("returns the second page with the remaining entries", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "Pagination Merchant",
+        tier: "tier_1",
+        monthlyAmount: "99.00",
+        status: "active",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    const TOTAL_ENTRIES = 25;
+    try {
+      for (let i = 0; i < TOTAL_ENTRIES; i++) {
+        await storage.logActivity({
+          actorId: historyAgentId,
+          actorType: "agent",
+          action: "pause",
+          entityType: "subscription",
+          entityId: sub.id,
+          description: `Pagination test entry ${i + 1}`,
+        });
+      }
+
+      const page2 = await request(testApp)
+        .get("/api/subscriptions/history?page=2&pageSize=20")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      expect(page2.body.page).toBe(2);
+      expect(page2.body.logs.length).toBeGreaterThanOrEqual(TOTAL_ENTRIES - 20);
+      expect(page2.body.logs.length).toBeLessThanOrEqual(20);
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("respects the pageSize cap of 50", async () => {
+    const res = await request(testApp)
+      .get("/api/subscriptions/history?pageSize=100")
+      .set("Cookie", historyAgentCookie)
+      .expect(200);
+
+    expect(res.body.pageSize).toBe(50);
+  });
+});
+
+// =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
 
