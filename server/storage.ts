@@ -1387,20 +1387,32 @@ export class DatabaseStorage {
     return newSub;
   }
 
-  async getSubscriptionsByAgent(agentId: number): Promise<(Subscription & { reactivatedByName: string | null })[]> {
+  async getSubscriptionsByAgent(agentId: number): Promise<(Subscription & { reactivatedByName: string | null; pausedByName: string | null; cancelledByName: string | null })[]> {
     const reactivatedByAgents = alias(agents, 'reactivated_by_agents');
+    const pausedByAgents = alias(agents, 'paused_by_agents');
+    const cancelledByAgents = alias(agents, 'cancelled_by_agents');
     const results = await db.select({
       subscription: subscriptions,
       reactivatedBy: reactivatedByAgents,
+      pausedBy: pausedByAgents,
+      cancelledBy: cancelledByAgents,
     })
       .from(subscriptions)
       .leftJoin(reactivatedByAgents, eq(subscriptions.reactivatedById, reactivatedByAgents.id))
+      .leftJoin(pausedByAgents, eq(subscriptions.pausedById, pausedByAgents.id))
+      .leftJoin(cancelledByAgents, eq(subscriptions.cancelledById, cancelledByAgents.id))
       .where(eq(subscriptions.agentId, agentId))
       .orderBy(desc(subscriptions.createdAt));
     return results.map(r => ({
       ...r.subscription,
       reactivatedByName: r.reactivatedBy
         ? `${r.reactivatedBy.firstName} ${r.reactivatedBy.lastName}`
+        : null,
+      pausedByName: r.pausedBy
+        ? `${r.pausedBy.firstName} ${r.pausedBy.lastName}`
+        : null,
+      cancelledByName: r.cancelledBy
+        ? `${r.cancelledBy.firstName} ${r.cancelledBy.lastName}`
         : null,
     }));
   }

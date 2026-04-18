@@ -80,6 +80,10 @@ type Subscription = {
   reactivatedAt: string | null;
   reactivatedById: number | null;
   reactivatedByName: string | null;
+  pausedById: number | null;
+  pausedByName: string | null;
+  cancelledById: number | null;
+  cancelledByName: string | null;
   createdAt: string;
 };
 
@@ -701,12 +705,22 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
       {sub.status === "paused" && sub.pausedAt && (
         <p className="mt-1 text-xs text-yellow-600 font-medium" data-testid={`text-paused-since-${sub.id}`}>
           Paused since {format(new Date(sub.pausedAt), "MMM d, yyyy")}
+          {sub.pausedByName ? (
+            <span className="ml-1" data-testid={`text-paused-by-${sub.id}`}>by {sub.pausedByName}</span>
+          ) : sub.pausedById ? (
+            <span className="ml-1" data-testid={`text-paused-by-${sub.id}`}>by Admin</span>
+          ) : null}
         </p>
       )}
 
       {sub.status === "cancelled" && sub.cancelledAt && (
         <p className="mt-1 text-xs text-red-600 font-medium" data-testid={`text-cancelled-on-${sub.id}`}>
           Cancelled on {format(new Date(sub.cancelledAt), "MMM d, yyyy")}
+          {sub.cancelledByName ? (
+            <span className="ml-1" data-testid={`text-cancelled-by-${sub.id}`}>by {sub.cancelledByName}</span>
+          ) : sub.cancelledById ? (
+            <span className="ml-1" data-testid={`text-cancelled-by-${sub.id}`}>by Admin</span>
+          ) : null}
         </p>
       )}
 
