@@ -722,7 +722,6 @@ export async function registerRoutes(
     }
 
     // Real PMF API call (activate when endpoint is configured)
-    const { default: fetch } = await import('node-fetch');
     const response = await fetch(PMF_API_URL, {
       method: 'POST',
       headers: {
