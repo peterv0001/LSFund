@@ -93,6 +93,15 @@ const migrations: Migration[] = [
       `);
       console.log("[migrations] Added reactivated_at and reactivated_by_id columns to subscriptions table");
     },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS reactivated_at
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS reactivated_by_id
+      `);
+      console.log("[migrations] Dropped reactivated_at and reactivated_by_id columns from subscriptions table");
+    },
   },
   {
     name: "004_add_cancelled_and_paused_by_columns",

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import pg from "pg";
 import { runMigrations, revertMigration, type Migration } from "./migrations.js";
 
@@ -26,6 +26,22 @@ async function tableExists(tableName: string): Promise<boolean> {
         WHERE table_schema = 'public' AND table_name = $1
       ) AS exists`,
       [tableName]
+    );
+    return result.rows[0].exists;
+  } finally {
+    client.release();
+  }
+}
+
+async function columnExists(tableName: string, columnName: string): Promise<boolean> {
+  const client = await testPool.connect();
+  try {
+    const result = await client.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+      ) AS exists`,
+      [tableName, columnName]
     );
     return result.rows[0].exists;
   } finally {
@@ -243,5 +259,60 @@ describe("revertMigration", () => {
         migrations: [unappliedMigration],
       })
     ).rejects.toThrow(`Migration "${unappliedMigration.name}" has not been applied`);
+  });
+});
+
+describe("003_add_reactivated_columns rollback", () => {
+  const MIGRATION_NAME = "003_add_reactivated_columns";
+  const migration: Migration = {
+    name: MIGRATION_NAME,
+    async run(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS reactivated_at timestamp
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS reactivated_by_id integer
+      `);
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS reactivated_at
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS reactivated_by_id
+      `);
+    },
+  };
+
+  afterAll(async () => {
+    const client = await testPool.connect();
+    try {
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS reactivated_at timestamp
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS reactivated_by_id integer
+      `);
+      await client.query(
+        `INSERT INTO schema_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING`,
+        [MIGRATION_NAME]
+      );
+    } finally {
+      client.release();
+    }
+  });
+
+  it("drops reactivated_at and reactivated_by_id columns and removes the migration record", async () => {
+    await runMigrations({ pool: testPool, migrations: [migration] });
+
+    expect(await columnExists("subscriptions", "reactivated_at")).toBe(true);
+    expect(await columnExists("subscriptions", "reactivated_by_id")).toBe(true);
+    expect(await migrationRecorded(MIGRATION_NAME)).toBe(true);
+
+    await revertMigration(MIGRATION_NAME, { pool: testPool, migrations: [migration] });
+
+    expect(await columnExists("subscriptions", "reactivated_at")).toBe(false);
+    expect(await columnExists("subscriptions", "reactivated_by_id")).toBe(false);
+    expect(await migrationRecorded(MIGRATION_NAME)).toBe(false);
   });
 });
