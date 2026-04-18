@@ -15,6 +15,8 @@ import { seedDatabase } from "./seed";
 import { migrations, revertMigration, applyMigration } from "./migrations";
 import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { WebhookHandlers } from "./webhookHandlers";
 
 // Extend Express User type
 declare global {
@@ -116,6 +118,11 @@ const CONFIG = {
     director: { personalVolume: 5000, weakLegVolume: 25000 },
     partner: { personalVolume: 10000, weakLegVolume: 100000 },
   } as Record<string, { personalVolume: number; weakLegVolume: number }>,
+  stripePriceIds: {
+    tier_1: process.env.STRIPE_PRICE_TIER_1 ?? '',
+    tier_2: process.env.STRIPE_PRICE_TIER_2 ?? '',
+    tier_3: process.env.STRIPE_PRICE_TIER_3 ?? '',
+  } as Record<string, string>,
 };
 
 // Middleware helpers
@@ -1458,6 +1465,16 @@ export async function registerRoutes(
     }
   });
 
+  // Stripe publishable key endpoint
+  app.get("/api/stripe/publishable-key", requireAuth, async (req, res) => {
+    try {
+      const key = await getStripePublishableKey();
+      res.json({ publishableKey: key });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to get Stripe publishable key" });
+    }
+  });
+
   app.post("/api/subscriptions", requireAuth, async (req, res) => {
     try {
       // @ts-ignore
@@ -1473,6 +1490,7 @@ export async function registerRoutes(
           return !isNaN(d.getTime()) && d <= new Date();
         }, { message: 'Start date must be a valid date and not in the future' }),
         mcaPairedDealId: z.number().int().positive().optional(),
+        paymentMethodId: z.string().optional(),
       });
 
       const input = createSubSchema.parse(req.body);
@@ -1497,7 +1515,8 @@ export async function registerRoutes(
       const monthlyAmount = tierPrices[input.tier] || 199;
 
       const startDate = input.startDate ? new Date(input.startDate) : new Date();
-      
+
+      // Create subscription record first
       const sub = await storage.createSubscription({
         agentId,
         merchantName: input.merchantName,
@@ -1508,7 +1527,79 @@ export async function registerRoutes(
         startDate,
       });
 
-      // Fire initial subscription commission for the logging agent
+      // If paymentMethodId provided, create Stripe customer, subscription, and billing data
+      if (input.paymentMethodId) {
+        try {
+          const stripe = await getUncachableStripeClient();
+
+          // Create Stripe Customer
+          const customer = await stripe.customers.create({
+            name: input.merchantName,
+            email: input.merchantEmail || undefined,
+            payment_method: input.paymentMethodId,
+            invoice_settings: { default_payment_method: input.paymentMethodId },
+            metadata: { subscriptionId: sub.id.toString(), agentId: agentId.toString() },
+          });
+
+          // Look up the Stripe price for this tier
+          const stripePriceId = CONFIG.stripePriceIds[input.tier];
+
+          let stripeSubscription: any = null;
+          let cardLast4: string | null = null;
+          let cardBrand: string | null = null;
+
+          if (stripePriceId) {
+            // Create Stripe Subscription (starts billing immediately)
+            stripeSubscription = await stripe.subscriptions.create({
+              customer: customer.id,
+              items: [{ price: stripePriceId }],
+              default_payment_method: input.paymentMethodId,
+              metadata: { subscriptionId: sub.id.toString(), agentId: agentId.toString() },
+              expand: ['latest_invoice.payment_intent'],
+            });
+          }
+
+          // Get card details from PaymentMethod
+          const pm = await stripe.paymentMethods.retrieve(input.paymentMethodId);
+          if (pm.card) {
+            cardLast4 = pm.card.last4;
+            cardBrand = pm.card.brand;
+          }
+
+          // Update subscription with Stripe data
+          await storage.updateSubscriptionBilling(sub.id, {
+            stripeCustomerId: customer.id,
+            stripeSubscriptionId: stripeSubscription?.id ?? null,
+            stripePaymentMethodId: input.paymentMethodId,
+            billingStatus: 'pending',
+            cardLast4,
+            cardBrand,
+          });
+
+          const updatedSub = await storage.getSubscription(sub.id);
+
+          storage.logActivity({
+            actorId: agentId,
+            actorType: 'agent',
+            action: 'create',
+            entityType: 'subscription',
+            entityId: sub.id,
+            description: `Logged new ${input.tier} subscription for merchant "${input.merchantName}" ($${monthlyAmount}/mo) with Stripe billing`,
+            details: { merchantName: input.merchantName, tier: input.tier, monthlyAmount, mcaPairedDealId: verifiedPairedDealId ?? null },
+            ipAddress: req.ip ?? null,
+            userAgent: req.headers['user-agent'] ?? null,
+          }).catch((err) => console.error('[ActivityLog] Failed to log subscription creation:', err));
+
+          return res.status(201).json(updatedSub ?? sub);
+        } catch (stripeErr: any) {
+          console.error('[Stripe] Failed to create Stripe billing:', stripeErr.message);
+          // Subscription was created, just billing failed - return with warning
+          return res.status(201).json({ ...sub, _stripeWarning: stripeErr.message });
+        }
+      }
+
+      // No Stripe payment method provided — create subscription without billing
+      // Commissions fire immediately (legacy behavior for subscriptions without card)
       const now = new Date();
       const monthsSinceStart = Math.floor(
         (now.getTime() - startDate.getTime()) / (30.44 * 24 * 60 * 60 * 1000)
@@ -1522,7 +1613,6 @@ export async function registerRoutes(
 
       const poolRate = CONFIG.subscriptionPools[input.tier] || 0.50;
       let commissionRate = poolRate * decayRate;
-      // Only apply MCA pairing bonus when deal is verified and subscription is in its first 3 months
       if (verifiedPairedDealId && monthsSinceStart < 3) {
         commissionRate += CONFIG.mcaPairingBonus;
       }
@@ -1540,9 +1630,6 @@ export async function registerRoutes(
           status: 'pending',
         });
 
-        // Fire subscription commission waterfall to sponsoring upline agents
-        // L1 sponsor earns CONFIG.subscriptionUplinesOverride.l1Rate of pool × decay
-        // L2 sponsor earns CONFIG.subscriptionUplinesOverride.l2Rate of pool × decay
         const upline = await storage.getUpline(agentId);
         const uplineRates = [
           CONFIG.subscriptionUplinesOverride.l1Rate,
@@ -1564,7 +1651,6 @@ export async function registerRoutes(
         }
       }
       
-      // Log subscription creation to activity log
       storage.logActivity({
         actorId: agentId,
         actorType: 'agent',
@@ -1965,7 +2051,10 @@ export async function registerRoutes(
   app.post("/api/admin/subscriptions/calculate-commissions", requireAdmin, async (req, res) => {
     try {
       const allSubs = await storage.getAllSubscriptions();
-      const activeSubs = allSubs.filter(s => s.status === 'active');
+      // Gate commissions: only subscriptions that are status=active AND billingStatus=active (or null for legacy)
+      const activeSubs = allSubs.filter(s =>
+        s.status === 'active' && (s.billingStatus === 'active' || s.billingStatus === null)
+      );
       let processed = 0;
       const periodDate = new Date().toISOString().split('T')[0];
       const now = new Date();

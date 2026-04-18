@@ -1495,6 +1495,28 @@ export class DatabaseStorage {
     return updated;
   }
 
+  async getSubscription(id: number): Promise<Subscription | undefined> {
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
+    return sub;
+  }
+
+  async updateSubscriptionBilling(id: number, billing: {
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    stripePaymentMethodId?: string | null;
+    billingStatus?: 'pending' | 'active' | 'past_due' | 'failed' | 'cancelled';
+    cardLast4?: string | null;
+    cardBrand?: string | null;
+    lastChargedAt?: Date | null;
+    nextBillingDate?: Date | null;
+  }): Promise<Subscription> {
+    const [updated] = await db.update(subscriptions)
+      .set({ ...billing, updatedAt: new Date() })
+      .where(eq(subscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
   async getSubscriptionsByAgent(agentId: number): Promise<(Subscription & { reactivatedByName: string | null; pausedByName: string | null; cancelledByName: string | null })[]> {
     const reactivatedByAgents = alias(agents, 'reactivated_by_agents');
     const pausedByAgents = alias(agents, 'paused_by_agents');

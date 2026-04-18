@@ -97,6 +97,11 @@ type Subscription = {
   pausedBy: Agent | null;
   cancelledBy: Agent | null;
   reactivatedBy: Agent | null;
+  billingStatus: "pending" | "active" | "past_due" | "failed" | "cancelled" | null;
+  cardLast4: string | null;
+  cardBrand: string | null;
+  lastChargedAt: string | null;
+  nextBillingDate: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -159,7 +164,11 @@ type ExportColumnKey =
   | "changeDate"
   | "startDate"
   | "reactivatedAt"
-  | "reactivatedBy";
+  | "reactivatedBy"
+  | "billingStatus"
+  | "cardLast4"
+  | "cardBrand"
+  | "lastChargedAt";
 
 const EXPORT_COLUMNS: { key: ExportColumnKey; label: string }[] = [
   { key: "id", label: "ID" },
@@ -174,6 +183,10 @@ const EXPORT_COLUMNS: { key: ExportColumnKey; label: string }[] = [
   { key: "startDate", label: "Start Date" },
   { key: "reactivatedAt", label: "Reactivated At" },
   { key: "reactivatedBy", label: "Reactivated By" },
+  { key: "billingStatus", label: "Billing Status" },
+  { key: "cardLast4", label: "Card Last 4" },
+  { key: "cardBrand", label: "Card Brand" },
+  { key: "lastChargedAt", label: "Last Charged At" },
 ];
 
 const DEFAULT_EXPORT_COLUMNS: ExportColumnKey[] = [
@@ -631,6 +644,10 @@ export default function AdminSubscriptions() {
       case "startDate": return format(new Date(s.startDate), "yyyy-MM-dd");
       case "reactivatedAt": return s.reactivatedAt ? format(new Date(s.reactivatedAt), "yyyy-MM-dd") : "";
       case "reactivatedBy": return s.reactivatedBy ? `${s.reactivatedBy.firstName} ${s.reactivatedBy.lastName}` : "";
+      case "billingStatus": return s.billingStatus ?? "";
+      case "cardLast4": return s.cardLast4 ?? "";
+      case "cardBrand": return s.cardBrand ?? "";
+      case "lastChargedAt": return s.lastChargedAt ? format(new Date(s.lastChargedAt), "yyyy-MM-dd") : "";
     }
   }
 
@@ -1434,6 +1451,7 @@ export default function AdminSubscriptions() {
                       <TableHead>Paired Deal</TableHead>
                       <TableHead>Started</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Billing</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1516,6 +1534,38 @@ export default function AdminSubscriptions() {
                               <p className="text-xs text-orange-600 font-medium mt-1 flex items-center gap-1" data-testid={`text-end-date-${sub.id}`}>
                                 <CalendarDays className="w-3 h-3" />
                                 Expires {format(new Date(sub.endDate), "MMM d, yyyy")}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {sub.billingStatus ? (
+                              <Badge
+                                className={`text-xs ${
+                                  sub.billingStatus === "active"
+                                    ? "bg-green-100 text-green-700"
+                                    : sub.billingStatus === "past_due" || sub.billingStatus === "failed"
+                                    ? "bg-red-100 text-red-700"
+                                    : sub.billingStatus === "pending"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}
+                                data-testid={`badge-billing-status-${sub.id}`}
+                              >
+                                {sub.billingStatus === "past_due" ? "Past Due" : sub.billingStatus.charAt(0).toUpperCase() + sub.billingStatus.slice(1)}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-300 text-xs">—</span>
+                            )}
+                            {sub.cardLast4 && (
+                              <p className="text-[10px] text-gray-400" data-testid={`text-card-last4-${sub.id}`}>
+                                {sub.cardBrand ? sub.cardBrand.charAt(0).toUpperCase() + sub.cardBrand.slice(1) : "Card"} •••• {sub.cardLast4}
+                              </p>
+                            )}
+                            {sub.lastChargedAt && (
+                              <p className="text-[10px] text-gray-400" data-testid={`text-last-charged-${sub.id}`}>
+                                Charged {format(new Date(sub.lastChargedAt), "MMM d, yyyy")}
                               </p>
                             )}
                           </div>

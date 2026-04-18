@@ -21,6 +21,7 @@ export const leadRequestStatusEnum = pgEnum("lead_request_status", ['pending', '
 
 export const subscriptionTierEnum = pgEnum("subscription_tier", ['tier_1', 'tier_2', 'tier_3']);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ['active', 'paused', 'cancelled', 'expired']);
+export const subscriptionBillingStatusEnum = pgEnum("subscription_billing_status", ['pending', 'active', 'past_due', 'failed', 'cancelled']);
 export const holdbackStatusEnum = pgEnum("holdback_status", ['held', 'partially_released', 'released', 'clawed_back']);
 export const fulfillmentTierLevelEnum = pgEnum("fulfillment_tier_level", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
 
@@ -392,6 +393,14 @@ export const subscriptions = pgTable("subscriptions", {
   cancelledById: integer("cancelled_by_id"),
   pausedById: integer("paused_by_id"),
   reactivatedById: integer("reactivated_by_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripePaymentMethodId: text("stripe_payment_method_id"),
+  billingStatus: subscriptionBillingStatusEnum("billing_status"),
+  cardLast4: text("card_last4"),
+  cardBrand: text("card_brand"),
+  lastChargedAt: timestamp("last_charged_at"),
+  nextBillingDate: timestamp("next_billing_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -875,6 +884,14 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   pausedAt: true,
   reactivatedAt: true,
   reactivatedById: true,
+  stripeCustomerId: true,
+  stripeSubscriptionId: true,
+  stripePaymentMethodId: true,
+  billingStatus: true,
+  cardLast4: true,
+  cardBrand: true,
+  lastChargedAt: true,
+  nextBillingDate: true,
 }).extend({
   monthlyAmount: z.coerce.number().min(0),
 });

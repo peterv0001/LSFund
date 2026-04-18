@@ -183,10 +183,10 @@ export const migrations: Migration[] = [
     name: "008_add_subscription_id_to_commissions",
     async run(client) {
       await client.query(`
-        ALTER TABLE commissions ADD COLUMN IF NOT EXISTS subscription_id integer
+        ALTER TABLE commissions ADD COLUMN IF NOT EXISTS subscription_id integer REFERENCES subscriptions(id) ON DELETE SET NULL
       `);
       await client.query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS commissions_agent_sub_period_type_idx
+        CREATE UNIQUE INDEX IF NOT EXISTS commissions_subscription_period_type_idx
         ON commissions (agent_id, subscription_id, period_date, type)
         WHERE subscription_id IS NOT NULL
       `);
@@ -194,7 +194,7 @@ export const migrations: Migration[] = [
     },
     async down(client) {
       await client.query(`
-        DROP INDEX IF EXISTS commissions_agent_sub_period_type_idx
+        DROP INDEX IF EXISTS commissions_subscription_period_type_idx
       `);
       await client.query(`
         ALTER TABLE commissions DROP COLUMN IF EXISTS subscription_id
@@ -241,6 +241,87 @@ export const migrations: Migration[] = [
         DROP INDEX IF EXISTS idx_admin_export_templates_is_shared;
       `);
       console.log("[migrations] Dropped indexes from admin_export_templates");
+    },
+  },
+  {
+    name: "011_add_subscription_billing",
+    async run(client) {
+      await client.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'subscription_billing_status') THEN
+            CREATE TYPE subscription_billing_status AS ENUM ('pending', 'active', 'past_due', 'failed', 'cancelled');
+          END IF;
+        END $$;
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions
+          ADD COLUMN IF NOT EXISTS stripe_customer_id text,
+          ADD COLUMN IF NOT EXISTS stripe_subscription_id text,
+          ADD COLUMN IF NOT EXISTS stripe_payment_method_id text,
+          ADD COLUMN IF NOT EXISTS billing_status subscription_billing_status DEFAULT 'pending',
+          ADD COLUMN IF NOT EXISTS card_last4 text,
+          ADD COLUMN IF NOT EXISTS card_brand text,
+          ADD COLUMN IF NOT EXISTS last_charged_at timestamp,
+          ADD COLUMN IF NOT EXISTS next_billing_date timestamp
+      `);
+      console.log("[migrations] Added billing columns to subscriptions table");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions
+          DROP COLUMN IF EXISTS stripe_customer_id,
+          DROP COLUMN IF EXISTS stripe_subscription_id,
+          DROP COLUMN IF EXISTS stripe_payment_method_id,
+          DROP COLUMN IF EXISTS billing_status,
+          DROP COLUMN IF EXISTS card_last4,
+          DROP COLUMN IF EXISTS card_brand,
+          DROP COLUMN IF EXISTS last_charged_at,
+          DROP COLUMN IF EXISTS next_billing_date
+      `);
+      await client.query(`DROP TYPE IF EXISTS subscription_billing_status`);
+      console.log("[migrations] Dropped billing columns from subscriptions table");
+    },
+  },
+  {
+    name: "012_nullify_billing_status_for_legacy_subscriptions",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ALTER COLUMN billing_status DROP DEFAULT
+      `);
+      await client.query(`
+        UPDATE subscriptions
+          SET billing_status = NULL
+          WHERE stripe_customer_id IS NULL
+            AND billing_status = 'pending'
+      `);
+      console.log("[migrations] Removed billing_status default and reset NULL for legacy subscriptions");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ALTER COLUMN billing_status SET DEFAULT 'pending'
+      `);
+      await client.query(`
+        UPDATE subscriptions
+          SET billing_status = 'pending'
+          WHERE stripe_customer_id IS NULL
+            AND billing_status IS NULL
+      `);
+      console.log("[migrations] Restored billing_status default and legacy values");
+    },
+  },
+  {
+    name: "013_billing_status_drop_column_default",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ALTER COLUMN billing_status DROP DEFAULT
+      `);
+      console.log("[migrations] Dropped billing_status column default");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ALTER COLUMN billing_status SET DEFAULT 'pending'
+      `);
+      console.log("[migrations] Restored billing_status column default");
     },
   },
 ];

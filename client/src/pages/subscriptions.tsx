@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp, AlertTriangle, Activity, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp, AlertTriangle, Activity, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInMonths } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -53,6 +53,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { loadStripe, type Stripe as StripeType } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 // === Types ===
 
@@ -85,6 +87,11 @@ type Subscription = {
   pausedByName: string | null;
   cancelledById: number | null;
   cancelledByName: string | null;
+  billingStatus: "pending" | "active" | "past_due" | "failed" | "cancelled" | null;
+  cardLast4: string | null;
+  cardBrand: string | null;
+  lastChargedAt: string | null;
+  nextBillingDate: string | null;
   createdAt: string;
 };
 
@@ -164,12 +171,43 @@ const logSubscriptionSchema = z.object({
 
 type LogSubscriptionInput = z.infer<typeof logSubscriptionSchema>;
 
+// === Stripe Provider ===
+
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+
+function useStripePublishableKey() {
+  const { data } = useQuery<{ publishableKey: string }>({
+    queryKey: ["/api/stripe/publishable-key"],
+  });
+  return data?.publishableKey ?? null;
+}
+
+function StripeProvider({ children }: { children: React.ReactNode }) {
+  const publishableKey = useStripePublishableKey();
+  const [stripe, setStripe] = useState<ReturnType<typeof loadStripe> | null>(null);
+
+  useEffect(() => {
+    if (publishableKey && !stripePromise) {
+      stripePromise = loadStripe(publishableKey);
+    }
+    if (publishableKey) {
+      setStripe(stripePromise);
+    }
+  }, [publishableKey]);
+
+  if (!stripe) return <>{children}</>;
+  return <Elements stripe={stripe}>{children}</Elements>;
+}
+
 // === Log Subscription Dialog ===
 
-function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
-  const [open, setOpen] = useState(false);
+function LogSubscriptionDialogInner({ deals, onClose }: { deals: Deal[]; onClose: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const stripe = useStripe();
+  const elements = useElements();
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [cardComplete, setCardComplete] = useState(false);
 
   const form = useForm<LogSubscriptionInput>({
     resolver: zodResolver(logSubscriptionSchema),
@@ -183,22 +221,38 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
     },
   });
 
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen) form.reset();
-  };
-
   const pairedWithDeal = form.watch("pairedWithDeal");
   const selectedTier = form.watch("tier");
 
   const mutation = useMutation({
     mutationFn: async (data: LogSubscriptionInput) => {
+      let paymentMethodId: string | undefined;
+
+      if (stripe && elements) {
+        const cardElement = elements.getElement(CardElement);
+        if (cardElement) {
+          const { error, paymentMethod } = await stripe.createPaymentMethod({
+            type: "card",
+            card: cardElement,
+            billing_details: {
+              name: data.merchantName,
+              email: data.merchantEmail || undefined,
+            },
+          });
+          if (error) {
+            throw new Error(error.message);
+          }
+          paymentMethodId = paymentMethod?.id;
+        }
+      }
+
       const payload: Record<string, unknown> = {
         merchantName: data.merchantName,
         merchantEmail: data.merchantEmail || undefined,
         tier: data.tier,
         startDate: new Date(data.startDate).toISOString(),
         mcaPairedDealId: data.pairedWithDeal ? data.mcaPairedDealId : undefined,
+        paymentMethodId,
       };
       const res = await apiRequest("POST", "/api/subscriptions", payload);
       return res.json();
@@ -207,7 +261,7 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       toast({ title: "Subscription logged successfully" });
       form.reset();
-      setOpen(false);
+      onClose();
     },
     onError: (err: Error) => {
       toast({ title: err.message || "Failed to log subscription", variant: "destructive" });
@@ -217,6 +271,226 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
   const fundedDeals = deals.filter((d) => d.status === "funded");
 
   return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit((data) => {
+          if (data.pairedWithDeal && !data.mcaPairedDealId) {
+            form.setError("mcaPairedDealId", {
+              type: "manual",
+              message: "Please select a funded deal to pair with this subscription",
+            });
+            return;
+          }
+          mutation.mutate(data);
+        })}
+        className="space-y-4"
+      >
+        <FormField
+          control={form.control}
+          name="merchantName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Merchant Name</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Acme Corp"
+                  data-testid="input-merchant-name"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="merchantEmail"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Merchant Email (optional)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="merchant@example.com"
+                  type="email"
+                  data-testid="input-merchant-email"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="tier"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Subscription Tier</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-tier">
+                    <SelectValue placeholder="Select a tier" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="tier_1" data-testid="option-tier-1">
+                    Tier 1 — $199/mo
+                  </SelectItem>
+                  <SelectItem value="tier_2" data-testid="option-tier-2">
+                    Tier 2 — $429/mo
+                  </SelectItem>
+                  <SelectItem value="tier_3" data-testid="option-tier-3">
+                    Tier 3 — $749/mo
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {selectedTier && (
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-700">
+            Monthly amount: <strong>${TIER_PRICES[selectedTier]}</strong> — Pool rate:{" "}
+            <strong>{(POOL_RATES[selectedTier] * 100).toFixed(0)}%</strong>
+          </div>
+        )}
+
+        <FormField
+          control={form.control}
+          name="startDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Start Date</FormLabel>
+              <FormControl>
+                <Input
+                  type="date"
+                  data-testid="input-start-date"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="pairedWithDeal"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-3 space-y-0">
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  data-testid="switch-paired-deal"
+                />
+              </FormControl>
+              <FormLabel className="font-normal cursor-pointer">
+                Paired with a funded MCA deal (+5% bonus for first 3 months)
+              </FormLabel>
+            </FormItem>
+          )}
+        />
+
+        {pairedWithDeal && (
+          <FormField
+            control={form.control}
+            name="mcaPairedDealId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Select Funded Deal</FormLabel>
+                <Select
+                  onValueChange={(v) => field.onChange(Number(v))}
+                  value={field.value?.toString()}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-paired-deal">
+                      <SelectValue placeholder="Choose a deal..." />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {fundedDeals.length === 0 ? (
+                      <SelectItem value="_none" disabled>
+                        No funded deals available
+                      </SelectItem>
+                    ) : (
+                      fundedDeals.map((d) => (
+                        <SelectItem key={d.id} value={d.id.toString()}>
+                          #{d.id} — {d.merchantName}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {stripe && (
+          <div>
+            <label className="text-sm font-medium leading-none mb-1.5 block">
+              Credit Card (Merchant Billing)
+            </label>
+            <div
+              className="rounded-md border border-input px-3 py-2.5 bg-background"
+              data-testid="stripe-card-element"
+            >
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: "14px",
+                      color: "hsl(var(--foreground))",
+                      "::placeholder": { color: "hsl(var(--muted-foreground))" },
+                    },
+                  },
+                }}
+                onChange={(e) => {
+                  setCardError(e.error?.message ?? null);
+                  setCardComplete(e.complete);
+                }}
+              />
+            </div>
+            {cardError && <p className="text-sm text-destructive mt-1">{cardError}</p>}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            data-testid="button-cancel-subscription"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={mutation.isPending}
+            data-testid="button-submit-subscription"
+          >
+            {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Log Subscription
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
+  const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+  };
+
+  return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button data-testid="button-log-subscription">
@@ -224,191 +498,13 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
           Log New Subscription
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md" data-testid="dialog-log-subscription">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-log-subscription">
         <DialogHeader>
           <DialogTitle>Log New Merchant Subscription</DialogTitle>
         </DialogHeader>
-
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) => {
-              if (data.pairedWithDeal && !data.mcaPairedDealId) {
-                form.setError("mcaPairedDealId", {
-                  type: "manual",
-                  message: "Please select a funded deal to pair with this subscription",
-                });
-                return;
-              }
-              mutation.mutate(data);
-            })}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="merchantName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Merchant Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Acme Corp"
-                      data-testid="input-merchant-name"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="merchantEmail"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Merchant Email (optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="merchant@example.com"
-                      type="email"
-                      data-testid="input-merchant-email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="tier"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subscription Tier</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-tier">
-                        <SelectValue placeholder="Select a tier" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="tier_1" data-testid="option-tier-1">
-                        Tier 1 — $199/mo
-                      </SelectItem>
-                      <SelectItem value="tier_2" data-testid="option-tier-2">
-                        Tier 2 — $429/mo
-                      </SelectItem>
-                      <SelectItem value="tier_3" data-testid="option-tier-3">
-                        Tier 3 — $749/mo
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {selectedTier && (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-700">
-                Monthly amount: <strong>${TIER_PRICES[selectedTier]}</strong> — Pool rate:{" "}
-                <strong>{(POOL_RATES[selectedTier] * 100).toFixed(0)}%</strong>
-              </div>
-            )}
-
-            <FormField
-              control={form.control}
-              name="startDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Start Date</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      data-testid="input-start-date"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="pairedWithDeal"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-3 space-y-0">
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-paired-deal"
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">
-                    Paired with a funded MCA deal (+5% bonus for first 3 months)
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-
-            {pairedWithDeal && (
-              <FormField
-                control={form.control}
-                name="mcaPairedDealId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Select Funded Deal</FormLabel>
-                    <Select
-                      onValueChange={(v) => field.onChange(Number(v))}
-                      value={field.value?.toString()}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-paired-deal">
-                          <SelectValue placeholder="Choose a deal..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {fundedDeals.length === 0 ? (
-                          <SelectItem value="_none" disabled>
-                            No funded deals available
-                          </SelectItem>
-                        ) : (
-                          fundedDeals.map((d) => (
-                            <SelectItem key={d.id} value={d.id.toString()}>
-                              #{d.id} — {d.merchantName}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                data-testid="button-cancel-subscription"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={mutation.isPending}
-                data-testid="button-submit-subscription"
-              >
-                {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Log Subscription
-              </Button>
-            </div>
-          </form>
-        </Form>
+        <StripeProvider>
+          <LogSubscriptionDialogInner deals={deals} onClose={() => setOpen(false)} />
+        </StripeProvider>
       </DialogContent>
     </Dialog>
   );
@@ -708,6 +804,49 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
           {months < 3 && <span className="ml-1 text-green-600 font-medium">(+5% bonus active)</span>}
         </div>
       )}
+
+      {sub.billingStatus === "past_due" || sub.billingStatus === "failed" ? (
+        <div
+          className="flex items-center gap-2 mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700"
+          data-testid={`banner-payment-failed-${sub.id}`}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            <strong>Payment {sub.billingStatus === "past_due" ? "past due" : "failed"}.</strong> Commissions are paused until billing is resolved.
+          </span>
+        </div>
+      ) : null}
+
+      <div className="flex items-center gap-2 flex-wrap mt-2">
+        {sub.billingStatus && (
+          <Badge
+            variant="outline"
+            className={`text-[10px] px-2 py-0.5 ${
+              sub.billingStatus === "active"
+                ? "border-emerald-300 text-emerald-700 bg-emerald-50"
+                : sub.billingStatus === "past_due" || sub.billingStatus === "failed"
+                ? "border-red-300 text-red-700 bg-red-50"
+                : sub.billingStatus === "pending"
+                ? "border-yellow-300 text-yellow-700 bg-yellow-50"
+                : "border-gray-300 text-gray-600"
+            }`}
+            data-testid={`badge-billing-status-${sub.id}`}
+          >
+            Billing: {sub.billingStatus === "past_due" ? "Past Due" : sub.billingStatus.charAt(0).toUpperCase() + sub.billingStatus.slice(1)}
+          </Badge>
+        )}
+        {sub.cardLast4 && (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`text-card-info-${sub.id}`}>
+            <CreditCard className="w-3 h-3" />
+            <span>{sub.cardBrand ? sub.cardBrand.charAt(0).toUpperCase() + sub.cardBrand.slice(1) : "Card"} •••• {sub.cardLast4}</span>
+          </div>
+        )}
+        {sub.nextBillingDate && (
+          <span className="text-[10px] text-muted-foreground" data-testid={`text-next-billing-${sub.id}`}>
+            Next charge: {format(new Date(sub.nextBillingDate), "MMM d, yyyy")}
+          </span>
+        )}
+      </div>
 
       <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
         <span>Started {format(new Date(sub.startDate), "MMM d, yyyy")}</span>

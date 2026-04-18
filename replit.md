@@ -171,8 +171,8 @@ The training page (`client/src/pages/training.tsx`) includes:
 **Core Tables:**
 - `agents` - User accounts with binary tree structure (sponsorId, placementId, leg)
 - `deals` - Funded MCA loans with GBR tracking and fulfillment agent assignment
-- `commissions` - Earnings with types: mac_primary, mac_sponsor_l1, mac_sponsor_l2, tfc, subscription_commission, subscription_residual, binary_bonus, personal_deal
-- `subscriptions` - Merchant subscription tracking (tier, monthly amount, MCA pairing, decay)
+- `commissions` - Earnings with types: mac_primary, mac_sponsor_l1, mac_sponsor_l2, tfc, subscription_commission, subscription_residual, binary_bonus, personal_deal; includes `subscription_id` FK for idempotent subscription billing
+- `subscriptions` - Merchant subscription tracking (tier, monthly amount, MCA pairing, decay); includes Stripe billing columns: `stripe_customer_id`, `stripe_subscription_id`, `stripe_payment_method_id`, `billing_status` (enum: pending/active/past_due/failed/cancelled), `card_last4`, `card_brand`, `last_charged_at`, `next_billing_date`
 - `holdbacks` - Deferred commission tracking with release dates and clawback management
 - `fulfillment_tiers` - Monthly fulfillment agent performance tiers
 - `payouts` - Payout batch tracking
@@ -200,6 +200,14 @@ Located in `server/routes.ts`, implements:
 - Fulfillment tier rate determination
 
 ## External Dependencies
+
+### Stripe Billing
+- **Stripe:** Payment processing for merchant subscription billing. Integration via `stripe` npm package.
+- **stripe-replit-sync:** Replit-managed Stripe data sync (mirrors Stripe events to `stripe.*` schema tables). Webhook registered at `/api/stripe/webhook` for `invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted` events.
+- **@stripe/stripe-js + @stripe/react-stripe-js:** Frontend Stripe Elements (CardElement) for secure card capture.
+- **Key files:** `server/stripeClient.ts` (Stripe SDK init + StripeSync), `server/webhookHandlers.ts` (event handlers), `server/config.ts` (STRIPE_PRICE_TIER_* env vars).
+- **Env vars required:** `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_TIER_1`, `STRIPE_PRICE_TIER_2`, `STRIPE_PRICE_TIER_3`.
+- **Commission gating:** Subscription commissions only fire when `billing_status = 'active'` (via invoice.paid webhook) or `null` (legacy non-Stripe subscriptions).
 
 ### Database & Storage
 - **PostgreSQL:** Primary database (connection via `DATABASE_URL` env var)
