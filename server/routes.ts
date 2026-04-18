@@ -1457,7 +1457,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: 'Only paused subscriptions can be reactivated' });
       }
 
-      const updated = await storage.updateSubscriptionStatus(subId, status);
+      const updated = await storage.updateSubscriptionStatus(subId, status, agentId);
 
       if (status === 'paused' || status === 'cancelled') {
         const agent = await storage.getAgent(agentId);
