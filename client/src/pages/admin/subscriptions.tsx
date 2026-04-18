@@ -135,6 +135,27 @@ export default function AdminSubscriptions() {
     return true;
   });
 
+  const showAgentSummary =
+    (statusFilter === "paused" || statusFilter === "cancelled") &&
+    dateRangeFilter !== "all";
+
+  const agentSummary: { agentId: number; name: string; count: number }[] = showAgentSummary
+    ? Object.values(
+        filteredSubscriptions.reduce<Record<number, { agentId: number; name: string; count: number }>>(
+          (acc, sub) => {
+            const id = sub.agentId;
+            const name = sub.agent?.firstName
+              ? `${sub.agent.firstName} ${sub.agent.lastName}`
+              : `Agent #${id}`;
+            if (!acc[id]) acc[id] = { agentId: id, name, count: 0 };
+            acc[id].count += 1;
+            return acc;
+          },
+          {}
+        )
+      ).sort((a, b) => b.count - a.count)
+    : [];
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
@@ -251,6 +272,40 @@ export default function AdminSubscriptions() {
               </span>
             )}
           </div>
+
+          {/* Agent Summary Panel */}
+          {showAgentSummary && !isLoading && agentSummary.length > 0 && (
+            <Card className="mb-4 border-l-4 border-l-primary" data-testid="panel-agent-summary">
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">
+                  {statusFilter === "cancelled" ? "Cancellations" : "Pauses"} by agent
+                  {" — "}
+                  {dateRangeFilter === "7d" ? "last 7 days" : "last 30 days"}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {agentSummary.map((entry) => (
+                    <div
+                      key={entry.agentId}
+                      className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-2"
+                      data-testid={`summary-agent-${entry.agentId}`}
+                    >
+                      <span className="text-sm font-medium text-gray-800">{entry.name}</span>
+                      <Badge
+                        className={
+                          statusFilter === "cancelled"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }
+                        data-testid={`summary-count-${entry.agentId}`}
+                      >
+                        {entry.count}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Table */}
           {isLoading ? (
