@@ -27,6 +27,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -69,6 +79,43 @@ export default function SettingsPage() {
     emailOnDealFunded: defaultPrefs.emailOnDealFunded !== false,
     emailOnTeamSignup: defaultPrefs.emailOnTeamSignup !== false,
   });
+
+  type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated';
+  const [pendingDisable, setPendingDisable] = useState<NotifPrefKey | null>(null);
+
+  const notifLabels: Record<NotifPrefKey, { title: string; missMessage: string }> = {
+    emailOnPaused: {
+      title: 'Subscription Paused',
+      missMessage: "You won't receive emails when one of your subscriptions is paused.",
+    },
+    emailOnCancelled: {
+      title: 'Subscription Cancelled',
+      missMessage: "You won't receive emails when one of your subscriptions is cancelled.",
+    },
+    emailOnReactivated: {
+      title: 'Subscription Reactivated',
+      missMessage: "You won't receive emails when one of your subscriptions is reactivated.",
+    },
+  };
+
+  const handleToggleChange = (key: NotifPrefKey, checked: boolean) => {
+    if (!checked) {
+      setPendingDisable(key);
+    } else {
+      setNotifPrefs(p => ({ ...p, [key]: true }));
+    }
+  };
+
+  const confirmDisable = () => {
+    if (pendingDisable) {
+      setNotifPrefs(p => ({ ...p, [pendingDisable]: false }));
+      setPendingDisable(null);
+    }
+  };
+
+  const cancelDisable = () => {
+    setPendingDisable(null);
+  };
 
   // Mutations
   const updateProfileMutation = useMutation({
@@ -421,7 +468,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-paused"
                       checked={notifPrefs.emailOnPaused}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaused: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnPaused', checked)}
                     />
                   </div>
 
@@ -435,7 +482,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-cancelled"
                       checked={notifPrefs.emailOnCancelled}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnCancelled: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnCancelled', checked)}
                     />
                   </div>
 
@@ -449,7 +496,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-reactivated"
                       checked={notifPrefs.emailOnReactivated}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnReactivated: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnReactivated', checked)}
                     />
                   </div>
 
@@ -536,6 +583,28 @@ export default function SettingsPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <AlertDialog open={pendingDisable !== null} onOpenChange={(open) => { if (!open) cancelDisable(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Turn off {pendingDisable ? notifLabels[pendingDisable].title : ''} emails?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDisable ? notifLabels[pendingDisable].missMessage : ''}{' '}
+              You can re-enable this notification at any time in Settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="dialog-cancel-disable" onClick={cancelDisable}>
+              Keep Enabled
+            </AlertDialogCancel>
+            <AlertDialogAction data-testid="dialog-confirm-disable" onClick={confirmDisable}>
+              Turn Off
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
