@@ -275,7 +275,13 @@ export default function AdminSubscriptions() {
     }
   }
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    const urlStatus = initialParams.get("status");
+    if (urlStatus === "active" || urlStatus === "paused" || urlStatus === "cancelled" || urlStatus === "expired") {
+      return urlStatus;
+    }
+    return "all";
+  });
 
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>(() => {
     const urlRange = initialParams.get("range");
@@ -334,6 +340,17 @@ export default function AdminSubscriptions() {
       params.delete("agentId");
     } else {
       params.set("agentId", String(agentId));
+    }
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
+
+  const updateStatusInUrl = useCallback((status: StatusFilter) => {
+    const params = new URLSearchParams(window.location.search);
+    if (status === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", status);
     }
     const qs = params.toString();
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
@@ -594,6 +611,7 @@ export default function AdminSubscriptions() {
     params.delete("start");
     params.delete("end");
     params.delete("agentId");
+    params.delete("status");
     const qs = params.toString();
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }
@@ -777,7 +795,7 @@ export default function AdminSubscriptions() {
             <span className="text-sm font-medium text-gray-600">Filter by status:</span>
             <Select
               value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+              onValueChange={(v) => { const s = v as StatusFilter; setStatusFilter(s); updateStatusInUrl(s); }}
             >
               <SelectTrigger className="w-44 h-9 text-sm" data-testid="select-status-filter">
                 <SelectValue placeholder="All statuses" />
