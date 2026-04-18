@@ -15,6 +15,7 @@ export default function PrivacyPolicyPage() {
               </Button>
             </Link>
             <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-primary shrink-0" />
               <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Network</span>
             </div>
           </div>

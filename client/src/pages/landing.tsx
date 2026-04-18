@@ -122,7 +122,8 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/95 backdrop-blur-xl shadow-sm border-b border-border' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary shrink-0" />
             <span className="font-display font-bold text-primary text-lg tracking-wide">Leader Shield Network</span>
           </div>
 
@@ -1040,7 +1041,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-5 gap-10 mb-12">
             <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Shield className="w-5 h-5 text-white shrink-0" />
                 <span className="font-display font-bold text-white text-lg tracking-wide">Leader Shield Network</span>
               </div>
               <p className="text-white/40 max-w-sm leading-relaxed">
