@@ -476,7 +476,9 @@ export default function AdminSubscriptions() {
   const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null;
 
   const showDateRangeSummary =
-    dateRangeFilter === "custom" && (customStartDate || customEndDate);
+    dateRangeFilter === "7d" ||
+    dateRangeFilter === "30d" ||
+    (dateRangeFilter === "custom" && (customStartDate || customEndDate));
 
   const dateRangeSummary = (() => {
     if (!showDateRangeSummary) return null;
@@ -485,24 +487,26 @@ export default function AdminSubscriptions() {
       if (agentFilter !== null && s.agentId !== agentFilter) return false;
       return true;
     });
+    const effectiveStart = dateThreshold ?? customStart;
+    const effectiveEnd = customEnd;
     const newCount = base.filter((s) => {
       const d = new Date(s.createdAt);
-      if (customStart && d < customStart) return false;
-      if (customEnd && d > customEnd) return false;
+      if (effectiveStart && d < effectiveStart) return false;
+      if (effectiveEnd && d > effectiveEnd) return false;
       return true;
     }).length;
     const pausedCount = base.filter((s) => {
       if (!s.pausedAt) return false;
       const d = new Date(s.pausedAt);
-      if (customStart && d < customStart) return false;
-      if (customEnd && d > customEnd) return false;
+      if (effectiveStart && d < effectiveStart) return false;
+      if (effectiveEnd && d > effectiveEnd) return false;
       return true;
     }).length;
     const cancelledCount = base.filter((s) => {
       if (!s.cancelledAt) return false;
       const d = new Date(s.cancelledAt);
-      if (customStart && d < customStart) return false;
-      if (customEnd && d > customEnd) return false;
+      if (effectiveStart && d < effectiveStart) return false;
+      if (effectiveEnd && d > effectiveEnd) return false;
       return true;
     }).length;
     return { newCount, pausedCount, cancelledCount };
@@ -1092,12 +1096,17 @@ export default function AdminSubscriptions() {
                 <div className="flex items-center gap-2 mb-3">
                   <CalendarRange className="w-4 h-4 text-primary" />
                   <span className="text-sm font-semibold text-gray-700">
-                    Summary
-                    {customStartDate && customEndDate
-                      ? `: ${format(new Date(customStartDate + "T00:00:00"), "MMM d, yyyy")} – ${format(new Date(customEndDate + "T00:00:00"), "MMM d, yyyy")}`
-                      : customStartDate
-                      ? `: from ${format(new Date(customStartDate + "T00:00:00"), "MMM d, yyyy")}`
-                      : `: until ${format(new Date(customEndDate + "T00:00:00"), "MMM d, yyyy")}`}
+                    {dateRangeFilter === "7d"
+                      ? "Summary: Last 7 days"
+                      : dateRangeFilter === "30d"
+                      ? "Summary: Last 30 days"
+                      : `Summary${
+                          customStartDate && customEndDate
+                            ? `: ${format(new Date(customStartDate + "T00:00:00"), "MMM d, yyyy")} – ${format(new Date(customEndDate + "T00:00:00"), "MMM d, yyyy")}`
+                            : customStartDate
+                            ? `: from ${format(new Date(customStartDate + "T00:00:00"), "MMM d, yyyy")}`
+                            : `: until ${format(new Date(customEndDate + "T00:00:00"), "MMM d, yyyy")}`
+                        }`}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-4">
