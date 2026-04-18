@@ -1,6 +1,6 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Database, CheckCircle2, Clock, RotateCcw, AlertTriangle, Play, RefreshCw } from "lucide-react";
+import { Database, CheckCircle2, Clock, RotateCcw, AlertTriangle, Play, RefreshCw, ShieldCheck, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -174,9 +174,34 @@ export default function AdminMigrations() {
                           data-testid={`migration-row-${m.name}`}
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-mono font-medium text-gray-800 truncate" data-testid={`text-migration-name-${m.name}`}>
-                              {m.name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-mono font-medium text-gray-800 truncate" data-testid={`text-migration-name-${m.name}`}>
+                                {m.name}
+                              </p>
+                              {m.hasDown ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span data-testid={`badge-reversible-${m.name}`}>
+                                      <ShieldCheck className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <span className="text-xs">Reversible — rollback is available</span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span data-testid={`badge-no-rollback-${m.name}`}>
+                                      <ShieldOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <span className="text-xs">No rollback defined</span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-400 mt-0.5">
                               Applied {m.appliedAt ? new Date(m.appliedAt).toLocaleString() : ""}
                             </p>
@@ -268,9 +293,34 @@ export default function AdminMigrations() {
                           data-testid={`migration-row-pending-${m.name}`}
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-mono font-medium text-gray-500 truncate">
-                              {m.name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-mono font-medium text-gray-500 truncate">
+                                {m.name}
+                              </p>
+                              {m.hasDown ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span data-testid={`badge-reversible-${m.name}`}>
+                                      <ShieldCheck className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <span className="text-xs">Reversible — rollback is available</span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span data-testid={`badge-no-rollback-${m.name}`}>
+                                      <ShieldOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <span className="text-xs">No rollback defined</span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-400 mt-0.5">Not yet applied</p>
                           </div>
                           <AlertDialog>
@@ -289,8 +339,20 @@ export default function AdminMigrations() {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Apply migration?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will run the forward migration for <span className="font-mono font-semibold">{m.name}</span>. This action modifies the database schema and cannot be undone without reverting the migration.
+                                <AlertDialogDescription asChild>
+                                  <div className="space-y-3">
+                                    <p>
+                                      This will run the forward migration for <span className="font-mono font-semibold">{m.name}</span>. This action modifies the database schema.
+                                    </p>
+                                    {!m.hasDown && (
+                                      <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800" data-testid={`warning-no-rollback-${m.name}`}>
+                                        <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                                        <p className="text-sm font-medium">
+                                          This migration has no rollback. Once applied, it cannot be automatically reverted.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
