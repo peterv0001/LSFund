@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { Agent, subscriptionEmailPreferencesSchema } from "@shared/schema";
+import { Agent, emailPreferencesSchema } from "@shared/schema";
 import { z } from "zod";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -288,7 +288,7 @@ export async function registerRoutes(
             isRead: false,
             emailSent: false,
           });
-          const sponsorPrefs = (sponsor.subscriptionEmailPreferences as { emailOnTeamSignup?: boolean } | null) ?? {};
+          const sponsorPrefs = (sponsor.emailPreferences as { emailOnTeamSignup?: boolean } | null) ?? {};
           if (sponsorPrefs.emailOnTeamSignup !== false) {
             emailService.sendTeamSignupEmail(sponsor.email, {
               firstName: sponsor.firstName,
@@ -459,9 +459,9 @@ export async function registerRoutes(
 
   app.patch(api.agents.updateNotificationPreferences.path, requireAuth, async (req, res) => {
     try {
-      const prefs = subscriptionEmailPreferencesSchema.parse(req.body);
+      const prefs = emailPreferencesSchema.parse(req.body);
       // @ts-ignore
-      const updated = await storage.updateAgent(req.user!.id, { subscriptionEmailPreferences: prefs });
+      const updated = await storage.updateAgent(req.user!.id, { emailPreferences: prefs });
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -785,7 +785,7 @@ export async function registerRoutes(
         emailSent: false,
       });
       
-      const agentPrefs = (agent!.subscriptionEmailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
+      const agentPrefs = (agent!.emailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
       if (agentPrefs.emailOnDealFunded !== false) {
         emailService.sendDealFundedEmail(agent!.email, {
           firstName: agent!.firstName,
@@ -1621,7 +1621,7 @@ export async function registerRoutes(
             tier: tierLabel,
             effectiveDate,
           };
-          const prefs = (agent.subscriptionEmailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
+          const prefs = (agent.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
           if (status === 'paused' && prefs.emailOnPaused !== false) {
             emailService.sendSubscriptionPausedEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send subscription paused email:', err));
@@ -1717,7 +1717,7 @@ export async function registerRoutes(
             tier: tierLabel,
             effectiveDate,
           };
-          const prefs = (agent.subscriptionEmailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
+          const prefs = (agent.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
           if (status === 'paused' && prefs.emailOnPaused !== false) {
             emailService.sendSubscriptionPausedEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription paused email:', err));

@@ -1,5 +1,5 @@
 /**
- * Tests verifying that subscriptionEmailPreferences flags are respected when
+ * Tests verifying that emailPreferences flags are respected when
  * the agent self-service route and the admin subscription-status route decide
  * whether to dispatch notification emails.
  *
@@ -89,7 +89,7 @@ async function createAgent(suffix: string, prefs: EmailPrefs = {}) {
       lastName: "Tester",
       currentRank: "agent",
       highestRank: "agent",
-      subscriptionEmailPreferences: prefs,
+      emailPreferences: prefs,
     })
     .returning();
   return agent;
@@ -266,7 +266,7 @@ describe("agent self-service route – email preference: emailOnCancelled", () =
   });
 });
 
-describe("agent self-service route – null/missing subscriptionEmailPreferences", () => {
+describe("agent self-service route – null/missing emailPreferences", () => {
   it("sends a paused email by default when preferences are an empty object (all prefs enabled)", async () => {
     // Pass an empty object {} to simulate preferences with no explicit flags.
     // The route uses `(prefs.emailOnPaused !== false)` which is true when the
@@ -426,7 +426,7 @@ describe("admin route – email preference: emailOnReactivated", () => {
   });
 });
 
-describe("admin route – null/missing subscriptionEmailPreferences", () => {
+describe("admin route – null/missing emailPreferences", () => {
   it("sends paused email by default when no preference keys are set", async () => {
     const agent = await createAgent("admin-null-prefs-pause", {});
     const sub = await createSubscription(agent.id, "active");
@@ -479,7 +479,7 @@ describe("admin route – null/missing subscriptionEmailPreferences", () => {
   });
 });
 
-// ── Unit tests: explicit null for subscriptionEmailPreferences ────────────────
+// ── Unit tests: explicit null for emailPreferences ────────────────────────────
 // The DB column is NOT NULL, so we cannot insert a null value directly.
 // These unit tests mirror the preference-gate logic from the routes verbatim
 // and confirm that an explicit null is handled identically to {} (all emails
@@ -490,7 +490,7 @@ describe("admin route – null/missing subscriptionEmailPreferences", () => {
  * Mirrors the preference gate in PATCH /api/subscriptions/:id/status and
  * PATCH /api/admin/subscriptions/:id/status.
  *
- *   const prefs = (agent.subscriptionEmailPreferences as … | null) ?? {};
+ *   const prefs = (agent.emailPreferences as … | null) ?? {};
  *   if (status === 'paused' && prefs.emailOnPaused !== false)   → send
  *   else if (status === 'cancelled' && prefs.emailOnCancelled !== false) → send
  *   else if (isReactivation && prefs.emailOnReactivated !== false) → send
@@ -508,7 +508,7 @@ function emailGate(
   };
 }
 
-describe("preference gate unit tests – explicit null subscriptionEmailPreferences", () => {
+describe("preference gate unit tests – explicit null emailPreferences", () => {
   it("treats null prefs as all-enabled for paused status", () => {
     const result = emailGate("paused", false, null);
     expect(result.paused).toBe(true);

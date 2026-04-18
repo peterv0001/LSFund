@@ -162,6 +162,23 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped end_date column from subscriptions table");
     },
   },
+  {
+    name: "007_rename_subscription_email_preferences_to_email_preferences",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE agents
+        RENAME COLUMN subscription_email_preferences TO email_preferences
+      `);
+      console.log("[migrations] Renamed subscription_email_preferences to email_preferences on agents table");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE agents
+        RENAME COLUMN email_preferences TO subscription_email_preferences
+      `);
+      console.log("[migrations] Renamed email_preferences back to subscription_email_preferences on agents table");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {
