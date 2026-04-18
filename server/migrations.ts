@@ -1,5 +1,5 @@
-import { pool } from "./db";
-import { PoolClient } from "pg";
+import { pool as defaultPool } from "./db";
+import { Pool, PoolClient } from "pg";
 
 const ADVISORY_LOCK_KEY = 8_675_309;
 
@@ -27,7 +27,7 @@ async function markRun(client: PoolClient, name: string): Promise<void> {
   );
 }
 
-type Migration = {
+export type Migration = {
   name: string;
   run: (client: PoolClient) => Promise<void>;
 };
@@ -70,14 +70,20 @@ const migrations: Migration[] = [
   },
 ];
 
-export async function runMigrations(): Promise<void> {
+export async function runMigrations(options?: {
+  pool?: Pool;
+  migrations?: Migration[];
+}): Promise<void> {
+  const pool = options?.pool ?? defaultPool;
+  const migrationList = options?.migrations ?? migrations;
+
   const client = await pool.connect();
   try {
     await client.query(`SELECT pg_advisory_lock($1)`, [ADVISORY_LOCK_KEY]);
     try {
       await ensureMigrationsTable(client);
 
-      for (const migration of migrations) {
+      for (const migration of migrationList) {
         const alreadyRun = await hasRun(client, migration.name);
         if (alreadyRun) {
           console.log(`[migrations] Skipping ${migration.name} (already applied)`);

@@ -159,7 +159,14 @@ The training page (`client/src/pages/training.tsx`) includes:
 ### Data Storage
 - **Database:** PostgreSQL with Drizzle ORM
 - **Schema Location:** `shared/schema.ts` (shared between client/server)
-- **Migrations:** Drizzle Kit with `db:push` command
+- **Migrations:** Custom migration runner in `server/migrations.ts` with per-migration transaction wrapping and advisory lock concurrency control. Each migration runs inside `BEGIN`/`COMMIT`/`ROLLBACK` so a failure leaves the schema unchanged.
+
+### Testing
+- **Framework:** Vitest (`vitest.config.ts`)
+- **Test files:** `server/**/*.test.ts`
+- **Run command:** `npx vitest run --reporter=verbose`
+- **CI validation:** Registered as `test` validation command
+- Current test coverage: `server/migrations.test.ts` — verifies transaction rollback on migration failure, non-recording of failed migrations, retry behaviour, and idempotent skip on success.
 
 **Core Tables:**
 - `agents` - User accounts with binary tree structure (sponsorId, placementId, leg)
