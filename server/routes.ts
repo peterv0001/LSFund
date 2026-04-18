@@ -2596,6 +2596,78 @@ export async function registerRoutes(
     res.json(requests);
   });
 
+  // Admin: Export Templates CRUD
+  app.get(api.exportTemplates.list.path, requireAdmin, async (req, res) => {
+    try {
+      const templates = await storage.getExportTemplatesForAdmin(req.user!.id);
+      res.json(templates);
+    } catch (err) {
+      console.error("[export-templates] list error:", err);
+      res.status(500).json({ message: "Failed to fetch export templates" });
+    }
+  });
+
+  app.post(api.exportTemplates.create.path, requireAdmin, async (req, res) => {
+    const parsed = z.object({
+      name: z.string().min(1),
+      columns: z.array(z.string()).min(1),
+      isShared: z.boolean().optional(),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request body" });
+    }
+    try {
+      const template = await storage.createExportTemplate({
+        adminId: req.user!.id,
+        name: parsed.data.name,
+        columns: parsed.data.columns,
+        isShared: parsed.data.isShared ?? false,
+      });
+      res.status(201).json(template);
+    } catch (err) {
+      console.error("[export-templates] create error:", err);
+      res.status(500).json({ message: "Failed to create export template" });
+    }
+  });
+
+  app.patch(api.exportTemplates.update.path, requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid template id" });
+    const existing = await storage.getExportTemplate(id);
+    if (!existing) return res.status(404).json({ message: "Template not found" });
+    if (existing.adminId !== req.user!.id) return res.status(403).json({ message: "Forbidden" });
+    const parsed = z.object({
+      name: z.string().min(1).optional(),
+      columns: z.array(z.string()).min(1).optional(),
+      isShared: z.boolean().optional(),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request body" });
+    }
+    try {
+      const updated = await storage.updateExportTemplate(id, parsed.data);
+      res.json(updated);
+    } catch (err) {
+      console.error("[export-templates] update error:", err);
+      res.status(500).json({ message: "Failed to update export template" });
+    }
+  });
+
+  app.delete(api.exportTemplates.delete.path, requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid template id" });
+    const existing = await storage.getExportTemplate(id);
+    if (!existing) return res.status(404).json({ message: "Template not found" });
+    if (existing.adminId !== req.user!.id) return res.status(403).json({ message: "Forbidden" });
+    try {
+      await storage.deleteExportTemplate(id);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[export-templates] delete error:", err);
+      res.status(500).json({ message: "Failed to delete export template" });
+    }
+  });
+
   // Admin: List migrations with applied status
   app.get("/api/admin/migrations", requireAdmin, async (req, res) => {
     try {

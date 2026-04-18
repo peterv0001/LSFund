@@ -2,10 +2,11 @@ import { db } from "./db";
 import { 
   agents, deals, commissions, payouts, notifications, announcements, resources, rankQualifications, activityLog,
   courseModules, courseProgress, leads, leadRequests, subscriptions, holdbacks, fulfillmentTiers, platformSettings,
+  adminExportTemplates,
   type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource,
   type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress,
   type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest,
-  type Subscription, type Holdback, type FulfillmentTier
+  type Subscription, type Holdback, type FulfillmentTier, type AdminExportTemplate
 } from "@shared/schema";
 import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum, SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -1786,6 +1787,57 @@ export class DatabaseStorage {
       result[row.key] = row.value;
     }
     return result;
+  }
+
+  // ==================== ADMIN EXPORT TEMPLATES ====================
+
+  async getExportTemplatesForAdmin(adminId: number): Promise<AdminExportTemplate[]> {
+    return db.select().from(adminExportTemplates)
+      .where(or(
+        eq(adminExportTemplates.adminId, adminId),
+        eq(adminExportTemplates.isShared, true)
+      ))
+      .orderBy(asc(adminExportTemplates.createdAt));
+  }
+
+  async createExportTemplate(data: {
+    adminId: number;
+    name: string;
+    columns: string[];
+    isShared?: boolean;
+  }): Promise<AdminExportTemplate> {
+    const [template] = await db.insert(adminExportTemplates).values({
+      adminId: data.adminId,
+      name: data.name,
+      columns: data.columns,
+      isShared: data.isShared ?? false,
+    }).returning();
+    return template;
+  }
+
+  async updateExportTemplate(id: number, data: {
+    name?: string;
+    columns?: string[];
+    isShared?: boolean;
+  }): Promise<AdminExportTemplate | undefined> {
+    const [updated] = await db.update(adminExportTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(adminExportTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteExportTemplate(id: number): Promise<boolean> {
+    const result = await db.delete(adminExportTemplates)
+      .where(eq(adminExportTemplates.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getExportTemplate(id: number): Promise<AdminExportTemplate | undefined> {
+    const [template] = await db.select().from(adminExportTemplates)
+      .where(eq(adminExportTemplates.id, id));
+    return template;
   }
 }
 

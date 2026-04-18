@@ -1143,6 +1143,76 @@ export const api = {
     },
   },
 
+  // === EXPORT TEMPLATES (Admin) ===
+  exportTemplates: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/admin/export-templates',
+      responses: {
+        200: z.array(z.object({
+          id: z.number(),
+          adminId: z.number(),
+          name: z.string(),
+          columns: z.array(z.string()),
+          isShared: z.boolean(),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+        })),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/admin/export-templates',
+      input: z.object({
+        name: z.string().min(1),
+        columns: z.array(z.string()).min(1),
+        isShared: z.boolean().optional(),
+      }),
+      responses: {
+        201: z.object({
+          id: z.number(),
+          adminId: z.number(),
+          name: z.string(),
+          columns: z.array(z.string()),
+          isShared: z.boolean(),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+        }),
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/admin/export-templates/:id',
+      input: z.object({
+        name: z.string().min(1).optional(),
+        columns: z.array(z.string()).min(1).optional(),
+        isShared: z.boolean().optional(),
+      }),
+      responses: {
+        200: z.object({
+          id: z.number(),
+          adminId: z.number(),
+          name: z.string(),
+          columns: z.array(z.string()),
+          isShared: z.boolean(),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+        }),
+        403: errorSchemas.forbidden,
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/admin/export-templates/:id',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        403: errorSchemas.forbidden,
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+
   // === MIGRATIONS (Admin) ===
   migrations: {
     list: {

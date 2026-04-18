@@ -202,6 +202,47 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped subscription_id column and index from commissions table");
     },
   },
+  {
+    name: "009_create_admin_export_templates",
+    async run(client) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS admin_export_templates (
+          id SERIAL PRIMARY KEY,
+          admin_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          columns TEXT[] NOT NULL,
+          is_shared BOOLEAN NOT NULL DEFAULT false,
+          created_at TIMESTAMP NOT NULL DEFAULT now(),
+          updated_at TIMESTAMP NOT NULL DEFAULT now()
+        )
+      `);
+      console.log("[migrations] Created admin_export_templates table");
+    },
+    async down(client) {
+      await client.query(`DROP TABLE IF EXISTS admin_export_templates`);
+      console.log("[migrations] Dropped admin_export_templates table");
+    },
+  },
+  {
+    name: "010_index_admin_export_templates",
+    async run(client) {
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_admin_export_templates_admin_id
+          ON admin_export_templates (admin_id);
+        CREATE INDEX IF NOT EXISTS idx_admin_export_templates_is_shared
+          ON admin_export_templates (is_shared)
+          WHERE is_shared = true;
+      `);
+      console.log("[migrations] Added indexes to admin_export_templates");
+    },
+    async down(client) {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_admin_export_templates_admin_id;
+        DROP INDEX IF EXISTS idx_admin_export_templates_is_shared;
+      `);
+      console.log("[migrations] Dropped indexes from admin_export_templates");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

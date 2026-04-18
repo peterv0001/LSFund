@@ -22,6 +22,7 @@ import {
   Plus,
   CalendarDays,
   GripVertical,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +67,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearch, useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 type Agent = {
   id: number;
@@ -185,41 +187,16 @@ const DEFAULT_EXPORT_COLUMNS: ExportColumnKey[] = [
 ];
 
 type ExportTemplate = {
+  id: number;
+  adminId: number;
   name: string;
   columns: ExportColumnKey[];
+  isShared: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
-const TEMPLATES_LS_KEY = "admin:export:templates";
-const COLUMN_ORDER_LS_KEY = "admin:subscriptions:columnOrder";
 const VALID_COLUMN_KEYS = new Set<string>(EXPORT_COLUMNS.map((c) => c.key));
-
-function readTemplates(): ExportTemplate[] {
-  try {
-    const raw = localStorage.getItem(TEMPLATES_LS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(
-        (t): t is ExportTemplate =>
-          typeof t?.name === "string" && t.name.trim().length > 0 && Array.isArray(t?.columns)
-      )
-      .map((t: ExportTemplate) => ({
-        name: t.name,
-        columns: t.columns.filter((k): k is ExportColumnKey => VALID_COLUMN_KEYS.has(k)),
-      }))
-      .filter((t) => t.columns.length > 0);
-  } catch {
-    return [];
-  }
-}
-
-function persistTemplates(templates: ExportTemplate[]) {
-  try {
-    localStorage.setItem(TEMPLATES_LS_KEY, JSON.stringify(templates));
-  } catch {
-  }
-}
 
 function getChangedAt(sub: Subscription): Date {
   if (sub.status === "cancelled" && sub.cancelledAt) return new Date(sub.cancelledAt);
@@ -269,6 +246,7 @@ function resolveAgentName(
 export default function AdminSubscriptions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const search = useSearch();
   const [, setLocation] = useLocation();
 
@@ -422,7 +400,7 @@ export default function AdminSubscriptions() {
 
   const [columnOrder, setColumnOrder] = useState<ExportColumnKey[]>(() => {
     try {
-      const raw = localStorage.getItem(COLUMN_ORDER_LS_KEY);
+      const raw = localStorage.getItem("admin:subscriptions:columnOrder");
       if (raw !== null) {
         const parsed: unknown = JSON.parse(raw);
         if (Array.isArray(parsed)) {
@@ -439,14 +417,48 @@ export default function AdminSubscriptions() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(COLUMN_ORDER_LS_KEY, JSON.stringify(columnOrder));
+      localStorage.setItem("admin:subscriptions:columnOrder", JSON.stringify(columnOrder));
     } catch {
     }
   }, [columnOrder]);
 
   const draggedKeyRef = useRef<ExportColumnKey | null>(null);
 
-  const [templates, setTemplates] = useState<ExportTemplate[]>(() => readTemplates());
+  const { data: templates = [], isLoading: templatesLoading } = useQuery<ExportTemplate[]>({
+    queryKey: [api.exportTemplates.list.path],
+    select: (data) =>
+      data.map((t) => ({
+        ...t,
+        columns: (t.columns as string[]).filter((k): k is ExportColumnKey => VALID_COLUMN_KEYS.has(k)),
+      })).filter((t) => t.columns.length > 0),
+  });
+
+  const createTemplateMutation = useMutation({
+    mutationFn: (vars: { name: string; columns: ExportColumnKey[]; isShared: boolean }) =>
+      apiRequest("POST", api.exportTemplates.create.path, vars),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.exportTemplates.list.path] });
+    },
+    onError: () => toast({ title: "Failed to save template", variant: "destructive" }),
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", buildUrl(api.exportTemplates.delete.path, { id })),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.exportTemplates.list.path] });
+    },
+    onError: () => toast({ title: "Failed to delete template", variant: "destructive" }),
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: (vars: { id: number; isShared: boolean }) =>
+      apiRequest("PATCH", buildUrl(api.exportTemplates.update.path, { id: vars.id }), { isShared: vars.isShared }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.exportTemplates.list.path] });
+    },
+    onError: () => toast({ title: "Failed to update template", variant: "destructive" }),
+  });
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
 
@@ -743,6 +755,8 @@ export default function AdminSubscriptions() {
     });
   }
 
+  const [shareOnSave, setShareOnSave] = useState(false);
+
   function saveTemplate() {
     const trimmed = newTemplateName.trim();
     if (!trimmed) return;
@@ -751,16 +765,17 @@ export default function AdminSubscriptions() {
       return;
     }
     const orderedSelected = columnOrder.filter((k) => selectedColumns.has(k));
-    const trimmedLower = trimmed.toLowerCase();
-    const updated = [
-      ...templates.filter((t) => t.name.toLowerCase() !== trimmedLower),
-      { name: trimmed, columns: orderedSelected },
-    ];
-    persistTemplates(updated);
-    setTemplates(updated);
-    setNewTemplateName("");
-    setShowSaveForm(false);
-    toast({ title: `Template "${trimmed}" saved` });
+    createTemplateMutation.mutate(
+      { name: trimmed, columns: orderedSelected, isShared: shareOnSave },
+      {
+        onSuccess: () => {
+          setNewTemplateName("");
+          setShowSaveForm(false);
+          setShareOnSave(false);
+          toast({ title: `Template "${trimmed}" saved` });
+        },
+      }
+    );
   }
 
   function applyTemplate(template: ExportTemplate) {
@@ -770,11 +785,20 @@ export default function AdminSubscriptions() {
     setColumnOrder([...template.columns, ...rest]);
   }
 
-  function deleteTemplate(name: string) {
-    const updated = templates.filter((t) => t.name !== name);
-    persistTemplates(updated);
-    setTemplates(updated);
-    toast({ title: `Template "${name}" deleted` });
+  function deleteTemplate(id: number, name: string) {
+    deleteTemplateMutation.mutate(id, {
+      onSuccess: () => toast({ title: `Template "${name}" deleted` }),
+    });
+  }
+
+  function toggleTemplateSharing(template: ExportTemplate) {
+    updateTemplateMutation.mutate(
+      { id: template.id, isShared: !template.isShared },
+      {
+        onSuccess: () =>
+          toast({ title: template.isShared ? `Template "${template.name}" is now private` : `Template "${template.name}" shared with all admins` }),
+      }
+    );
   }
 
   return (
@@ -1057,36 +1081,68 @@ export default function AdminSubscriptions() {
                   </div>
 
                   {/* Templates section */}
-                  {templates.length > 0 && (
+                  {templatesLoading && (
+                    <div className="px-3 py-2 flex items-center gap-2 text-xs text-gray-400">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Loading templates…
+                    </div>
+                  )}
+                  {!templatesLoading && templates.length > 0 && (
                     <>
                       <div className="px-3 pt-2 pb-1">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Saved templates</p>
                         <div className="space-y-1" data-testid="export-templates-list">
-                          {templates.map((tpl) => (
-                            <div
-                              key={tpl.name}
-                              className="flex items-center justify-between gap-1 group"
-                              data-testid={`export-template-${tpl.name.replace(/\s+/g, "-").toLowerCase()}`}
-                            >
-                              <button
-                                className="flex-1 text-left text-sm text-gray-700 px-2 py-1 rounded hover:bg-gray-50 truncate"
-                                onClick={() => applyTemplate(tpl)}
-                                data-testid={`button-apply-template-${tpl.name.replace(/\s+/g, "-").toLowerCase()}`}
-                                title={`Apply "${tpl.name}" template`}
+                          {templates.map((tpl) => {
+                            const isOwner = tpl.adminId === user?.id;
+                            const testSlug = tpl.name.replace(/\s+/g, "-").toLowerCase();
+                            return (
+                              <div
+                                key={tpl.id}
+                                className="flex items-center justify-between gap-1 group"
+                                data-testid={`export-template-${testSlug}`}
                               >
-                                {tpl.name}
-                              </button>
-                              <button
-                                className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1 rounded"
-                                onClick={() => deleteTemplate(tpl.name)}
-                                data-testid={`button-delete-template-${tpl.name.replace(/\s+/g, "-").toLowerCase()}`}
-                                title={`Delete "${tpl.name}" template`}
-                                aria-label={`Delete ${tpl.name}`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
+                                <button
+                                  className="flex-1 text-left text-sm text-gray-700 px-2 py-1 rounded hover:bg-gray-50 truncate"
+                                  onClick={() => applyTemplate(tpl)}
+                                  data-testid={`button-apply-template-${testSlug}`}
+                                  title={`Apply "${tpl.name}" template`}
+                                >
+                                  {tpl.name}
+                                </button>
+                                {tpl.isShared && !isOwner && (
+                                  <span
+                                    className="shrink-0 text-xs text-blue-500 px-1"
+                                    title="Shared by another admin"
+                                    data-testid={`badge-shared-template-${testSlug}`}
+                                  >
+                                    <Share2 className="w-3 h-3" />
+                                  </span>
+                                )}
+                                {isOwner && (
+                                  <button
+                                    className={`shrink-0 transition-colors p-1 rounded ${tpl.isShared ? "text-blue-400 hover:text-blue-600" : "text-gray-300 hover:text-blue-400"}`}
+                                    onClick={() => toggleTemplateSharing(tpl)}
+                                    data-testid={`button-toggle-share-template-${testSlug}`}
+                                    title={tpl.isShared ? "Unshare template" : "Share with all admins"}
+                                    aria-label={tpl.isShared ? `Unshare ${tpl.name}` : `Share ${tpl.name}`}
+                                  >
+                                    <Share2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {isOwner && (
+                                  <button
+                                    className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1 rounded"
+                                    onClick={() => deleteTemplate(tpl.id, tpl.name)}
+                                    data-testid={`button-delete-template-${testSlug}`}
+                                    title={`Delete "${tpl.name}" template`}
+                                    aria-label={`Delete ${tpl.name}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                       <Separator />
@@ -1182,36 +1238,50 @@ export default function AdminSubscriptions() {
                   {/* Save as template */}
                   <div className="px-3 py-2">
                     {showSaveForm ? (
-                      <div className="flex gap-1.5" data-testid="save-template-form">
-                        <Input
-                          autoFocus
-                          placeholder="Template name"
-                          value={newTemplateName}
-                          onChange={(e) => setNewTemplateName(e.target.value)}
-                          className="h-7 text-xs flex-1"
-                          data-testid="input-template-name"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveTemplate();
-                            if (e.key === "Escape") { setShowSaveForm(false); setNewTemplateName(""); }
-                          }}
-                        />
-                        <button
-                          className="shrink-0 text-primary hover:text-primary/80 transition-colors p-1 rounded"
-                          onClick={saveTemplate}
-                          data-testid="button-save-template-confirm"
-                          aria-label="Confirm save template"
-                          disabled={!newTemplateName.trim()}
+                      <div className="space-y-1.5" data-testid="save-template-form">
+                        <div className="flex gap-1.5">
+                          <Input
+                            autoFocus
+                            placeholder="Template name"
+                            value={newTemplateName}
+                            onChange={(e) => setNewTemplateName(e.target.value)}
+                            className="h-7 text-xs flex-1"
+                            data-testid="input-template-name"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveTemplate();
+                              if (e.key === "Escape") { setShowSaveForm(false); setNewTemplateName(""); setShareOnSave(false); }
+                            }}
+                          />
+                          <button
+                            className="shrink-0 text-primary hover:text-primary/80 transition-colors p-1 rounded"
+                            onClick={saveTemplate}
+                            data-testid="button-save-template-confirm"
+                            aria-label="Confirm save template"
+                            disabled={!newTemplateName.trim() || createTemplateMutation.isPending}
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded"
+                            onClick={() => { setShowSaveForm(false); setNewTemplateName(""); setShareOnSave(false); }}
+                            data-testid="button-save-template-cancel"
+                            aria-label="Cancel save template"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <label
+                          className="flex items-center gap-1.5 cursor-pointer"
+                          data-testid="label-share-on-save"
                         >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded"
-                          onClick={() => { setShowSaveForm(false); setNewTemplateName(""); }}
-                          data-testid="button-save-template-cancel"
-                          aria-label="Cancel save template"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                          <Checkbox
+                            checked={shareOnSave}
+                            onCheckedChange={(v) => setShareOnSave(Boolean(v))}
+                            data-testid="checkbox-share-on-save"
+                            className="h-3.5 w-3.5"
+                          />
+                          <span className="text-xs text-gray-500">Share with all admins</span>
+                        </label>
                       </div>
                     ) : (
                       <button

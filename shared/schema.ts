@@ -516,6 +516,25 @@ export const platformSettings = pgTable("platform_settings", {
 
 export type PlatformSetting = typeof platformSettings.$inferSelect;
 
+export const adminExportTemplates = pgTable("admin_export_templates", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull(),
+  name: text("name").notNull(),
+  columns: text("columns").array().notNull(),
+  isShared: boolean("is_shared").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAdminExportTemplateSchema = createInsertSchema(adminExportTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AdminExportTemplate = typeof adminExportTemplates.$inferSelect;
+export type InsertAdminExportTemplate = z.infer<typeof insertAdminExportTemplateSchema>;
+
 // === RELATIONS ===
 
 export const agentsRelations = relations(agents, ({ one, many }) => ({

@@ -182,6 +182,7 @@ The training page (`client/src/pages/training.tsx`) includes:
 - `announcements` - Company-wide messages
 - `resources` - Training materials and documents
 - `course_modules` / `course_progress` - Training module system
+- `admin_export_templates` - Server-side stored export column templates per admin; supports isShared flag so templates can be visible to all admins
 
 **Binary Tree Structure:**
 - Each agent has `sponsorId` (who recruited them) and `placementId` (position in binary tree)
