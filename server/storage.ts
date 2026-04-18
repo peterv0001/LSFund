@@ -1045,6 +1045,7 @@ export class DatabaseStorage {
     actorType?: string;
     entityType?: string;
     entityId?: number;
+    entityIds?: number[];
     action?: string;
     search?: string;
     startDate?: Date;
@@ -1066,7 +1067,9 @@ export class DatabaseStorage {
     if (filters?.action) {
       conditions.push(eq(activityLog.action, filters.action));
     }
-    if (filters?.entityId) {
+    if (filters?.entityIds && filters.entityIds.length > 0) {
+      conditions.push(inArray(activityLog.entityId, filters.entityIds));
+    } else if (filters?.entityId) {
       conditions.push(eq(activityLog.entityId, filters.entityId));
     }
     if (filters?.search) {

@@ -30,7 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInMonths } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -745,6 +746,146 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
   );
 }
 
+// === All Activity Timeline ===
+
+type AllActivityEntry = {
+  id: number;
+  action: string;
+  description: string | null;
+  createdAt: string;
+  actorType: string | null;
+  entityId: number | null;
+  merchantName: string | null;
+};
+
+type AllActivityResponse = {
+  logs: AllActivityEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+function AllActivityTimeline() {
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  const { data, isLoading, isError, refetch } = useQuery<AllActivityResponse>({
+    queryKey: ["/api/subscriptions/history", page],
+    queryFn: async () => {
+      const res = await fetch(`/api/subscriptions/history?page=${page}&pageSize=${pageSize}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load activity");
+      return res.json();
+    },
+  });
+
+  const logs = data?.logs ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / pageSize);
+
+  if (isError) {
+    return (
+      <div className="text-center py-10" data-testid="all-activity-error">
+        <p className="text-sm text-red-600 font-medium mb-2">Could not load activity history.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-activity-retry">
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3" data-testid="all-activity-loading">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+            <Skeleton className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" />
+            <div className="space-y-1.5 flex-1">
+              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-3 w-36" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="text-center py-12" data-testid="all-activity-empty">
+        <Activity className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+        <p className="text-muted-foreground text-sm">No subscription activity yet.</p>
+        <p className="text-muted-foreground/60 text-xs mt-1">Changes to your subscriptions will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="all-activity-timeline">
+      <ol className="divide-y divide-gray-100">
+        {logs.map((log) => {
+          const style = getActionStyle(log.action);
+          return (
+            <li key={log.id} className="flex items-start gap-3 py-3.5" data-testid={`activity-entry-${log.id}`}>
+              <span className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${style.dot}`} />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${style.color}`}>
+                  {log.description || log.action}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {log.merchantName && (
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {log.merchantName}
+                    </span>
+                  )}
+                  {log.merchantName && <span className="text-xs text-muted-foreground/40">·</span>}
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(log.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                  </span>
+                  {log.actorType === "admin" && (
+                    <span className="text-xs text-purple-500">(by admin)</span>
+                  )}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2" data-testid="activity-pagination">
+          <span className="text-xs text-muted-foreground">
+            Page {page} of {totalPages} — {total} total events
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              data-testid="button-activity-prev"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              data-testid="button-activity-next"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // === Main Page ===
 
 export default function SubscriptionsPage() {
@@ -801,61 +942,86 @@ export default function SubscriptionsPage() {
           </div>
         </div>
 
-        {/* Subscriptions List */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="subscriptions-skeleton">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-40" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                  <Skeleton className="h-6 w-16 rounded-full" />
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {[1, 2, 3, 4].map((j) => (
-                    <div key={j} className="space-y-1">
-                      <Skeleton className="h-3 w-12" />
-                      <Skeleton className="h-5 w-16" />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-1 pt-3 border-t border-gray-100">
-                  {[1, 2, 3, 4, 5].map((k) => (
-                    <Skeleton key={k} className="flex-1 h-10 rounded" />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : subscriptions.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-border p-12 text-center" data-testid="empty-subscriptions">
-            <RefreshCw className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-primary mb-2">No Subscriptions Yet</h3>
-            <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">
-              Log your first merchant subscription to start earning recurring commission income from the Merchant Growth Platform.
-            </p>
-            <LogSubscriptionDialog deals={deals} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="subscriptions-list">
-            {subscriptions.map((sub) => (
-              <SubscriptionCard key={sub.id} sub={sub} />
-            ))}
-          </div>
-        )}
+        {/* Tabs */}
+        <Tabs defaultValue="subscriptions" data-testid="subscriptions-tabs">
+          <TabsList className="mb-6" data-testid="tabs-list">
+            <TabsTrigger value="subscriptions" data-testid="tab-subscriptions">
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              Subscriptions
+            </TabsTrigger>
+            <TabsTrigger value="activity" data-testid="tab-activity">
+              <Activity className="w-4 h-4 mr-1.5" />
+              All Activity
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Decay Info Banner */}
-        {subscriptions.length > 0 && (
-          <div className="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-            <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-800">
-              Commission percentages decay over time per the comp plan. Pairing a subscription with a funded MCA deal earns a +5% bonus for the first 3 months.
-              Commissions shown are estimates; actual amounts are calculated monthly by the platform.
-            </p>
-          </div>
-        )}
+          <TabsContent value="subscriptions" data-testid="tab-content-subscriptions">
+            {isLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="subscriptions-skeleton">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <Skeleton className="h-5 w-40" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[1, 2, 3, 4].map((j) => (
+                        <div key={j} className="space-y-1">
+                          <Skeleton className="h-3 w-12" />
+                          <Skeleton className="h-5 w-16" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-1 pt-3 border-t border-gray-100">
+                      {[1, 2, 3, 4, 5].map((k) => (
+                        <Skeleton key={k} className="flex-1 h-10 rounded" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : subscriptions.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-dashed border-border p-12 text-center" data-testid="empty-subscriptions">
+                <RefreshCw className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-primary mb-2">No Subscriptions Yet</h3>
+                <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">
+                  Log your first merchant subscription to start earning recurring commission income from the Merchant Growth Platform.
+                </p>
+                <LogSubscriptionDialog deals={deals} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="subscriptions-list">
+                {subscriptions.map((sub) => (
+                  <SubscriptionCard key={sub.id} sub={sub} />
+                ))}
+              </div>
+            )}
+
+            {/* Decay Info Banner */}
+            {subscriptions.length > 0 && (
+              <div className="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-800">
+                  Commission percentages decay over time per the comp plan. Pairing a subscription with a funded MCA deal earns a +5% bonus for the first 3 months.
+                  Commissions shown are estimates; actual amounts are calculated monthly by the platform.
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="activity" data-testid="tab-content-activity">
+            <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <Activity className="w-4 h-4 text-primary" />
+                <h2 className="text-base font-semibold text-primary">All Subscription Activity</h2>
+              </div>
+              <AllActivityTimeline />
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

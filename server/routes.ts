@@ -1310,6 +1310,44 @@ export async function registerRoutes(
     res.json(subs);
   });
 
+  app.get("/api/subscriptions/history", requireAuth, async (req, res) => {
+    try {
+      const agentId = req.user!.id;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize) || 20));
+
+      const agentSubs = await storage.getSubscriptionsByAgent(agentId);
+      if (agentSubs.length === 0) {
+        return res.json({ logs: [], total: 0, page, pageSize });
+      }
+
+      const subIds = agentSubs.map((s) => s.id);
+      const subMap: Record<number, string> = {};
+      for (const s of agentSubs) {
+        subMap[s.id] = s.merchantName;
+      }
+
+      const { logs, total } = await storage.getActivityLogs(page, pageSize, {
+        entityType: 'subscription',
+        entityIds: subIds,
+      });
+
+      const safeLog = logs.map(({ id, action, description, createdAt, actorType, entityId }) => ({
+        id,
+        action,
+        description,
+        createdAt,
+        actorType,
+        entityId,
+        merchantName: entityId ? (subMap[entityId] ?? null) : null,
+      }));
+
+      res.json({ logs: safeLog, total, page, pageSize });
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch subscription history' });
+    }
+  });
+
   app.get("/api/subscriptions/:id/history", requireAuth, async (req, res) => {
     try {
       const agentId = req.user!.id;
