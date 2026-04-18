@@ -543,10 +543,10 @@ export default function AdminSubscriptions() {
                               </p>
                             )}
                             {sub.status === "active" && sub.reactivatedAt && (
-                              <p className="text-xs text-gray-400 mt-1" data-testid={`text-reactivated-at-${sub.id}`}>
-                                Reactivated {format(new Date(sub.reactivatedAt), "MMM d, yyyy")}
+                              <p className="text-xs text-green-600 mt-1" data-testid={`text-reactivated-at-${sub.id}`}>
+                                Reactivated on {format(new Date(sub.reactivatedAt), "MMM d, yyyy")}
                                 {sub.reactivatedBy && (
-                                  <span className="block text-gray-400" data-testid={`text-reactivated-by-${sub.id}`}>
+                                  <span className="block text-gray-400 font-normal" data-testid={`text-reactivated-by-${sub.id}`}>
                                     by {sub.reactivatedBy.firstName} {sub.reactivatedBy.lastName}
                                   </span>
                                 )}

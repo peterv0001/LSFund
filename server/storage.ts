@@ -1395,18 +1395,19 @@ export class DatabaseStorage {
     if (status === 'cancelled') {
       updates.cancelledAt = new Date();
       if (actorId) updates.cancelledById = actorId;
+      updates.reactivatedAt = null;
+      updates.reactivatedById = null;
     }
     if (status === 'paused') {
       updates.pausedAt = new Date();
       if (actorId) updates.pausedById = actorId;
+      updates.reactivatedAt = null;
+      updates.reactivatedById = null;
     }
     if (status === 'active') {
       updates.pausedAt = null;
-      const [current] = await db.select({ status: subscriptions.status }).from(subscriptions).where(eq(subscriptions.id, id));
-      if (current?.status === 'paused') {
-        updates.reactivatedAt = new Date();
-        if (actorId) updates.reactivatedById = actorId;
-      }
+      updates.reactivatedAt = new Date();
+      updates.reactivatedById = actorId ?? null;
     }
     const [updated] = await db.update(subscriptions)
       .set(updates)
