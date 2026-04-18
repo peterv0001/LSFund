@@ -489,10 +489,10 @@ export default function AdminSubscriptions() {
                               </p>
                             )}
                             {sub.status === "paused" && sub.pausedAt && (
-                              <p className="text-xs text-gray-400 mt-1" data-testid={`text-paused-at-${sub.id}`}>
-                                {format(new Date(sub.pausedAt), "MMM d, yyyy")}
+                              <p className="text-xs text-yellow-600 font-medium mt-1" data-testid={`text-paused-at-${sub.id}`}>
+                                Paused on {format(new Date(sub.pausedAt), "MMM d, yyyy")}
                                 {sub.pausedBy && (
-                                  <span className="block text-gray-400" data-testid={`text-paused-by-${sub.id}`}>
+                                  <span className="block text-gray-400 font-normal" data-testid={`text-paused-by-${sub.id}`}>
                                     by {sub.pausedBy.firstName} {sub.pausedBy.lastName}
                                   </span>
                                 )}
