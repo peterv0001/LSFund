@@ -11,12 +11,15 @@ import {
   Zap,
   Filter,
   Clock,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -89,11 +92,39 @@ function getChangedAt(sub: Subscription): Date {
   return new Date(sub.updatedAt);
 }
 
+type AgentSummary = {
+  agentId: number;
+  agentName: string;
+  cancelledCount: number;
+  pausedCount: number;
+};
+
+function buildAgentSummary(subscriptions: Subscription[]): AgentSummary[] {
+  const map = new Map<number, AgentSummary>();
+  for (const sub of subscriptions) {
+    if (sub.status !== "cancelled" && sub.status !== "paused") continue;
+    const agentId = sub.agentId;
+    if (!map.has(agentId)) {
+      const name = sub.agent
+        ? `${sub.agent.firstName} ${sub.agent.lastName}`
+        : `Agent #${agentId}`;
+      map.set(agentId, { agentId, agentName: name, cancelledCount: 0, pausedCount: 0 });
+    }
+    const entry = map.get(agentId)!;
+    if (sub.status === "cancelled") entry.cancelledCount++;
+    if (sub.status === "paused") entry.pausedCount++;
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    (b.cancelledCount + b.pausedCount) - (a.cancelledCount + a.pausedCount)
+  );
+}
+
 export default function AdminSubscriptions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
+  const [agentFilter, setAgentFilter] = useState<number | null>(null);
 
   const { data: subscriptions = [], isLoading } = useQuery<Subscription[]>({
     queryKey: [api.admin.subscriptions.list.path],
@@ -125,6 +156,8 @@ export default function AdminSubscriptions() {
     .reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
   const totalSubs = subscriptions.length;
 
+  const agentSummary = buildAgentSummary(subscriptions);
+
   const dateThreshold = dateRangeFilter === "all"
     ? null
     : new Date(Date.now() - (dateRangeFilter === "7d" ? 7 : 30) * 24 * 60 * 60 * 1000);
@@ -132,29 +165,15 @@ export default function AdminSubscriptions() {
   const filteredSubscriptions = subscriptions.filter((s) => {
     if (statusFilter !== "all" && s.status !== statusFilter) return false;
     if (dateThreshold && getChangedAt(s) < dateThreshold) return false;
+    if (agentFilter !== null && s.agentId !== agentFilter) return false;
     return true;
   });
 
-  const showAgentSummary =
-    (statusFilter === "paused" || statusFilter === "cancelled") &&
-    dateRangeFilter !== "all";
+  const selectedAgentSummary = agentFilter !== null
+    ? agentSummary.find((a) => a.agentId === agentFilter) ?? null
+    : null;
 
-  const agentSummary: { agentId: number; name: string; count: number }[] = showAgentSummary
-    ? Object.values(
-        filteredSubscriptions.reduce<Record<number, { agentId: number; name: string; count: number }>>(
-          (acc, sub) => {
-            const id = sub.agentId;
-            const name = sub.agent?.firstName
-              ? `${sub.agent.firstName} ${sub.agent.lastName}`
-              : `Agent #${id}`;
-            if (!acc[id]) acc[id] = { agentId: id, name, count: 0 };
-            acc[id].count += 1;
-            return acc;
-          },
-          {}
-        )
-      ).sort((a, b) => b.count - a.count)
-    : [];
+  const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -228,6 +247,65 @@ export default function AdminSubscriptions() {
             </Card>
           </div>
 
+          {/* Agent Summary Panel */}
+          {agentSummary.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader className="pb-3 pt-4 px-5">
+                <CardTitle className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-500" />
+                  Agent Activity — Cancellations &amp; Pauses
+                  <span className="text-xs font-normal text-gray-400 ml-1">Click an agent to filter the table</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-5 pb-4">
+                <div className="flex flex-wrap gap-2" data-testid="agent-summary-panel">
+                  {agentSummary.map((summary) => {
+                    const isSelected = agentFilter === summary.agentId;
+                    return (
+                      <button
+                        key={summary.agentId}
+                        data-testid={`chip-agent-${summary.agentId}`}
+                        onClick={() => setAgentFilter(isSelected ? null : summary.agentId)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors cursor-pointer ${
+                          isSelected
+                            ? "bg-primary text-white border-primary shadow-sm"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-primary hover:text-primary"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <span>{summary.agentName}</span>
+                        {summary.cancelledCount > 0 && (
+                          <span
+                            data-testid={`chip-agent-cancelled-${summary.agentId}`}
+                            className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full ${
+                              isSelected
+                                ? "bg-white/20 text-white"
+                                : "bg-red-100 text-red-600"
+                            }`}
+                          >
+                            {summary.cancelledCount} cancelled
+                          </span>
+                        )}
+                        {summary.pausedCount > 0 && (
+                          <span
+                            data-testid={`chip-agent-paused-${summary.agentId}`}
+                            className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full ${
+                              isSelected
+                                ? "bg-white/20 text-white"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {summary.pausedCount} paused
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Filter Bar */}
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <Filter className="w-4 h-4 text-gray-400" />
@@ -266,7 +344,25 @@ export default function AdminSubscriptions() {
               </Select>
             </div>
 
-            {(statusFilter !== "all" || dateRangeFilter !== "all") && (
+            {agentFilter !== null && selectedAgentSummary && (
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium"
+                data-testid="agent-filter-indicator"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>{selectedAgentSummary.agentName}</span>
+                <button
+                  data-testid="button-clear-agent-filter"
+                  onClick={() => setAgentFilter(null)}
+                  className="ml-0.5 hover:text-primary/70 transition-colors"
+                  aria-label="Clear agent filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {hasActiveFilters && (
               <span className="text-sm text-gray-500" data-testid="text-filter-count">
                 {filteredSubscriptions.length} result{filteredSubscriptions.length !== 1 ? "s" : ""}
               </span>
@@ -315,9 +411,9 @@ export default function AdminSubscriptions() {
           ) : filteredSubscriptions.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
-                {statusFilter === "all" && dateRangeFilter === "all"
+                {!hasActiveFilters
                   ? "No subscriptions found."
-                  : `No ${statusFilter === "all" ? "" : statusFilter + " "}subscriptions found${dateRangeFilter !== "all" ? ` in the last ${dateRangeFilter === "7d" ? "7" : "30"} days` : ""}.`}
+                  : `No ${statusFilter === "all" ? "" : statusFilter + " "}subscriptions found${agentFilter !== null && selectedAgentSummary ? ` for ${selectedAgentSummary.agentName}` : ""}${dateRangeFilter !== "all" ? ` in the last ${dateRangeFilter === "7d" ? "7" : "30"} days` : ""}.`}
               </CardContent>
             </Card>
           ) : (
