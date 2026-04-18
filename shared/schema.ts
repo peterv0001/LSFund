@@ -378,9 +378,9 @@ export const subscriptions = pgTable("subscriptions", {
   startDate: timestamp("start_date").defaultNow().notNull(),
   cancelledAt: timestamp("cancelled_at"),
   pausedAt: timestamp("paused_at"),
+  reactivatedAt: timestamp("reactivated_at"),
   cancelledById: integer("cancelled_by_id"),
   pausedById: integer("paused_by_id"),
-  reactivatedAt: timestamp("reactivated_at"),
   reactivatedById: integer("reactivated_by_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -833,6 +833,8 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   updatedAt: true,
   cancelledAt: true,
   pausedAt: true,
+  reactivatedAt: true,
+  reactivatedById: true,
 }).extend({
   monthlyAmount: z.coerce.number().min(0),
 });

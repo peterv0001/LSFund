@@ -104,6 +104,7 @@ const ACTION_COLORS: Record<string, string> = {
   clawback: "bg-red-100 text-red-700",
   pause: "bg-amber-100 text-amber-700",
   cancel: "bg-red-100 text-red-700",
+  reactivate: "bg-green-100 text-green-700",
 };
 
 const ACTIVITY_LOG_PATH = "/api/admin/activity-log";

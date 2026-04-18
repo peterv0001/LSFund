@@ -1538,13 +1538,15 @@ export async function registerRoutes(
 
       // Log status change to activity log (all status transitions)
       if (actorId) {
+        const action = status === 'paused' ? 'pause' : status === 'cancelled' ? 'cancel' : status === 'active' ? 'reactivate' : 'update';
+        const actionLabel = status === 'paused' ? 'paused' : status === 'cancelled' ? 'cancelled' : status === 'active' ? 'reactivated' : 'updated';
         storage.logActivity({
           actorId,
           actorType: 'admin',
-          action: 'update',
+          action,
           entityType: 'subscription',
-          entityId: subId,
-          description: `Admin updated subscription #${subId}${existingSub ? ` for merchant "${existingSub.merchantName}"` : ''} status to "${status}"`,
+          entityId: updated.id,
+          description: `Admin ${actionLabel} subscription #${updated.id}${existingSub ? ` for merchant "${existingSub.merchantName}"` : ''} (tier: ${updated.tier})`,
           details: {
             previousStatus: existingSub?.status ?? null,
             newStatus: status,
