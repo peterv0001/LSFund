@@ -17,7 +17,8 @@ import {
   UserPlus,
   Shield,
   Repeat,
-  Info
+  Info,
+  AlertTriangle
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +45,12 @@ export default function Dashboard() {
       return res.json();
     },
   });
+
+  const { data: subscriptions = [] } = useQuery<{ id: number; status: string }[]>({
+    queryKey: ["/api/subscriptions"],
+  });
+
+  const expiredSubscriptionCount = subscriptions.filter((s) => s.status === "expired").length;
 
   const copyReferralLink = () => {
     const link = referralData?.referralUrl || `${window.location.origin}/join/${user?.referralCode || user?.id}`;
@@ -90,6 +97,26 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {expiredSubscriptionCount > 0 && (
+          <div
+            className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-md p-3 mb-4"
+            data-testid="banner-expired-subscriptions-dashboard"
+          >
+            <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-red-700">
+              <span className="font-semibold">
+                {expiredSubscriptionCount === 1
+                  ? "1 subscription has expired"
+                  : `${expiredSubscriptionCount} subscriptions have expired`}
+              </span>{" "}
+              — these are no longer generating commissions.{" "}
+              <Link href="/subscriptions" className="underline font-medium" data-testid="link-view-expired-subscriptions">
+                View subscriptions
+              </Link>
+            </p>
+          </div>
+        )}
 
         <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-6" data-testid="banner-earnings-disclaimer">
           <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />

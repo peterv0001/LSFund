@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp, Activity, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp, AlertTriangle, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInMonths } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -582,7 +582,11 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
     </AlertDialog>
 
     <div
-      className="bg-white rounded-2xl border border-border shadow-sm p-6 hover:shadow-md transition-shadow"
+      className={`bg-white rounded-2xl border shadow-sm p-6 hover:shadow-md transition-shadow ${
+        sub.status === "expired"
+          ? "border-red-300 bg-red-50/30"
+          : "border-border"
+      }`}
       data-testid={`card-subscription-${sub.id}`}
     >
       <div className="flex items-start justify-between gap-4 mb-3">
@@ -898,6 +902,7 @@ export default function SubscriptionsPage() {
   });
 
   const activeCount = subscriptions.filter((s) => s.status === "active").length;
+  const expiredCount = subscriptions.filter((s) => s.status === "expired").length;
   const mrr = subscriptions
     .filter((s) => s.status === "active")
     .reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
@@ -956,6 +961,27 @@ export default function SubscriptionsPage() {
           </TabsList>
 
           <TabsContent value="subscriptions" data-testid="tab-content-subscriptions">
+            {/* Expired Subscriptions Warning */}
+            {!isLoading && expiredCount > 0 && (
+              <div
+                className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4 mb-6"
+                data-testid="banner-expired-subscriptions"
+              >
+                <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700">
+                    {expiredCount === 1
+                      ? "1 subscription has expired"
+                      : `${expiredCount} subscriptions have expired`}
+                  </p>
+                  <p className="text-xs text-red-600 mt-0.5">
+                    Expired subscriptions no longer generate commission. Contact support or your admin to reactivate them.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Subscriptions List */}
             {isLoading ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="subscriptions-skeleton">
                 {[1, 2, 3, 4].map((i) => (
