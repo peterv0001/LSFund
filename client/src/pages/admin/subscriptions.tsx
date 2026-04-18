@@ -240,6 +240,19 @@ function buildAgentSummary(subscriptions: Subscription[]): AgentSummary[] {
   );
 }
 
+function resolveAgentName(
+  agentId: number,
+  subscriptions: Subscription[],
+  agentSummary: AgentSummary[],
+): string {
+  const foundInSummary = agentSummary.find((a) => a.agentId === agentId);
+  if (foundInSummary) return foundInSummary.agentName;
+  const subWithAgent = subscriptions.find((s) => s.agentId === agentId && s.agent?.firstName);
+  return subWithAgent
+    ? `${subWithAgent.agent!.firstName} ${subWithAgent.agent!.lastName}`
+    : `Agent #${agentId}`;
+}
+
 export default function AdminSubscriptions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -449,11 +462,11 @@ export default function AdminSubscriptions() {
 
   const selectedAgentSummary = agentFilter !== null
     ? agentSummary.find((a) => a.agentId === agentFilter) ?? (() => {
-        const subWithAgent = subscriptions.find((s) => s.agentId === agentFilter && s.agent?.firstName);
-        if (!subWithAgent) return null;
+        const hasNamedAgent = subscriptions.some((s) => s.agentId === agentFilter && s.agent?.firstName);
+        if (!hasNamedAgent) return null;
         return {
           agentId: agentFilter,
-          agentName: `${subWithAgent.agent!.firstName} ${subWithAgent.agent!.lastName}`,
+          agentName: resolveAgentName(agentFilter, subscriptions, agentSummary),
           cancelledCount: 0,
           pausedCount: 0,
         };
@@ -543,20 +556,9 @@ export default function AdminSubscriptions() {
     } else {
       dateLabel = dateRangeFilter;
     }
-    let agentLabel: string;
-    if (agentFilter === null) {
-      agentLabel = "All agents";
-    } else {
-      const foundInSummary = agentSummary.find((a) => a.agentId === agentFilter);
-      if (foundInSummary) {
-        agentLabel = foundInSummary.agentName;
-      } else {
-        const subWithAgent = subscriptions.find((s) => s.agentId === agentFilter && s.agent?.firstName);
-        agentLabel = subWithAgent
-          ? `${subWithAgent.agent!.firstName} ${subWithAgent.agent!.lastName}`
-          : `Agent #${agentFilter}`;
-      }
-    }
+    const agentLabel = agentFilter === null
+      ? "All agents"
+      : resolveAgentName(agentFilter, subscriptions, agentSummary);
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const metaLines = [
       `${esc("Exported")},${esc(exportDate)}`,
