@@ -1019,6 +1019,13 @@ export default function AdminSubscriptions() {
                       Select all
                     </button>
                     <button
+                      className="text-xs text-amber-600 hover:underline"
+                      data-testid="button-col-reset-defaults"
+                      onClick={() => setSelectedColumns(new Set(DEFAULT_EXPORT_COLUMNS))}
+                    >
+                      Reset to defaults
+                    </button>
+                    <button
                       className="text-xs text-gray-400 hover:underline"
                       data-testid="button-col-clear-all"
                       onClick={() => setSelectedColumns(new Set())}
