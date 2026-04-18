@@ -15,6 +15,7 @@ import {
   Download,
   History,
   CalendarRange,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -122,6 +131,41 @@ const STATUS_COLORS: Record<string, string> = {
 type StatusFilter = "all" | "active" | "paused" | "cancelled" | "expired";
 type DateRangeFilter = "all" | "7d" | "30d" | "custom";
 
+type ExportColumnKey =
+  | "id"
+  | "merchantName"
+  | "merchantEmail"
+  | "agentName"
+  | "agentEmail"
+  | "tier"
+  | "monthlyAmount"
+  | "status"
+  | "changeDate"
+  | "startDate";
+
+const EXPORT_COLUMNS: { key: ExportColumnKey; label: string }[] = [
+  { key: "id", label: "ID" },
+  { key: "merchantName", label: "Merchant Name" },
+  { key: "merchantEmail", label: "Merchant Email" },
+  { key: "agentName", label: "Agent Name" },
+  { key: "agentEmail", label: "Agent Email" },
+  { key: "tier", label: "Tier" },
+  { key: "monthlyAmount", label: "Monthly Amount" },
+  { key: "status", label: "Status" },
+  { key: "changeDate", label: "Change Date" },
+  { key: "startDate", label: "Start Date" },
+];
+
+const DEFAULT_EXPORT_COLUMNS: ExportColumnKey[] = [
+  "id",
+  "merchantName",
+  "agentName",
+  "tier",
+  "monthlyAmount",
+  "status",
+  "changeDate",
+];
+
 function getChangedAt(sub: Subscription): Date {
   if (sub.status === "cancelled" && sub.cancelledAt) return new Date(sub.cancelledAt);
   return new Date(sub.updatedAt);
@@ -170,6 +214,9 @@ export default function AdminSubscriptions() {
   const [historySubId, setHistorySubId] = useState<number | null>(null);
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [selectedColumns, setSelectedColumns] = useState<Set<ExportColumnKey>>(
+    new Set(DEFAULT_EXPORT_COLUMNS)
+  );
 
   const { data: historyEntries = [], isLoading: historyLoading } = useQuery<ActivityEntry[]>({
     queryKey: [api.admin.subscriptions.activity.path, historySubId],
@@ -246,32 +293,49 @@ export default function AdminSubscriptions() {
 
   const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null;
 
+  function getCellValue(key: ExportColumnKey, s: Subscription): string {
+    const agentName = s.agent?.firstName
+      ? `${s.agent.firstName} ${s.agent.lastName}`
+      : `#${s.agentId}`;
+    const changeDate = s.status === "cancelled" && s.cancelledAt
+      ? format(new Date(s.cancelledAt), "yyyy-MM-dd")
+      : s.status === "paused" && s.pausedAt
+        ? format(new Date(s.pausedAt), "yyyy-MM-dd")
+        : format(new Date(s.updatedAt), "yyyy-MM-dd");
+    switch (key) {
+      case "id": return String(s.id);
+      case "merchantName": return s.merchantName;
+      case "merchantEmail": return s.merchantEmail ?? "";
+      case "agentName": return agentName;
+      case "agentEmail": return s.agent?.email ?? "";
+      case "tier": return TIER_LABELS[s.tier] ?? s.tier;
+      case "monthlyAmount": return s.monthlyAmount;
+      case "status": return s.status;
+      case "changeDate": return changeDate;
+      case "startDate": return format(new Date(s.startDate), "yyyy-MM-dd");
+    }
+  }
+
   function exportCsv() {
-    const headers = ["ID", "Merchant Name", "Agent Name", "Tier", "Monthly Amount", "Status", "Change Date"];
-    const rows = filteredSubscriptions.map((s) => {
-      const agentName = s.agent?.firstName
-        ? `${s.agent.firstName} ${s.agent.lastName}`
-        : `#${s.agentId}`;
-      const changeDate = s.status === "cancelled" && s.cancelledAt
-        ? format(new Date(s.cancelledAt), "yyyy-MM-dd")
-        : s.status === "paused" && s.pausedAt
-          ? format(new Date(s.pausedAt), "yyyy-MM-dd")
-          : format(new Date(s.updatedAt), "yyyy-MM-dd");
-      return [
-        s.id,
-        s.merchantName,
-        agentName,
-        TIER_LABELS[s.tier] ?? s.tier,
-        s.monthlyAmount,
-        s.status,
-        changeDate,
-      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
-    });
+    const cols = EXPORT_COLUMNS.filter((c) => selectedColumns.has(c.key));
+    if (cols.length === 0) {
+      toast({ title: "Select at least one column to export", variant: "destructive" });
+      return;
+    }
+    const headers = cols.map((c) => c.label);
+    const rows = filteredSubscriptions.map((s) =>
+      cols.map((c) => `"${getCellValue(c.key, s).replace(/"/g, '""')}"`).join(",")
+    );
     const totalAmount = filteredSubscriptions.reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
     const formattedTotal = `$${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const countLabel = `${filteredSubscriptions.length} subscription${filteredSubscriptions.length !== 1 ? "s" : ""}`;
-    const summaryRow = ["Total", "", "", "", formattedTotal, countLabel, ""]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    const summaryValues = cols.map((c, i) => {
+      if (i === 0) return "Total";
+      if (c.key === "monthlyAmount") return formattedTotal;
+      if (c.key === "status") return countLabel;
+      return "";
+    });
+    const summaryRow = summaryValues.map((v) => `"${v.replace(/"/g, '""')}"`).join(",");
     const csv = [headers.join(","), ...rows, summaryRow].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -292,6 +356,18 @@ export default function AdminSubscriptions() {
     setStatusFilter("all");
     setDateRangeFilter("all");
     setAgentFilter(null);
+  }
+
+  function toggleColumn(key: ExportColumnKey) {
+    setSelectedColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   }
 
   return (
@@ -531,17 +607,77 @@ export default function AdminSubscriptions() {
               </span>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              data-testid="button-export-csv"
-              onClick={exportCsv}
-              disabled={filteredSubscriptions.length === 0}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
+            <div className="ml-auto flex items-center gap-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-csv-columns"
+                    className="rounded-r-none border-r-0"
+                    title="Choose export columns"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                    <span className="ml-1.5 text-xs text-gray-500">
+                      {selectedColumns.size}/{EXPORT_COLUMNS.length}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56 p-0">
+                  <div className="px-3 py-2.5 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-800">Export columns</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Select which columns to include</p>
+                  </div>
+                  <div className="py-2">
+                    {EXPORT_COLUMNS.map((col) => (
+                      <label
+                        key={col.key}
+                        htmlFor={`col-${col.key}`}
+                        className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <Checkbox
+                          id={`col-${col.key}`}
+                          checked={selectedColumns.has(col.key)}
+                          onCheckedChange={() => toggleColumn(col.key)}
+                          data-testid={`checkbox-col-${col.key}`}
+                        />
+                        <span className="text-sm text-gray-700 select-none">
+                          {col.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <Separator />
+                  <div className="px-3 py-2 flex justify-between">
+                    <button
+                      className="text-xs text-primary hover:underline"
+                      data-testid="button-col-select-all"
+                      onClick={() => setSelectedColumns(new Set(EXPORT_COLUMNS.map((c) => c.key)))}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      className="text-xs text-gray-400 hover:underline"
+                      data-testid="button-col-clear-all"
+                      onClick={() => setSelectedColumns(new Set())}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-l-none"
+                data-testid="button-export-csv"
+                onClick={exportCsv}
+                disabled={filteredSubscriptions.length === 0 || selectedColumns.size === 0}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
           </div>
 
           {/* Table */}
