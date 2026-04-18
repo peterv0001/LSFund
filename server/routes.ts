@@ -2189,14 +2189,17 @@ export async function registerRoutes(
     const entityType = typeof req.query.entityType === 'string' && req.query.entityType.trim()
       ? req.query.entityType.trim()
       : undefined;
-    const action = typeof req.query.action === 'string' && req.query.action.trim()
+    const actionRaw = typeof req.query.action === 'string' && req.query.action.trim()
       ? req.query.action.trim()
       : undefined;
     const actorType = typeof req.query.actorType === 'string' && req.query.actorType.trim()
       ? req.query.actorType.trim()
       : undefined;
+
+    const action = actionRaw === 'migration' ? undefined : actionRaw;
+    const actions = actionRaw === 'migration' ? ['run_migration', 'revert_migration'] : undefined;
     
-    const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate, entityType, action, actorType });
+    const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate, entityType, action, actions, actorType });
     res.json({ ...result, page, pageSize });
   }
 

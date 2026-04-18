@@ -94,6 +94,7 @@ const ACTION_OPTIONS = [
   { value: "void", label: "Void" },
   { value: "release", label: "Release" },
   { value: "clawback", label: "Clawback" },
+  { value: "migration", label: "Migration (all)" },
   { value: "run_migration", label: "Run Migration" },
   { value: "revert_migration", label: "Revert Migration" },
 ];
