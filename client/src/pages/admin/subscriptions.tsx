@@ -14,6 +14,7 @@ import {
   X,
   Download,
   History,
+  CalendarRange,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -117,7 +119,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 type StatusFilter = "all" | "active" | "paused" | "cancelled" | "expired";
-type DateRangeFilter = "all" | "7d" | "30d";
+type DateRangeFilter = "all" | "7d" | "30d" | "custom";
 
 function getChangedAt(sub: Subscription): Date {
   if (sub.status === "cancelled" && sub.cancelledAt) return new Date(sub.cancelledAt);
@@ -158,6 +160,8 @@ export default function AdminSubscriptions() {
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
   const [agentFilter, setAgentFilter] = useState<number | null>(null);
   const [historySubId, setHistorySubId] = useState<number | null>(null);
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
 
   const { data: historyEntries = [], isLoading: historyLoading } = useQuery<ActivityEntry[]>({
     queryKey: [api.admin.subscriptions.activity.path, historySubId],
@@ -199,14 +203,23 @@ export default function AdminSubscriptions() {
 
   const agentSummary = buildAgentSummary(subscriptions);
 
-  const dateThreshold = dateRangeFilter === "all"
+  const dateThreshold = dateRangeFilter === "all" || dateRangeFilter === "custom"
     ? null
     : new Date(Date.now() - (dateRangeFilter === "7d" ? 7 : 30) * 24 * 60 * 60 * 1000);
+
+  const customStart = dateRangeFilter === "custom" && customStartDate
+    ? new Date(customStartDate + "T00:00:00")
+    : null;
+  const customEnd = dateRangeFilter === "custom" && customEndDate
+    ? new Date(customEndDate + "T23:59:59")
+    : null;
 
   const filteredSubscriptions = subscriptions.filter((s) => {
     if (statusFilter !== "all" && s.status !== statusFilter) return false;
     if (dateThreshold && getChangedAt(s) < dateThreshold) return false;
     if (agentFilter !== null && s.agentId !== agentFilter) return false;
+    if (customStart && getChangedAt(s) < customStart) return false;
+    if (customEnd && getChangedAt(s) > customEnd) return false;
     return true;
   });
 
@@ -403,22 +416,53 @@ export default function AdminSubscriptions() {
               </SelectContent>
             </Select>
 
-            <div className="flex items-center gap-2 ml-2">
+            <div className="flex flex-wrap items-center gap-2 ml-2">
               <Clock className="w-4 h-4 text-gray-400" />
               <span className="text-sm font-medium text-gray-600">Recently changed:</span>
               <Select
                 value={dateRangeFilter}
-                onValueChange={(v) => setDateRangeFilter(v as DateRangeFilter)}
+                onValueChange={(v) => {
+                  setDateRangeFilter(v as DateRangeFilter);
+                  if (v !== "custom") {
+                    setCustomStartDate("");
+                    setCustomEndDate("");
+                  }
+                }}
               >
-                <SelectTrigger className="w-40 h-9 text-sm" data-testid="select-date-range-filter">
+                <SelectTrigger className="w-44 h-9 text-sm" data-testid="select-date-range-filter">
                   <SelectValue placeholder="All time" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All time</SelectItem>
                   <SelectItem value="7d">Last 7 days</SelectItem>
                   <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="custom">Custom range</SelectItem>
                 </SelectContent>
               </Select>
+
+              {dateRangeFilter === "custom" && (
+                <div className="flex items-center gap-2" data-testid="custom-date-range-inputs">
+                  <CalendarRange className="w-4 h-4 text-gray-400" />
+                  <Input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="h-9 text-sm w-36"
+                    data-testid="input-custom-start-date"
+                    aria-label="Start date"
+                  />
+                  <span className="text-sm text-gray-400">to</span>
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="h-9 text-sm w-36"
+                    data-testid="input-custom-end-date"
+                    aria-label="End date"
+                    min={customStartDate || undefined}
+                  />
+                </div>
+              )}
             </div>
 
             {agentFilter !== null && selectedAgentSummary && (
@@ -458,40 +502,6 @@ export default function AdminSubscriptions() {
             </Button>
           </div>
 
-          {/* Agent Summary Panel */}
-          {showAgentSummary && !isLoading && agentSummary.length > 0 && (
-            <Card className="mb-4 border-l-4 border-l-primary" data-testid="panel-agent-summary">
-              <CardContent className="p-4">
-                <p className="text-sm font-semibold text-gray-700 mb-3">
-                  {statusFilter === "cancelled" ? "Cancellations" : "Pauses"} by agent
-                  {" — "}
-                  {dateRangeFilter === "7d" ? "last 7 days" : "last 30 days"}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {agentSummary.map((entry) => (
-                    <div
-                      key={entry.agentId}
-                      className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-2"
-                      data-testid={`summary-agent-${entry.agentId}`}
-                    >
-                      <span className="text-sm font-medium text-gray-800">{entry.name}</span>
-                      <Badge
-                        className={
-                          statusFilter === "cancelled"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }
-                        data-testid={`summary-count-${entry.agentId}`}
-                      >
-                        {entry.count}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Table */}
           {isLoading ? (
             <div className="flex justify-center py-12">
@@ -502,7 +512,15 @@ export default function AdminSubscriptions() {
               <CardContent className="py-12 text-center text-gray-500">
                 {!hasActiveFilters
                   ? "No subscriptions found."
-                  : `No ${statusFilter === "all" ? "" : statusFilter + " "}subscriptions found${agentFilter !== null && selectedAgentSummary ? ` for ${selectedAgentSummary.agentName}` : ""}${dateRangeFilter !== "all" ? ` in the last ${dateRangeFilter === "7d" ? "7" : "30"} days` : ""}.`}
+                  : `No ${statusFilter === "all" ? "" : statusFilter + " "}subscriptions found${agentFilter !== null && selectedAgentSummary ? ` for ${selectedAgentSummary.agentName}` : ""}${
+                      dateRangeFilter === "7d"
+                        ? " in the last 7 days"
+                        : dateRangeFilter === "30d"
+                        ? " in the last 30 days"
+                        : dateRangeFilter === "custom" && (customStartDate || customEndDate)
+                        ? " for the selected date range"
+                        : ""
+                    }.`}
               </CardContent>
             </Card>
           ) : (
