@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import pg from "pg";
-import { runMigrations, type Migration } from "./migrations.js";
+import { runMigrations, revertMigration, type Migration } from "./migrations.js";
 
 const { Pool } = pg;
 
@@ -13,6 +13,9 @@ const testPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const TEST_TABLE = "migration_test_sentinel_table";
 const GOOD_MIGRATION_NAME = "test_good_migration_" + Date.now();
 const BAD_MIGRATION_NAME = "test_bad_migration_" + Date.now();
+const REVERT_MIGRATION_NAME = "test_revert_migration_" + Date.now();
+const NO_DOWN_MIGRATION_NAME = "test_no_down_migration_" + Date.now();
+const REVERT_TABLE = "migration_revert_test_table_" + Date.now();
 
 async function tableExists(tableName: string): Promise<boolean> {
   const client = await testPool.connect();
@@ -49,6 +52,7 @@ async function cleanup() {
   const client = await testPool.connect();
   try {
     await client.query(`DROP TABLE IF EXISTS ${TEST_TABLE}`);
+    await client.query(`DROP TABLE IF EXISTS ${REVERT_TABLE}`);
     const tableCheck = await client.query<{ exists: boolean }>(
       `SELECT EXISTS (
         SELECT 1 FROM information_schema.tables
@@ -57,8 +61,8 @@ async function cleanup() {
     );
     if (tableCheck.rows[0].exists) {
       await client.query(
-        `DELETE FROM schema_migrations WHERE name IN ($1, $2)`,
-        [GOOD_MIGRATION_NAME, BAD_MIGRATION_NAME]
+        `DELETE FROM schema_migrations WHERE name IN ($1, $2, $3, $4)`,
+        [GOOD_MIGRATION_NAME, BAD_MIGRATION_NAME, REVERT_MIGRATION_NAME, NO_DOWN_MIGRATION_NAME]
       );
     }
   } finally {
@@ -144,5 +148,100 @@ describe("runMigrations transaction safety", () => {
 
     await runMigrations({ pool: testPool, migrations: [goodMigration] });
     expect(runCount).toBe(1);
+  });
+});
+
+describe("revertMigration", () => {
+  const revertMigration_fixture: Migration = {
+    name: REVERT_MIGRATION_NAME,
+    async run(client) {
+      await client.query(`CREATE TABLE ${REVERT_TABLE} (id serial primary key)`);
+    },
+    async down(client) {
+      await client.query(`DROP TABLE IF EXISTS ${REVERT_TABLE}`);
+    },
+  };
+
+  it("runs the down function and removes the migration record", async () => {
+    await runMigrations({ pool: testPool, migrations: [revertMigration_fixture] });
+
+    expect(await tableExists(REVERT_TABLE)).toBe(true);
+    expect(await migrationRecorded(REVERT_MIGRATION_NAME)).toBe(true);
+
+    await revertMigration(REVERT_MIGRATION_NAME, {
+      pool: testPool,
+      migrations: [revertMigration_fixture],
+    });
+
+    expect(await tableExists(REVERT_TABLE)).toBe(false);
+    expect(await migrationRecorded(REVERT_MIGRATION_NAME)).toBe(false);
+  });
+
+  it("rolls back and keeps the migration record when the down function throws", async () => {
+    const SIDE_EFFECT_TABLE = "migration_side_effect_test_" + Date.now();
+    const failingDownMigration: Migration = {
+      name: REVERT_MIGRATION_NAME,
+      async run(client) {
+        await client.query(`CREATE TABLE ${REVERT_TABLE} (id serial primary key)`);
+      },
+      async down(client) {
+        await client.query(`CREATE TABLE ${SIDE_EFFECT_TABLE} (id serial primary key)`);
+        throw new Error("Deliberate down failure");
+      },
+    };
+
+    await runMigrations({ pool: testPool, migrations: [failingDownMigration] });
+    expect(await migrationRecorded(REVERT_MIGRATION_NAME)).toBe(true);
+    expect(await tableExists(REVERT_TABLE)).toBe(true);
+
+    await expect(
+      revertMigration(REVERT_MIGRATION_NAME, {
+        pool: testPool,
+        migrations: [failingDownMigration],
+      })
+    ).rejects.toThrow("Deliberate down failure");
+
+    expect(await migrationRecorded(REVERT_MIGRATION_NAME)).toBe(true);
+    expect(await tableExists(SIDE_EFFECT_TABLE)).toBe(false);
+  });
+
+  it("throws when the migration name is not found in the list", async () => {
+    await expect(
+      revertMigration("nonexistent_migration", {
+        pool: testPool,
+        migrations: [revertMigration_fixture],
+      })
+    ).rejects.toThrow('Migration "nonexistent_migration" not found');
+  });
+
+  it("throws when the migration has no down function", async () => {
+    const noDownMigration: Migration = {
+      name: NO_DOWN_MIGRATION_NAME,
+      async run() {},
+    };
+
+    await runMigrations({ pool: testPool, migrations: [noDownMigration] });
+
+    await expect(
+      revertMigration(NO_DOWN_MIGRATION_NAME, {
+        pool: testPool,
+        migrations: [noDownMigration],
+      })
+    ).rejects.toThrow(`Migration "${NO_DOWN_MIGRATION_NAME}" does not have a down function`);
+  });
+
+  it("throws when the migration has not been applied", async () => {
+    const unappliedMigration: Migration = {
+      name: "test_unapplied_" + Date.now(),
+      async run() {},
+      async down() {},
+    };
+
+    await expect(
+      revertMigration(unappliedMigration.name, {
+        pool: testPool,
+        migrations: [unappliedMigration],
+      })
+    ).rejects.toThrow(`Migration "${unappliedMigration.name}" has not been applied`);
   });
 });

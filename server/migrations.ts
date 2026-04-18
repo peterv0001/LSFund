@@ -27,9 +27,14 @@ async function markRun(client: PoolClient, name: string): Promise<void> {
   );
 }
 
+async function unmarkRun(client: PoolClient, name: string): Promise<void> {
+  await client.query(`DELETE FROM schema_migrations WHERE name = $1`, [name]);
+}
+
 export type Migration = {
   name: string;
   run: (client: PoolClient) => Promise<void>;
+  down?: (client: PoolClient) => Promise<void>;
 };
 
 const migrations: Migration[] = [
@@ -40,6 +45,12 @@ const migrations: Migration[] = [
         ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_at timestamp
       `);
       console.log("[migrations] Added paused_at column to subscriptions table");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS paused_at
+      `);
+      console.log("[migrations] Dropped paused_at column from subscriptions table");
     },
   },
   {
@@ -53,6 +64,21 @@ const migrations: Migration[] = [
       const count = result.rowCount ?? 0;
       console.log(
         `[migrations] Backfilled paused_at for ${count} paused subscription(s)`
+      );
+    },
+    async down(client) {
+      // NOTE: This clears paused_at for all currently-paused rows.
+      // If the migration is reverted long after deploy, any paused_at values
+      // that were legitimately set after the backfill will also be cleared.
+      // This rollback is safest when applied shortly after the forward migration.
+      const result = await client.query(`
+        UPDATE subscriptions
+        SET paused_at = NULL
+        WHERE status = 'paused'
+      `);
+      const count = result.rowCount ?? 0;
+      console.log(
+        `[migrations] Cleared backfilled paused_at for ${count} paused subscription(s)`
       );
     },
   },
@@ -120,6 +146,67 @@ export async function runMigrations(options?: {
           );
           throw err;
         }
+      }
+    } finally {
+      await client.query(`SELECT pg_advisory_unlock($1)`, [ADVISORY_LOCK_KEY]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Reverts a previously applied migration by running its `down` function inside
+ * a transaction. On success the row is removed from `schema_migrations`.
+ * On failure the transaction is rolled back, leaving the database unchanged.
+ *
+ * Important: migrations should generally be reverted in reverse-application
+ * order. Rolling back a migration that later migrations depend on can leave
+ * the database in an inconsistent state.
+ */
+export async function revertMigration(
+  name: string,
+  options?: {
+    pool?: Pool;
+    migrations?: Migration[];
+  }
+): Promise<void> {
+  const pool = options?.pool ?? defaultPool;
+  const migrationList = options?.migrations ?? migrations;
+
+  const migration = migrationList.find((m) => m.name === name);
+  if (!migration) {
+    throw new Error(`Migration "${name}" not found`);
+  }
+  if (!migration.down) {
+    throw new Error(`Migration "${name}" does not have a down function`);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query(`SELECT pg_advisory_lock($1)`, [ADVISORY_LOCK_KEY]);
+    try {
+      await ensureMigrationsTable(client);
+
+      const applied = await hasRun(client, name);
+      if (!applied) {
+        throw new Error(`Migration "${name}" has not been applied`);
+      }
+
+      console.log(`[migrations] Reverting ${name}…`);
+      await client.query("BEGIN");
+      try {
+        await migration.down!(client);
+        await unmarkRun(client, name);
+        await client.query("COMMIT");
+        console.log(`[migrations] ${name} reverted`);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error(
+          `[migrations] ${name} revert failed — transaction rolled back`,
+          err
+        );
+        throw err;
       }
     } finally {
       await client.query(`SELECT pg_advisory_unlock($1)`, [ADVISORY_LOCK_KEY]);
