@@ -19,6 +19,8 @@ import {
   Bookmark,
   Trash2,
   Check,
+  Plus,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,10 +48,12 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -80,6 +84,7 @@ type Subscription = {
   status: "active" | "paused" | "cancelled" | "expired";
   mcaPairedDealId: number | null;
   startDate: string;
+  endDate: string | null;
   cancelledAt: string | null;
   pausedAt: string | null;
   reactivatedAt: string | null;
@@ -333,6 +338,17 @@ export default function AdminSubscriptions() {
     return Number.isFinite(parsed) ? parsed : null;
   });
   const [historySubId, setHistorySubId] = useState<number | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    agentId: "",
+    merchantName: "",
+    merchantEmail: "",
+    tier: "tier_1" as "tier_1" | "tier_2" | "tier_3",
+    startDate: "",
+    endDate: "",
+  });
+  const [editEndDateSubId, setEditEndDateSubId] = useState<number | null>(null);
+  const [editEndDateValue, setEditEndDateValue] = useState("");
 
   const updateDateRangeInUrl = useCallback((range: DateRangeFilter, start: string, end: string) => {
     persistDateFilter(range, start, end);
@@ -416,6 +432,41 @@ export default function AdminSubscriptions() {
 
   const { data: subscriptions = [], isLoading } = useQuery<Subscription[]>({
     queryKey: [api.admin.subscriptions.list.path],
+  });
+
+  const { data: agentsData } = useQuery<{ agents: Agent[] }>({
+    queryKey: [api.admin.agents.list.path],
+  });
+  const allAgents: Agent[] = agentsData?.agents ?? [];
+
+  const createSubscriptionMutation = useMutation({
+    mutationFn: (data: {
+      agentId: number;
+      merchantName: string;
+      merchantEmail?: string;
+      tier: "tier_1" | "tier_2" | "tier_3";
+      startDate?: string;
+      endDate?: string;
+    }) => apiRequest("POST", api.admin.subscriptions.create.path, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.admin.subscriptions.list.path] });
+      toast({ title: "Subscription created" });
+      setShowCreateDialog(false);
+      setCreateForm({ agentId: "", merchantName: "", merchantEmail: "", tier: "tier_1", startDate: "", endDate: "" });
+    },
+    onError: () => toast({ title: "Failed to create subscription", variant: "destructive" }),
+  });
+
+  const updateEndDateMutation = useMutation({
+    mutationFn: ({ id, endDate }: { id: number; endDate: string | null }) =>
+      apiRequest("PATCH", buildUrl(api.admin.subscriptions.updateEndDate.path, { id }), { endDate }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.admin.subscriptions.list.path] });
+      toast({ title: "End date updated" });
+      setEditEndDateSubId(null);
+      setEditEndDateValue("");
+    },
+    onError: () => toast({ title: "Failed to update end date", variant: "destructive" }),
   });
 
   const updateStatusMutation = useMutation({
@@ -704,17 +755,27 @@ export default function AdminSubscriptions() {
               </h1>
               <p className="text-gray-500 mt-1">Manage merchant subscriptions and commission payouts</p>
             </div>
-            <Button
-              data-testid="button-calc-commissions"
-              onClick={() => calcCommissionsMutation.mutate()}
-              disabled={calcCommissionsMutation.isPending}
-            >
-              {calcCommissionsMutation.isPending
-                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                : <Zap className="w-4 h-4 mr-2" />
-              }
-              Calculate Commissions
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                data-testid="button-new-subscription"
+                onClick={() => setShowCreateDialog(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Subscription
+              </Button>
+              <Button
+                data-testid="button-calc-commissions"
+                onClick={() => calcCommissionsMutation.mutate()}
+                disabled={calcCommissionsMutation.isPending}
+              >
+                {calcCommissionsMutation.isPending
+                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  : <Zap className="w-4 h-4 mr-2" />
+                }
+                Calculate Commissions
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -1304,6 +1365,12 @@ export default function AdminSubscriptions() {
                                 )}
                               </p>
                             )}
+                            {sub.endDate && (
+                              <p className="text-xs text-orange-600 font-medium mt-1 flex items-center gap-1" data-testid={`text-end-date-${sub.id}`}>
+                                <CalendarDays className="w-3 h-3" />
+                                Expires {format(new Date(sub.endDate), "MMM d, yyyy")}
+                              </p>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1328,6 +1395,19 @@ export default function AdminSubscriptions() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-orange-500"
+                              title="Set expiration date"
+                              data-testid={`button-end-date-${sub.id}`}
+                              onClick={() => {
+                                setEditEndDateSubId(sub.id);
+                                setEditEndDateValue(sub.endDate ? sub.endDate.split("T")[0] : "");
+                              }}
+                            >
+                              <CalendarDays className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-8 w-8 text-gray-400 hover:text-primary"
                               title="View history"
                               data-testid={`button-history-${sub.id}`}
@@ -1346,6 +1426,176 @@ export default function AdminSubscriptions() {
           )}
         </div>
       </main>
+
+      {/* Create Subscription Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) setShowCreateDialog(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              New Subscription
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="create-agent">Agent</Label>
+              <Select
+                value={createForm.agentId}
+                onValueChange={(v) => setCreateForm((f) => ({ ...f, agentId: v }))}
+              >
+                <SelectTrigger id="create-agent" data-testid="select-create-agent">
+                  <SelectValue placeholder="Select agent…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allAgents.map((a) => (
+                    <SelectItem key={a.id} value={String(a.id)}>
+                      {a.firstName} {a.lastName} (#{a.id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-merchant">Merchant Name</Label>
+              <Input
+                id="create-merchant"
+                data-testid="input-create-merchant"
+                placeholder="Merchant name"
+                value={createForm.merchantName}
+                onChange={(e) => setCreateForm((f) => ({ ...f, merchantName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-email">Merchant Email <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <Input
+                id="create-email"
+                data-testid="input-create-email"
+                type="email"
+                placeholder="merchant@example.com"
+                value={createForm.merchantEmail}
+                onChange={(e) => setCreateForm((f) => ({ ...f, merchantEmail: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-tier">Tier</Label>
+              <Select
+                value={createForm.tier}
+                onValueChange={(v) => setCreateForm((f) => ({ ...f, tier: v as typeof f.tier }))}
+              >
+                <SelectTrigger id="create-tier" data-testid="select-create-tier">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tier_1">Tier 1 — $199/mo</SelectItem>
+                  <SelectItem value="tier_2">Tier 2 — $399/mo</SelectItem>
+                  <SelectItem value="tier_3">Tier 3 — $799/mo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="create-start">Start Date <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="create-start"
+                  data-testid="input-create-start"
+                  type="date"
+                  value={createForm.startDate}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, startDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="create-end">End Date <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="create-end"
+                  data-testid="input-create-end"
+                  type="date"
+                  value={createForm.endDate}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, endDate: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+            <Button
+              data-testid="button-create-submit"
+              disabled={!createForm.agentId || !createForm.merchantName || createSubscriptionMutation.isPending}
+              onClick={() => {
+                if (!createForm.agentId || !createForm.merchantName) return;
+                createSubscriptionMutation.mutate({
+                  agentId: Number(createForm.agentId),
+                  merchantName: createForm.merchantName,
+                  merchantEmail: createForm.merchantEmail || undefined,
+                  tier: createForm.tier,
+                  startDate: createForm.startDate || undefined,
+                  endDate: createForm.endDate || undefined,
+                });
+              }}
+            >
+              {createSubscriptionMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create Subscription
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit End Date Dialog */}
+      <Dialog open={editEndDateSubId != null} onOpenChange={(open) => { if (!open) { setEditEndDateSubId(null); setEditEndDateValue(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-orange-500" />
+              Set Expiration Date
+              {editEndDateSubId != null && (
+                <span className="text-sm font-normal text-gray-500 ml-1">
+                  — #{editEndDateSubId} {subscriptions.find(s => s.id === editEndDateSubId)?.merchantName ? `· ${subscriptions.find(s => s.id === editEndDateSubId)!.merchantName}` : ""}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-3">
+            <p className="text-sm text-gray-500">
+              Set or clear the date when this subscription will automatically expire. Leave blank to remove the expiration date.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-end-date">Expiration Date</Label>
+              <Input
+                id="edit-end-date"
+                data-testid="input-edit-end-date"
+                type="date"
+                value={editEndDateValue}
+                onChange={(e) => setEditEndDateValue(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              data-testid="button-end-date-clear"
+              disabled={updateEndDateMutation.isPending}
+              onClick={() => {
+                if (editEndDateSubId != null) {
+                  updateEndDateMutation.mutate({ id: editEndDateSubId, endDate: null });
+                }
+              }}
+            >
+              Clear Date
+            </Button>
+            <Button
+              data-testid="button-end-date-save"
+              disabled={!editEndDateValue || updateEndDateMutation.isPending}
+              onClick={() => {
+                if (editEndDateSubId != null && editEndDateValue) {
+                  updateEndDateMutation.mutate({ id: editEndDateSubId, endDate: editEndDateValue });
+                }
+              }}
+            >
+              {updateEndDateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Subscription History Dialog */}
       <Dialog open={historySubId != null} onOpenChange={(open) => { if (!open) setHistorySubId(null); }}>

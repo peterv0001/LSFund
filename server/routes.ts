@@ -1661,6 +1661,86 @@ export async function registerRoutes(
     res.json(subs);
   });
 
+  app.post("/api/admin/subscriptions", requireAdmin, async (req, res) => {
+    try {
+      const adminCreateSubSchema = z.object({
+        agentId: z.number().int().positive(),
+        merchantName: z.string().min(2),
+        merchantEmail: z.string().email().optional().or(z.literal('')),
+        tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      });
+      const parseResult = adminCreateSubSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: parseResult.error.errors[0].message });
+      }
+      const input = parseResult.data;
+      const tierPrices: Record<string, number> = CONFIG.subscriptionTierPrices;
+      const monthlyAmount = tierPrices[input.tier] || 199;
+      const startDate = input.startDate ? new Date(input.startDate) : new Date();
+      const endDate = input.endDate ? new Date(input.endDate) : undefined;
+      const sub = await storage.createSubscription({
+        agentId: input.agentId,
+        merchantName: input.merchantName,
+        merchantEmail: input.merchantEmail || undefined,
+        tier: input.tier,
+        monthlyAmount: monthlyAmount.toString(),
+        startDate,
+        endDate,
+      });
+      const actorId = req.user?.id;
+      if (actorId) {
+        storage.logActivity({
+          actorId,
+          actorType: 'admin',
+          action: 'create',
+          entityType: 'subscription',
+          entityId: sub.id,
+          description: `Admin ${req.user!.firstName} ${req.user!.lastName} created subscription #${sub.id} for merchant "${sub.merchantName}" (agent #${input.agentId}, tier: ${input.tier})`,
+          details: { merchantName: sub.merchantName, tier: input.tier, endDate: endDate ?? null },
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent'] ?? null,
+        }).catch((err) => console.error('[ActivityLog] Failed to log admin subscription create:', err));
+      }
+      res.status(201).json(sub);
+    } catch (err) {
+      console.error('[Admin] Failed to create subscription:', err);
+      res.status(500).json({ message: 'Failed to create subscription' });
+    }
+  });
+
+  app.patch("/api/admin/subscriptions/:id/end-date", requireAdmin, async (req, res) => {
+    try {
+      const subId = Number(req.params.id);
+      const endDateSchema = z.object({ endDate: z.string().nullable() });
+      const parseResult = endDateSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: parseResult.error.errors[0].message });
+      }
+      const endDate = parseResult.data.endDate ? new Date(parseResult.data.endDate) : null;
+      const updated = await storage.updateSubscriptionEndDate(subId, endDate);
+      const actorId = req.user?.id;
+      if (actorId) {
+        storage.logActivity({
+          actorId,
+          actorType: 'admin',
+          action: 'update',
+          entityType: 'subscription',
+          entityId: updated.id,
+          description: `Admin ${req.user!.firstName} ${req.user!.lastName} ${endDate ? `set end date to ${endDate.toISOString().split('T')[0]}` : 'cleared the end date'} for subscription #${updated.id}`,
+          details: { endDate: endDate ?? null },
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent'] ?? null,
+        }).catch((err) => console.error('[ActivityLog] Failed to log admin subscription end-date update:', err));
+      }
+      res.json(updated);
+    } catch (err) {
+      console.error('[Admin] Failed to update subscription end date:', err);
+      res.status(500).json({ message: 'Failed to update subscription end date' });
+    }
+  });
+
   app.patch("/api/admin/subscriptions/:id/status", requireAdmin, async (req, res) => {
     try {
       const subId = Number(req.params.id);

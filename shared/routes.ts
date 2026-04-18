@@ -885,11 +885,36 @@ export const api = {
           200: z.array(z.any()),
         },
       },
+      create: {
+        method: 'POST' as const,
+        path: '/api/admin/subscriptions',
+        input: z.object({
+          agentId: z.number(),
+          merchantName: z.string(),
+          merchantEmail: z.string().optional(),
+          tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+        }),
+        responses: {
+          201: z.any(),
+        },
+      },
       updateStatus: {
         method: 'PATCH' as const,
         path: '/api/admin/subscriptions/:id/status',
         input: z.object({
           status: z.enum(['active', 'paused', 'cancelled', 'expired']),
+        }),
+        responses: {
+          200: z.any(),
+        },
+      },
+      updateEndDate: {
+        method: 'PATCH' as const,
+        path: '/api/admin/subscriptions/:id/end-date',
+        input: z.object({
+          endDate: z.string().nullable(),
         }),
         responses: {
           200: z.any(),

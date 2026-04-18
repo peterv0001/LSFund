@@ -1470,6 +1470,7 @@ export class DatabaseStorage {
     monthlyAmount: string;
     mcaPairedDealId?: number;
     startDate?: Date;
+    endDate?: Date;
   }): Promise<Subscription> {
     const [newSub] = await db.insert(subscriptions).values({
       agentId: sub.agentId,
@@ -1480,8 +1481,17 @@ export class DatabaseStorage {
       status: 'active',
       mcaPairedDealId: sub.mcaPairedDealId ?? null,
       startDate: sub.startDate ?? new Date(),
+      endDate: sub.endDate ?? null,
     }).returning();
     return newSub;
+  }
+
+  async updateSubscriptionEndDate(id: number, endDate: Date | null): Promise<Subscription> {
+    const [updated] = await db.update(subscriptions)
+      .set({ endDate, updatedAt: new Date() })
+      .where(eq(subscriptions.id, id))
+      .returning();
+    return updated;
   }
 
   async getSubscriptionsByAgent(agentId: number): Promise<(Subscription & { reactivatedByName: string | null; pausedByName: string | null; cancelledByName: string | null })[]> {
