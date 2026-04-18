@@ -76,7 +76,7 @@ export const agents = pgTable("agents", {
   // Notification preferences
   emailNotifications: boolean("email_notifications").default(true),
   smsNotifications: boolean("sms_notifications").default(false),
-  subscriptionEmailPreferences: jsonb("subscription_email_preferences").default({ emailOnPaused: true, emailOnCancelled: true, emailOnReactivated: true }),
+  subscriptionEmailPreferences: jsonb("subscription_email_preferences").default({ emailOnPaused: true, emailOnCancelled: true, emailOnReactivated: true, emailOnDealFunded: true, emailOnTeamSignup: true }),
   
   // Admin
   isAdmin: boolean("is_admin").default(false).notNull(),
@@ -721,6 +721,8 @@ export const subscriptionEmailPreferencesSchema = z.object({
   emailOnPaused: z.boolean(),
   emailOnCancelled: z.boolean(),
   emailOnReactivated: z.boolean(),
+  emailOnDealFunded: z.boolean().default(true),
+  emailOnTeamSignup: z.boolean().default(true),
 });
 
 export type SubscriptionEmailPreferences = z.infer<typeof subscriptionEmailPreferencesSchema>;

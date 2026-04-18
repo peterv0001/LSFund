@@ -61,11 +61,13 @@ export default function SettingsPage() {
   });
 
   // Notification preferences state
-  const defaultPrefs = (user?.subscriptionEmailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
+  const defaultPrefs = (user?.subscriptionEmailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean } | null) ?? {};
   const [notifPrefs, setNotifPrefs] = useState({
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
     emailOnReactivated: defaultPrefs.emailOnReactivated !== false,
+    emailOnDealFunded: defaultPrefs.emailOnDealFunded !== false,
+    emailOnTeamSignup: defaultPrefs.emailOnTeamSignup !== false,
   });
 
   // Mutations
@@ -402,9 +404,9 @@ export default function SettingsPage() {
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle>Subscription Email Notifications</CardTitle>
+                <CardTitle>Email Notifications</CardTitle>
                 <CardDescription>
-                  Choose which subscription status emails you want to receive. Preferences take effect immediately.
+                  Choose which emails you want to receive. Preferences take effect immediately.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 max-w-lg">
@@ -448,6 +450,34 @@ export default function SettingsPage() {
                       data-testid="toggle-email-on-reactivated"
                       checked={notifPrefs.emailOnReactivated}
                       onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnReactivated: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Deal Funded</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when one of your deals is funded.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-deal-funded"
+                      checked={notifPrefs.emailOnDealFunded}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnDealFunded: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">New Team Signup</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when a new agent joins your team.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-team-signup"
+                      checked={notifPrefs.emailOnTeamSignup}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnTeamSignup: checked }))}
                     />
                   </div>
                 </div>

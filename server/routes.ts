@@ -287,10 +287,13 @@ export async function registerRoutes(
             isRead: false,
             emailSent: false,
           });
-          emailService.sendTeamSignupEmail(sponsor.email, {
-            firstName: sponsor.firstName,
-            newMemberName: `${agent.firstName} ${agent.lastName}`,
-          }).catch(console.error);
+          const sponsorPrefs = (sponsor.subscriptionEmailPreferences as { emailOnTeamSignup?: boolean } | null) ?? {};
+          if (sponsorPrefs.emailOnTeamSignup !== false) {
+            emailService.sendTeamSignupEmail(sponsor.email, {
+              firstName: sponsor.firstName,
+              newMemberName: `${agent.firstName} ${agent.lastName}`,
+            }).catch(console.error);
+          }
         }
       }
       
@@ -781,12 +784,15 @@ export async function registerRoutes(
         emailSent: false,
       });
       
-      emailService.sendDealFundedEmail(agent!.email, {
-        firstName: agent!.firstName,
-        merchantName: deal.merchantName,
-        amount: Number(deal.loanAmount),
-        commission: macImmediate,
-      }).catch(console.error);
+      const agentPrefs = (agent!.subscriptionEmailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
+      if (agentPrefs.emailOnDealFunded !== false) {
+        emailService.sendDealFundedEmail(agent!.email, {
+          firstName: agent!.firstName,
+          merchantName: deal.merchantName,
+          amount: Number(deal.loanAmount),
+          commission: macImmediate,
+        }).catch(console.error);
+      }
       
       // === MAC SPONSOR OVERRIDES (3-level cap with compression) ===
       const upline = await storage.getUpline(agentId);
