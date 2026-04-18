@@ -1301,6 +1301,12 @@ export default function AdminSubscriptions() {
                       <span className="text-sm font-medium text-gray-800" data-testid={`text-history-actor-${entry.id}`}>
                         {entry.actorName}
                       </span>
+                      <Badge
+                        className={`text-xs ${entry.actorType === "admin" ? "bg-purple-100 text-purple-700 border-purple-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}
+                        data-testid={`badge-history-actortype-${entry.id}`}
+                      >
+                        {entry.actorType === "admin" ? "Admin" : "Agent"}
+                      </Badge>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5" data-testid={`text-history-date-${entry.id}`}>
                       {format(new Date(entry.createdAt), "MMM d, yyyy 'at' h:mm a")}
