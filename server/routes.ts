@@ -1322,6 +1322,25 @@ export async function registerRoutes(
       const agentId = req.user!.id;
       const page = Math.max(1, Number(req.query.page) || 1);
       const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize) || 20));
+      const rawSubId = req.query.subscriptionId;
+      let subscriptionIdParam: number | undefined;
+      if (rawSubId !== undefined && rawSubId !== '') {
+        const parsed = Number(rawSubId);
+        if (!Number.isInteger(parsed) || parsed <= 0) {
+          return res.status(400).json({ message: 'subscriptionId must be a positive integer' });
+        }
+        subscriptionIdParam = parsed;
+      }
+
+      const ALLOWED_ACTIONS = new Set(['create', 'pause', 'cancel', 'reactivate']);
+      const rawAction = req.query.action;
+      let actionParam: string | undefined;
+      if (typeof rawAction === 'string' && rawAction) {
+        if (!ALLOWED_ACTIONS.has(rawAction)) {
+          return res.status(400).json({ message: `action must be one of: ${[...ALLOWED_ACTIONS].join(', ')}` });
+        }
+        actionParam = rawAction;
+      }
 
       const agentSubs = await storage.getSubscriptionsByAgent(agentId);
       if (agentSubs.length === 0) {
@@ -1334,9 +1353,22 @@ export async function registerRoutes(
         subMap[s.id] = s.merchantName;
       }
 
+      // If a specific subscriptionId is provided, verify it belongs to this agent
+      let filteredEntityIds: number[] | undefined;
+      let filteredEntityId: number | undefined;
+      if (subscriptionIdParam) {
+        if (!subIds.includes(subscriptionIdParam)) {
+          return res.status(403).json({ message: 'Access denied to that subscription' });
+        }
+        filteredEntityId = subscriptionIdParam;
+      } else {
+        filteredEntityIds = subIds;
+      }
+
       const { logs, total } = await storage.getActivityLogs(page, pageSize, {
         entityType: 'subscription',
-        entityIds: subIds,
+        ...(filteredEntityId ? { entityId: filteredEntityId } : { entityIds: filteredEntityIds }),
+        ...(actionParam ? { action: actionParam } : {}),
       });
 
       const safeLog = logs.map(({ id, action, description, createdAt, actorType, entityId }) => ({

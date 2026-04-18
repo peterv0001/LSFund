@@ -783,16 +783,30 @@ type AllActivityResponse = {
   pageSize: number;
 };
 
-function AllActivityTimeline() {
+const ACTION_OPTIONS = [
+  { value: "create", label: "Created" },
+  { value: "pause", label: "Paused" },
+  { value: "cancel", label: "Cancelled" },
+  { value: "reactivate", label: "Reactivated" },
+];
+
+function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] }) {
   const [page, setPage] = useState(1);
+  const [subscriptionId, setSubscriptionId] = useState<string>("all");
+  const [action, setAction] = useState<string>("all");
   const pageSize = 20;
 
+  const buildUrl = () => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (subscriptionId !== "all") params.set("subscriptionId", subscriptionId);
+    if (action !== "all") params.set("action", action);
+    return `/api/subscriptions/history?${params.toString()}`;
+  };
+
   const { data, isLoading, isError, refetch } = useQuery<AllActivityResponse>({
-    queryKey: ["/api/subscriptions/history", page],
+    queryKey: ["/api/subscriptions/history", page, subscriptionId, action],
     queryFn: async () => {
-      const res = await fetch(`/api/subscriptions/history?page=${page}&pageSize=${pageSize}`, {
-        credentials: "include",
-      });
+      const res = await fetch(buildUrl(), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load activity");
       return res.json();
     },
@@ -802,45 +816,121 @@ function AllActivityTimeline() {
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
 
+  const handleSubscriptionChange = (value: string) => {
+    setSubscriptionId(value);
+    setPage(1);
+  };
+
+  const handleActionChange = (value: string) => {
+    setAction(value);
+    setPage(1);
+  };
+
+  const filtersActive = subscriptionId !== "all" || action !== "all";
+
+  const filterBar = (
+    <div className="flex flex-wrap gap-3 mb-5" data-testid="activity-filter-bar">
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground font-medium">Subscription</label>
+        <Select value={subscriptionId} onValueChange={handleSubscriptionChange}>
+          <SelectTrigger className="h-8 text-sm w-52" data-testid="select-filter-subscription">
+            <SelectValue placeholder="All subscriptions" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All subscriptions</SelectItem>
+            {subscriptions.map((s) => (
+              <SelectItem key={s.id} value={String(s.id)} data-testid={`filter-sub-option-${s.id}`}>
+                {s.merchantName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground font-medium">Action type</label>
+        <Select value={action} onValueChange={handleActionChange}>
+          <SelectTrigger className="h-8 text-sm w-44" data-testid="select-filter-action">
+            <SelectValue placeholder="All actions" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All actions</SelectItem>
+            {ACTION_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} data-testid={`filter-action-option-${opt.value}`}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {filtersActive && (
+        <div className="flex flex-col justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-muted-foreground"
+            onClick={() => { setSubscriptionId("all"); setAction("all"); setPage(1); }}
+            data-testid="button-clear-activity-filters"
+          >
+            Clear filters
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
   if (isError) {
     return (
-      <div className="text-center py-10" data-testid="all-activity-error">
-        <p className="text-sm text-red-600 font-medium mb-2">Could not load activity history.</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-activity-retry">
-          Try again
-        </Button>
+      <div>
+        {filterBar}
+        <div className="text-center py-10" data-testid="all-activity-error">
+          <p className="text-sm text-red-600 font-medium mb-2">Could not load activity history.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-activity-retry">
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="space-y-3" data-testid="all-activity-loading">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-            <Skeleton className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" />
-            <div className="space-y-1.5 flex-1">
-              <Skeleton className="h-4 w-56" />
-              <Skeleton className="h-3 w-36" />
+      <div>
+        {filterBar}
+        <div className="space-y-3" data-testid="all-activity-loading">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+              <Skeleton className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <Skeleton className="h-4 w-56" />
+                <Skeleton className="h-3 w-36" />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
 
   if (logs.length === 0) {
     return (
-      <div className="text-center py-12" data-testid="all-activity-empty">
-        <Activity className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-        <p className="text-muted-foreground text-sm">No subscription activity yet.</p>
-        <p className="text-muted-foreground/60 text-xs mt-1">Changes to your subscriptions will appear here.</p>
+      <div>
+        {filterBar}
+        <div className="text-center py-12" data-testid="all-activity-empty">
+          <Activity className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">
+            {filtersActive ? "No activity matches the selected filters." : "No subscription activity yet."}
+          </p>
+          {!filtersActive && (
+            <p className="text-muted-foreground/60 text-xs mt-1">Changes to your subscriptions will appear here.</p>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div data-testid="all-activity-timeline">
+      {filterBar}
       <ol className="divide-y divide-gray-100">
         {logs.map((log) => {
           const style = getActionStyle(log.action);
@@ -1058,7 +1148,7 @@ export default function SubscriptionsPage() {
                 <Activity className="w-4 h-4 text-primary" />
                 <h2 className="text-base font-semibold text-primary">All Subscription Activity</h2>
               </div>
-              <AllActivityTimeline />
+              <AllActivityTimeline subscriptions={subscriptions} />
             </div>
           </TabsContent>
         </Tabs>
