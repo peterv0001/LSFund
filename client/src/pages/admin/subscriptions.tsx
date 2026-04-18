@@ -399,7 +399,17 @@ export default function AdminSubscriptions() {
     );
     const totalAmount = filteredSubscriptions.reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
     const formattedTotal = `$${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const countLabel = `${filteredSubscriptions.length} subscription${filteredSubscriptions.length !== 1 ? "s" : ""}`;
+    const statusCounts: Record<string, number> = {};
+    for (const s of filteredSubscriptions) {
+      statusCounts[s.status] = (statusCounts[s.status] ?? 0) + 1;
+    }
+    const statusOrder = ["active", "paused", "cancelled", "expired"];
+    const statusBreakdown = [
+      ...statusOrder.filter((st) => statusCounts[st]),
+      ...Object.keys(statusCounts).filter((st) => !statusOrder.includes(st)),
+    ].map((st) => `${statusCounts[st]} ${st}`).join(", ");
+    const totalLabel = `${filteredSubscriptions.length} total`;
+    const countLabel = statusBreakdown ? `${totalLabel} (${statusBreakdown})` : totalLabel;
     const summaryValues = cols.map((c, i) => {
       if (i === 0) return "Total";
       if (c.key === "monthlyAmount") return formattedTotal;
