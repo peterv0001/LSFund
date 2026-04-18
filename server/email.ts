@@ -353,6 +353,68 @@ const templates = {
     `,
   }),
 
+  subscriptionExpired: (data: { firstName: string; merchantName: string; tier: string; effectiveDate: string; dashboardUrl: string }) => ({
+    subject: `⏰ Subscription Expired: ${data.merchantName}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #d97706 0%, #92400e 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">⏰</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Subscription Expired</h1>
+    </div>
+
+    <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
+      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        Your subscription has expired. Here are the details:
+      </p>
+
+      <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 24px; margin: 20px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Merchant</span>
+          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Tier</span>
+          <strong style="color: #1e3a5f;">${data.tier}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #fcd34d;">
+          <span style="color: #718096;">Effective Date</span>
+          <strong style="color: #d97706;">${data.effectiveDate}</strong>
+        </div>
+      </div>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 20px 0;">
+        Commission accrual has stopped for this subscription. If you believe this was done in error or wish to renew, please contact support or visit your dashboard.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Go to Your Dashboard →
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 14px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        If you have questions about this change, please contact support.
+      </p>
+    </div>
+
+    <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
+      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
   teamSignup: (data: { firstName: string; newMemberName: string; dashboardUrl: string }) => ({
     subject: `🙌 New Team Member: ${data.newMemberName} joined your team!`,
     html: `
@@ -545,6 +607,31 @@ export const emailService = {
       console.log(`[Email] Subscription reactivated email sent to ${to}`);
     } catch (error) {
       console.error('[Email] Failed to send subscription reactivated email:', error);
+    }
+  },
+
+  async sendSubscriptionExpiredEmail(to: string, data: { firstName: string; merchantName: string; tier: string; effectiveDate: string }) {
+    if (!process.env.RESEND_API_KEY) {
+      console.log('[Email] Skipping subscription expired email - RESEND_API_KEY not set');
+      return;
+    }
+
+    try {
+      const template = templates.subscriptionExpired({
+        ...data,
+        dashboardUrl: `${APP_URL}/subscriptions`,
+      });
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+
+      console.log(`[Email] Subscription expired email sent to ${to}`);
+    } catch (error) {
+      console.error('[Email] Failed to send subscription expired email:', error);
     }
   },
 
