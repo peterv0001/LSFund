@@ -70,7 +70,14 @@ type Filters = {
   endDate: string;
   entityType: string;
   action: string;
+  actorType: string;
 };
+
+const ACTOR_TYPE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "agent", label: "Agent" },
+  { value: "system", label: "System" },
+];
 
 const ACTION_OPTIONS = [
   { value: "create", label: "Create" },
@@ -139,8 +146,8 @@ const ACTIVITY_LOG_PATH = "/api/admin/activity-log";
 export default function AdminActivityLog() {
   const [page, setPage] = useState(1);
   const pageSize = 50;
-  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "" });
-  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "" });
+  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" });
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" });
 
   function buildQuery() {
     const q: Record<string, string | number> = { page, pageSize };
@@ -149,10 +156,11 @@ export default function AdminActivityLog() {
     if (appliedFilters.endDate) q.endDate = appliedFilters.endDate;
     if (appliedFilters.entityType) q.entityType = appliedFilters.entityType;
     if (appliedFilters.action) q.action = appliedFilters.action;
+    if (appliedFilters.actorType) q.actorType = appliedFilters.actorType;
     return q;
   }
 
-  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate, appliedFilters.entityType, appliedFilters.action];
+  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate, appliedFilters.entityType, appliedFilters.action, appliedFilters.actorType];
 
   const { data, isLoading } = useQuery<ActivityLogResponse>({
     queryKey,
@@ -174,13 +182,13 @@ export default function AdminActivityLog() {
   }, [filters]);
 
   function clearFilters() {
-    const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "", action: "" };
+    const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" };
     setFilters(blank);
     setAppliedFilters(blank);
     setPage(1);
   }
 
-  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate || appliedFilters.entityType || appliedFilters.action;
+  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate || appliedFilters.entityType || appliedFilters.action || appliedFilters.actorType;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -249,6 +257,25 @@ export default function AdminActivityLog() {
                     <SelectContent>
                       <SelectItem value="all">All actions</SelectItem>
                       {ACTION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="log-actor-type">Actor</Label>
+                  <Select
+                    value={filters.actorType}
+                    onValueChange={(val) => setFilters({ ...filters, actorType: val === "all" ? "" : val })}
+                  >
+                    <SelectTrigger id="log-actor-type" data-testid="select-actor-type" className="w-36">
+                      <SelectValue placeholder="All actors" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All actors</SelectItem>
+                      {ACTOR_TYPE_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>

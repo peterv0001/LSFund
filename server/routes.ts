@@ -2130,8 +2130,11 @@ export async function registerRoutes(
     const action = typeof req.query.action === 'string' && req.query.action.trim()
       ? req.query.action.trim()
       : undefined;
+    const actorType = typeof req.query.actorType === 'string' && req.query.actorType.trim()
+      ? req.query.actorType.trim()
+      : undefined;
     
-    const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate, entityType, action });
+    const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate, entityType, action, actorType });
     res.json({ ...result, page, pageSize });
   }
 

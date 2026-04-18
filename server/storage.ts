@@ -1042,6 +1042,7 @@ export class DatabaseStorage {
 
   async getActivityLogs(page: number = 1, pageSize: number = 50, filters?: {
     actorId?: number;
+    actorType?: string;
     entityType?: string;
     entityId?: number;
     action?: string;
@@ -1055,6 +1056,9 @@ export class DatabaseStorage {
     
     if (filters?.actorId) {
       conditions.push(eq(activityLog.actorId, filters.actorId));
+    }
+    if (filters?.actorType) {
+      conditions.push(eq(activityLog.actorType, filters.actorType));
     }
     if (filters?.entityType) {
       conditions.push(eq(activityLog.entityType, filters.entityType));
