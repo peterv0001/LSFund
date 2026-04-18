@@ -11,7 +11,8 @@ import {
   Edit,
   Ban,
   CheckCircle,
-  Loader2
+  Loader2,
+  CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Agent } from "@shared/schema";
+import { useLocation } from "wouter";
 
 export default function AdminAgents() {
   const [search, setSearch] = useState("");
@@ -61,6 +63,7 @@ export default function AdminAgents() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'agents', search, statusFilter, rankFilter, page],
@@ -269,6 +272,13 @@ export default function AdminAgents() {
                           <DropdownMenuItem>
                             <Eye className="w-4 h-4 mr-2" />
                             View Genealogy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            data-testid={`link-view-subscriptions-${agent.id}`}
+                            onClick={() => setLocation(`/admin/subscriptions?agentId=${agent.id}`)}
+                          >
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            View Subscriptions
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {agent.status === 'active' ? (

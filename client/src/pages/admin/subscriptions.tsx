@@ -49,6 +49,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
+import { useSearch } from "wouter";
 
 type Agent = {
   id: number;
@@ -156,9 +157,16 @@ function buildAgentSummary(subscriptions: Subscription[]): AgentSummary[] {
 export default function AdminSubscriptions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const search = useSearch();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
-  const [agentFilter, setAgentFilter] = useState<number | null>(null);
+  const [agentFilter, setAgentFilter] = useState<number | null>(() => {
+    const params = new URLSearchParams(search);
+    const id = params.get("agentId");
+    if (!id) return null;
+    const parsed = parseInt(id, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  });
   const [historySubId, setHistorySubId] = useState<number | null>(null);
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -224,7 +232,16 @@ export default function AdminSubscriptions() {
   });
 
   const selectedAgentSummary = agentFilter !== null
-    ? agentSummary.find((a) => a.agentId === agentFilter) ?? null
+    ? agentSummary.find((a) => a.agentId === agentFilter) ?? (() => {
+        const subWithAgent = subscriptions.find((s) => s.agentId === agentFilter && s.agent?.firstName);
+        if (!subWithAgent) return null;
+        return {
+          agentId: agentFilter,
+          agentName: `${subWithAgent.agent!.firstName} ${subWithAgent.agent!.lastName}`,
+          cancelledCount: 0,
+          pausedCount: 0,
+        };
+      })()
     : null;
 
   const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null;
@@ -477,13 +494,13 @@ export default function AdminSubscriptions() {
               )}
             </div>
 
-            {agentFilter !== null && selectedAgentSummary && (
+            {agentFilter !== null && (
               <div
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium"
                 data-testid="agent-filter-indicator"
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>{selectedAgentSummary.agentName}</span>
+                <span>{selectedAgentSummary?.agentName ?? `Agent #${agentFilter}`}</span>
                 <button
                   data-testid="button-clear-agent-filter"
                   onClick={() => setAgentFilter(null)}
