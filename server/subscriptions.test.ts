@@ -370,6 +370,99 @@ describe("admin subscription status route – activity logging on reactivate", (
 });
 
 // =========================================================
+// POST /api/admin/subscriptions/calculate-commissions – HTTP route
+// Verifies that the route only processes active subscriptions
+// and excludes paused ones end-to-end.
+// =========================================================
+
+const COMM_ROUTE_EMAIL_PREFIX = `comm-route-test-${Date.now()}`;
+let commRouteAgentId: number;
+
+beforeAll(async () => {
+  const [agent] = await db
+    .insert(schema.agents)
+    .values({
+      email: `${COMM_ROUTE_EMAIL_PREFIX}@example.com`,
+      password: "not-a-real-hash",
+      firstName: "CommRoute",
+      lastName: "Agent",
+      currentRank: "agent",
+      highestRank: "agent",
+    })
+    .returning();
+  commRouteAgentId = agent.id;
+}, 30000);
+
+afterAll(async () => {
+  await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
+  await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, commRouteAgentId));
+  await db.delete(schema.agents).where(eq(schema.agents.id, commRouteAgentId));
+});
+
+describe("POST /api/admin/subscriptions/calculate-commissions – status filtering", () => {
+  it("creates a commission only for the active subscription and not for the paused one", async () => {
+    const activeSub = await createTestSubscription(commRouteAgentId, "active");
+    const pausedSub = await createTestSubscription(commRouteAgentId, "paused");
+    try {
+      const cookie = await loginAsAdmin();
+
+      const res = await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", cookie)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("processed");
+      expect(res.body).toHaveProperty("totalActive");
+
+      // totalActive must be >= 1 (at least our active sub)
+      expect(res.body.totalActive).toBeGreaterThanOrEqual(1);
+
+      // The paused subscription must NOT be counted as active
+      // Fetch commissions created for this agent during this run
+      const agentCommissions = await db
+        .select()
+        .from(schema.commissions)
+        .where(eq(schema.commissions.agentId, commRouteAgentId));
+
+      // Exactly one commission: for the active sub (not the paused one)
+      expect(agentCommissions).toHaveLength(1);
+      expect(Number(agentCommissions[0].amount)).toBeGreaterThan(0);
+
+      // Verify the commission amount matches the active sub's monthly amount
+      // multiplied by the pool+decay rate (tier_1 = 0.50, months1to3 decay = 1.0)
+      const expectedRate = 0.50 * 1.00;
+      const expectedAmount = Number(activeSub.monthlyAmount) * expectedRate;
+      expect(Number(agentCommissions[0].amount)).toBeCloseTo(expectedAmount, 2);
+    } finally {
+      await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, pausedSub.id));
+    }
+  });
+
+  it("creates no commissions for the agent when all their subscriptions are paused", async () => {
+    const pausedSub = await createTestSubscription(commRouteAgentId, "paused");
+    try {
+      const cookie = await loginAsAdmin();
+
+      await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", cookie)
+        .expect(200);
+
+      const agentCommissions = await db
+        .select()
+        .from(schema.commissions)
+        .where(eq(schema.commissions.agentId, commRouteAgentId));
+
+      expect(agentCommissions).toHaveLength(0);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, pausedSub.id));
+    }
+  });
+});
+
+// =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
 
