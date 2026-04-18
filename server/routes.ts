@@ -1562,6 +1562,37 @@ export async function registerRoutes(
     }
   });
 
+  // Admin subscription activity/history
+  app.get("/api/admin/subscriptions/:id/activity", requireAdmin, async (req, res) => {
+    try {
+      const subId = Number(req.params.id);
+      const { logs } = await storage.getActivityLogs(1, 100, {
+        entityType: 'subscription',
+        entityId: subId,
+      });
+
+      const actorIds = [...new Set(logs.map((l) => l.actorId))];
+      const actorMap: Record<number, { firstName: string; lastName: string } | undefined> = {};
+      await Promise.all(
+        actorIds.map(async (aid) => {
+          const agent = await storage.getAgent(aid);
+          if (agent) actorMap[aid] = { firstName: agent.firstName, lastName: agent.lastName };
+        })
+      );
+
+      const enriched = logs.map((l) => ({
+        ...l,
+        actorName: actorMap[l.actorId]
+          ? `${actorMap[l.actorId]!.firstName} ${actorMap[l.actorId]!.lastName}`
+          : `#${l.actorId}`,
+      }));
+
+      res.json(enriched);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch subscription activity" });
+    }
+  });
+
   // Admin subscription commission calculation (monthly trigger)
   app.post("/api/admin/subscriptions/calculate-commissions", requireAdmin, async (req, res) => {
     try {

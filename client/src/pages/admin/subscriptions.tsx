@@ -13,6 +13,7 @@ import {
   Clock,
   X,
   Download,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -70,6 +77,30 @@ type Subscription = {
   reactivatedBy: Agent | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type ActivityEntry = {
+  id: number;
+  actorId: number;
+  actorType: string;
+  actorName: string;
+  action: string;
+  entityType: string;
+  entityId: number;
+  description: string | null;
+  createdAt: string;
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  pause: "Paused",
+  cancel: "Cancelled",
+  reactivate: "Reactivated",
+};
+
+const ACTION_COLORS: Record<string, string> = {
+  pause: "bg-yellow-100 text-yellow-700",
+  cancel: "bg-red-100 text-red-700",
+  reactivate: "bg-green-100 text-green-700",
 };
 
 const TIER_LABELS: Record<string, string> = {
@@ -126,6 +157,15 @@ export default function AdminSubscriptions() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
   const [agentFilter, setAgentFilter] = useState<number | null>(null);
+  const [historySubId, setHistorySubId] = useState<number | null>(null);
+
+  const { data: historyEntries = [], isLoading: historyLoading } = useQuery<ActivityEntry[]>({
+    queryKey: [api.admin.subscriptions.activity.path, historySubId],
+    queryFn: historySubId != null
+      ? () => fetch(buildUrl(api.admin.subscriptions.activity.path, { id: historySubId }), { credentials: "include" }).then(r => r.json())
+      : undefined,
+    enabled: historySubId != null,
+  });
 
   const { data: subscriptions = [], isLoading } = useQuery<Subscription[]>({
     queryKey: [api.admin.subscriptions.list.path],
@@ -555,23 +595,35 @@ export default function AdminSubscriptions() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Select
-                            value={sub.status}
-                            onValueChange={(v) => updateStatusMutation.mutate({ id: sub.id, status: v })}
-                          >
-                            <SelectTrigger
-                              className="w-36 h-8 text-sm"
-                              data-testid={`select-status-${sub.id}`}
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={sub.status}
+                              onValueChange={(v) => updateStatusMutation.mutate({ id: sub.id, status: v })}
                             >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="active">Active</SelectItem>
-                              <SelectItem value="paused">Paused</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                              <SelectItem value="expired">Expired</SelectItem>
-                            </SelectContent>
-                          </Select>
+                              <SelectTrigger
+                                className="w-36 h-8 text-sm"
+                                data-testid={`select-status-${sub.id}`}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="paused">Paused</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                <SelectItem value="expired">Expired</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-primary"
+                              title="View history"
+                              data-testid={`button-history-${sub.id}`}
+                              onClick={() => setHistorySubId(sub.id)}
+                            >
+                              <History className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -582,6 +634,58 @@ export default function AdminSubscriptions() {
           )}
         </div>
       </main>
+
+      {/* Subscription History Dialog */}
+      <Dialog open={historySubId != null} onOpenChange={(open) => { if (!open) setHistorySubId(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-primary" />
+              Subscription History
+              {historySubId != null && (
+                <span className="text-sm font-normal text-gray-500 ml-1">
+                  — #{historySubId} {subscriptions.find(s => s.id === historySubId)?.merchantName ? `· ${subscriptions.find(s => s.id === historySubId)!.merchantName}` : ""}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-2" data-testid="subscription-history-panel">
+            {historyLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : historyEntries.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">No pause or cancel events recorded for this subscription.</p>
+            ) : (
+              <ol className="relative border-l border-gray-200 ml-3 space-y-4">
+                {historyEntries.map((entry) => (
+                  <li key={entry.id} className="ml-4" data-testid={`history-entry-${entry.id}`}>
+                    <span className="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-primary border-2 border-white" />
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <Badge
+                        className={`text-xs ${ACTION_COLORS[entry.action] ?? "bg-gray-100 text-gray-600"}`}
+                        data-testid={`text-history-action-${entry.id}`}
+                      >
+                        {ACTION_LABELS[entry.action] ?? entry.action}
+                      </Badge>
+                      <span className="text-sm font-medium text-gray-800" data-testid={`text-history-actor-${entry.id}`}>
+                        {entry.actorName}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5" data-testid={`text-history-date-${entry.id}`}>
+                      {format(new Date(entry.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                    {entry.description && (
+                      <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{entry.description}</p>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

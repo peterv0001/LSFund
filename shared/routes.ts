@@ -892,6 +892,13 @@ export const api = {
           200: z.object({ message: z.string(), processed: z.number(), totalActive: z.number() }),
         },
       },
+      activity: {
+        method: 'GET' as const,
+        path: '/api/admin/subscriptions/:id/activity',
+        responses: {
+          200: z.array(z.any()),
+        },
+      },
     },
 
     // Holdback Management
