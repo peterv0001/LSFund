@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from "./migrations";
 import { startScheduler } from "./scheduler";
+import { logSchemaHealth } from "./schema-health";
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,6 +65,7 @@ app.use((req, res, next) => {
 (async () => {
   await runMigrations();
   startScheduler();
+  await logSchemaHealth();
 
   await registerRoutes(httpServer, app);
 

@@ -13,6 +13,7 @@ import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
 import { migrations, revertMigration, applyMigration } from "./migrations";
+import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 
 // Extend Express User type
@@ -2478,6 +2479,17 @@ export async function registerRoutes(
     } catch (err: unknown) {
       console.error(`[migrations] revert "${name}" failed`, err);
       res.status(500).json({ message: "Migration revert failed due to a server error" });
+    }
+  });
+
+  app.get("/api/admin/health/schema", requireAdmin, async (_req, res) => {
+    try {
+      const result = await checkSchemaHealth();
+      const status = result.healthy ? 200 : 503;
+      res.status(status).json(result);
+    } catch (err) {
+      console.error("[schema-health] endpoint error:", err);
+      res.status(500).json({ message: "Failed to check schema health" });
     }
   });
 
