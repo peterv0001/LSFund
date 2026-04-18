@@ -367,6 +367,39 @@ export default function AdminSubscriptions() {
 
   const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null;
 
+  const showDateRangeSummary =
+    dateRangeFilter === "custom" && (customStartDate || customEndDate);
+
+  const dateRangeSummary = (() => {
+    if (!showDateRangeSummary) return null;
+    const base = subscriptions.filter((s) => {
+      if (statusFilter !== "all" && s.status !== statusFilter) return false;
+      if (agentFilter !== null && s.agentId !== agentFilter) return false;
+      return true;
+    });
+    const newCount = base.filter((s) => {
+      const d = new Date(s.createdAt);
+      if (customStart && d < customStart) return false;
+      if (customEnd && d > customEnd) return false;
+      return true;
+    }).length;
+    const pausedCount = base.filter((s) => {
+      if (!s.pausedAt) return false;
+      const d = new Date(s.pausedAt);
+      if (customStart && d < customStart) return false;
+      if (customEnd && d > customEnd) return false;
+      return true;
+    }).length;
+    const cancelledCount = base.filter((s) => {
+      if (!s.cancelledAt) return false;
+      const d = new Date(s.cancelledAt);
+      if (customStart && d < customStart) return false;
+      if (customEnd && d > customEnd) return false;
+      return true;
+    }).length;
+    return { newCount, pausedCount, cancelledCount };
+  })();
+
   function getCellValue(key: ExportColumnKey, s: Subscription): string {
     const agentName = s.agent?.firstName
       ? `${s.agent.firstName} ${s.agent.lastName}`
@@ -818,6 +851,51 @@ export default function AdminSubscriptions() {
               </Button>
             </div>
           </div>
+
+          {/* Date Range Summary Card */}
+          {showDateRangeSummary && dateRangeSummary && (
+            <Card className="mb-4 border-primary/20 bg-primary/5" data-testid="date-range-summary-card">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarRange className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-gray-700">
+                    Summary
+                    {customStartDate && customEndDate
+                      ? `: ${format(new Date(customStartDate + "T00:00:00"), "MMM d, yyyy")} – ${format(new Date(customEndDate + "T00:00:00"), "MMM d, yyyy")}`
+                      : customStartDate
+                      ? `: from ${format(new Date(customStartDate + "T00:00:00"), "MMM d, yyyy")}`
+                      : `: until ${format(new Date(customEndDate + "T00:00:00"), "MMM d, yyyy")}`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2" data-testid="summary-new-count">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-700 font-bold text-sm">
+                      {dateRangeSummary.newCount}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      New subscription{dateRangeSummary.newCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2" data-testid="summary-paused-count">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-100 text-yellow-700 font-bold text-sm">
+                      {dateRangeSummary.pausedCount}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      Paused
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2" data-testid="summary-cancelled-count">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-700 font-bold text-sm">
+                      {dateRangeSummary.cancelledCount}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      Cancelled
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Table */}
           {isLoading ? (
