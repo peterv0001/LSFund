@@ -1457,6 +1457,18 @@ export class DatabaseStorage {
     return updated;
   }
 
+  async getSubscriptionsDueForExpiry(): Promise<Subscription[]> {
+    const now = new Date();
+    return await db.select().from(subscriptions)
+      .where(and(
+        lte(subscriptions.endDate, now),
+        or(
+          eq(subscriptions.status, 'active'),
+          eq(subscriptions.status, 'paused')
+        )
+      ));
+  }
+
   async getActiveSubscriptionRevenue(agentId: number): Promise<number> {
     const subs = await db.select().from(subscriptions)
       .where(and(eq(subscriptions.agentId, agentId), eq(subscriptions.status, 'active')));

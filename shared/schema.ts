@@ -377,6 +377,7 @@ export const subscriptions = pgTable("subscriptions", {
   status: subscriptionStatusEnum("status").default("active").notNull(),
   mcaPairedDealId: integer("mca_paired_deal_id"),
   startDate: timestamp("start_date").defaultNow().notNull(),
+  endDate: timestamp("end_date"),
   cancelledAt: timestamp("cancelled_at"),
   pausedAt: timestamp("paused_at"),
   reactivatedAt: timestamp("reactivated_at"),

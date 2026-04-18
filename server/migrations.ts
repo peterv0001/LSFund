@@ -147,6 +147,21 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped subscription_email_preferences column from agents table");
     },
   },
+  {
+    name: "006_add_subscription_end_date",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS end_date timestamp
+      `);
+      console.log("[migrations] Added end_date column to subscriptions table");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS end_date
+      `);
+      console.log("[migrations] Dropped end_date column from subscriptions table");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {
