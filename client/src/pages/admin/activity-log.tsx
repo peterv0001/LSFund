@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 
 type ActivityEntry = {
@@ -179,15 +179,31 @@ export default function AdminActivityLog() {
   const [, setLocation] = useLocation();
 
   const initial = parseFiltersFromSearch(window.location.search);
+  // searchInput is what the user types — updates immediately for responsive input
+  const [searchInput, setSearchInput] = useState(initial.filters.search);
+  // filters holds applied values used by the query; search only updates after 300ms debounce
   const [filters, setFilters] = useState<Filters>(initial.filters);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(initial.filters);
   const [page, setPage] = useState(initial.page);
+
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
+  // Track current searchInput in a ref so the popstate handler (stable closure) can read it
+  const searchInputRef = useRef(searchInput);
+  searchInputRef.current = searchInput;
+
+  // Only skip the debounce when a programmatic change actually alters searchInput
+  const skipNextSearchDebounce = useRef(false);
 
   useEffect(() => {
     const onPopState = () => {
       const parsed = parseFiltersFromSearch(window.location.search);
+      // Only flag a skip when the search value will actually change (preventing a stuck flag)
+      if (parsed.filters.search !== searchInputRef.current) {
+        skipNextSearchDebounce.current = true;
+      }
+      setSearchInput(parsed.filters.search);
       setFilters(parsed.filters);
-      setAppliedFilters(parsed.filters);
       setPage(parsed.page);
     };
     window.addEventListener("popstate", onPopState);
@@ -197,22 +213,44 @@ export default function AdminActivityLog() {
   function pushUrl(newFilters: Filters, newPage: number) {
     const search = buildSearchString(newFilters, newPage);
     setLocation(`/admin/activity${search}`);
-    setAppliedFilters(newFilters);
     setPage(newPage);
+  }
+
+  const isFirstSearchRender = useRef(true);
+  useEffect(() => {
+    if (isFirstSearchRender.current) {
+      isFirstSearchRender.current = false;
+      return;
+    }
+    if (skipNextSearchDebounce.current) {
+      skipNextSearchDebounce.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const newFilters = { ...filtersRef.current, search: searchInput };
+      setFilters(newFilters);
+      pushUrl(newFilters, 1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  function applyImmediate(newFilters: Filters) {
+    setFilters(newFilters);
+    pushUrl(newFilters, 1);
   }
 
   function buildQuery() {
     const q: Record<string, string | number> = { page, pageSize };
-    if (appliedFilters.search) q.search = appliedFilters.search;
-    if (appliedFilters.startDate) q.startDate = appliedFilters.startDate;
-    if (appliedFilters.endDate) q.endDate = appliedFilters.endDate;
-    if (appliedFilters.entityType) q.entityType = appliedFilters.entityType;
-    if (appliedFilters.action) q.action = appliedFilters.action;
-    if (appliedFilters.actorType) q.actorType = appliedFilters.actorType;
+    if (filters.search) q.search = filters.search;
+    if (filters.startDate) q.startDate = filters.startDate;
+    if (filters.endDate) q.endDate = filters.endDate;
+    if (filters.entityType) q.entityType = filters.entityType;
+    if (filters.action) q.action = filters.action;
+    if (filters.actorType) q.actorType = filters.actorType;
     return q;
   }
 
-  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate, appliedFilters.entityType, appliedFilters.action, appliedFilters.actorType];
+  const queryKey = [ACTIVITY_LOG_PATH, page, filters.search, filters.startDate, filters.endDate, filters.entityType, filters.action, filters.actorType];
 
   const { data, isLoading } = useQuery<ActivityLogResponse>({
     queryKey,
@@ -228,21 +266,23 @@ export default function AdminActivityLog() {
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
 
-  const applyFilters = useCallback(() => {
-    pushUrl(filters, 1);
-  }, [filters]);
-
   function clearFilters() {
     const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" };
+    // Only flag a skip when search will actually change — avoids a stuck flag when already empty
+    if (searchInput !== "") {
+      skipNextSearchDebounce.current = true;
+    }
+    setSearchInput("");
     setFilters(blank);
     pushUrl(blank, 1);
   }
 
   function goToPage(newPage: number) {
-    pushUrl(appliedFilters, newPage);
+    pushUrl(filters, newPage);
   }
 
-  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate || appliedFilters.entityType || appliedFilters.action || appliedFilters.actorType;
+  // Show Clear button if user has typed anything OR if any applied filter is active
+  const hasActiveFilters = searchInput || filters.startDate || filters.endDate || filters.entityType || filters.action || filters.actorType;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -273,9 +313,8 @@ export default function AdminActivityLog() {
                       data-testid="input-log-search"
                       placeholder="Search action, entity, description..."
                       className="pl-8"
-                      value={filters.search}
-                      onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                      onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                     />
                   </div>
                 </div>
@@ -283,7 +322,7 @@ export default function AdminActivityLog() {
                   <Label htmlFor="log-entity-type">Entity Type</Label>
                   <Select
                     value={filters.entityType}
-                    onValueChange={(val) => setFilters({ ...filters, entityType: val === "all" ? "" : val })}
+                    onValueChange={(val) => applyImmediate({ ...filters, entityType: val === "all" ? "" : val })}
                   >
                     <SelectTrigger id="log-entity-type" data-testid="select-entity-type" className="w-44">
                       <Filter className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
@@ -303,7 +342,7 @@ export default function AdminActivityLog() {
                   <Label htmlFor="log-action">Action</Label>
                   <Select
                     value={filters.action}
-                    onValueChange={(val) => setFilters({ ...filters, action: val === "all" ? "" : val })}
+                    onValueChange={(val) => applyImmediate({ ...filters, action: val === "all" ? "" : val })}
                   >
                     <SelectTrigger id="log-action" data-testid="select-action" className="w-40">
                       <SelectValue placeholder="All actions" />
@@ -322,7 +361,7 @@ export default function AdminActivityLog() {
                   <Label htmlFor="log-actor-type">Actor</Label>
                   <Select
                     value={filters.actorType}
-                    onValueChange={(val) => setFilters({ ...filters, actorType: val === "all" ? "" : val })}
+                    onValueChange={(val) => applyImmediate({ ...filters, actorType: val === "all" ? "" : val })}
                   >
                     <SelectTrigger id="log-actor-type" data-testid="select-actor-type" className="w-36">
                       <SelectValue placeholder="All actors" />
@@ -344,7 +383,7 @@ export default function AdminActivityLog() {
                     data-testid="input-log-start-date"
                     type="date"
                     value={filters.startDate}
-                    onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                    onChange={(e) => applyImmediate({ ...filters, startDate: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1">
@@ -354,21 +393,17 @@ export default function AdminActivityLog() {
                     data-testid="input-log-end-date"
                     type="date"
                     value={filters.endDate}
-                    onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                    onChange={(e) => applyImmediate({ ...filters, endDate: e.target.value })}
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button data-testid="button-apply-filters" onClick={applyFilters}>
-                    <Search className="w-4 h-4 mr-1" />
-                    Filter
-                  </Button>
-                  {hasActiveFilters && (
+                {hasActiveFilters && (
+                  <div className="flex gap-2">
                     <Button variant="outline" data-testid="button-clear-filters" onClick={clearFilters}>
                       <X className="w-4 h-4 mr-1" />
                       Clear
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
