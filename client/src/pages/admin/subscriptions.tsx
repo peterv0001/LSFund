@@ -21,6 +21,7 @@ import {
   Check,
   Plus,
   CalendarDays,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearch, useLocation } from "wouter";
 
 type Agent = {
@@ -189,6 +190,7 @@ type ExportTemplate = {
 };
 
 const TEMPLATES_LS_KEY = "admin:export:templates";
+const COLUMN_ORDER_LS_KEY = "admin:subscriptions:columnOrder";
 const VALID_COLUMN_KEYS = new Set<string>(EXPORT_COLUMNS.map((c) => c.key));
 
 function readTemplates(): ExportTemplate[] {
@@ -418,6 +420,32 @@ export default function AdminSubscriptions() {
     }
   }, [selectedColumns]);
 
+  const [columnOrder, setColumnOrder] = useState<ExportColumnKey[]>(() => {
+    try {
+      const raw = localStorage.getItem(COLUMN_ORDER_LS_KEY);
+      if (raw !== null) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const allKeys = EXPORT_COLUMNS.map((c) => c.key);
+          const valid = (parsed as string[]).filter((k): k is ExportColumnKey => VALID_COLUMN_KEYS.has(k));
+          const missing = allKeys.filter((k) => !valid.includes(k));
+          return [...valid, ...missing];
+        }
+      }
+    } catch {
+    }
+    return EXPORT_COLUMNS.map((c) => c.key);
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_ORDER_LS_KEY, JSON.stringify(columnOrder));
+    } catch {
+    }
+  }, [columnOrder]);
+
+  const draggedKeyRef = useRef<ExportColumnKey | null>(null);
+
   const [templates, setTemplates] = useState<ExportTemplate[]>(() => readTemplates());
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
@@ -595,7 +623,11 @@ export default function AdminSubscriptions() {
   }
 
   function exportCsv() {
-    const cols = EXPORT_COLUMNS.filter((c) => selectedColumns.has(c.key));
+    const colMap = new Map(EXPORT_COLUMNS.map((c) => [c.key, c]));
+    const cols = columnOrder
+      .filter((k) => selectedColumns.has(k))
+      .map((k) => colMap.get(k)!)
+      .filter(Boolean);
     if (cols.length === 0) {
       toast({ title: "Select at least one column to export", variant: "destructive" });
       return;
@@ -718,10 +750,11 @@ export default function AdminSubscriptions() {
       toast({ title: "Select at least one column before saving a template", variant: "destructive" });
       return;
     }
+    const orderedSelected = columnOrder.filter((k) => selectedColumns.has(k));
     const trimmedLower = trimmed.toLowerCase();
     const updated = [
       ...templates.filter((t) => t.name.toLowerCase() !== trimmedLower),
-      { name: trimmed, columns: Array.from(selectedColumns) },
+      { name: trimmed, columns: orderedSelected },
     ];
     persistTemplates(updated);
     setTemplates(updated);
@@ -732,6 +765,9 @@ export default function AdminSubscriptions() {
 
   function applyTemplate(template: ExportTemplate) {
     setSelectedColumns(new Set(template.columns));
+    const allKeys = EXPORT_COLUMNS.map((c) => c.key);
+    const rest = allKeys.filter((k) => !template.columns.includes(k));
+    setColumnOrder([...template.columns, ...rest]);
   }
 
   function deleteTemplate(name: string) {
@@ -1017,7 +1053,7 @@ export default function AdminSubscriptions() {
                 <PopoverContent align="end" className="w-64 p-0">
                   <div className="px-3 py-2.5 border-b border-gray-100">
                     <p className="text-sm font-semibold text-gray-800">Export columns</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Select which columns to include</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Select columns and drag to reorder</p>
                   </div>
 
                   {/* Templates section */}
@@ -1057,24 +1093,60 @@ export default function AdminSubscriptions() {
                     </>
                   )}
 
-                  <div className="py-2 max-h-52 overflow-y-auto">
-                    {EXPORT_COLUMNS.map((col) => (
-                      <label
-                        key={col.key}
-                        htmlFor={`col-${col.key}`}
-                        className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 cursor-pointer"
-                      >
-                        <Checkbox
-                          id={`col-${col.key}`}
-                          checked={selectedColumns.has(col.key)}
-                          onCheckedChange={() => toggleColumn(col.key)}
-                          data-testid={`checkbox-col-${col.key}`}
-                        />
-                        <span className="text-sm text-gray-700 select-none">
-                          {col.label}
-                        </span>
-                      </label>
-                    ))}
+                  <div className="py-2 max-h-52 overflow-y-auto" data-testid="column-order-list">
+                    {(() => {
+                      const colMap = new Map(EXPORT_COLUMNS.map((c) => [c.key, c]));
+                      return columnOrder.map((key) => {
+                        const col = colMap.get(key);
+                        if (!col) return null;
+                        return (
+                          <div
+                            key={col.key}
+                            draggable
+                            onDragStart={() => { draggedKeyRef.current = col.key; }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              if (draggedKeyRef.current && draggedKeyRef.current !== col.key) {
+                                setColumnOrder((prev) => {
+                                  const next = [...prev];
+                                  const fromIdx = next.indexOf(draggedKeyRef.current!);
+                                  const toIdx = next.indexOf(col.key);
+                                  if (fromIdx === -1 || toIdx === -1) return prev;
+                                  next.splice(fromIdx, 1);
+                                  next.splice(toIdx, 0, draggedKeyRef.current!);
+                                  return next;
+                                });
+                              }
+                            }}
+                            onDragEnd={() => { draggedKeyRef.current = null; }}
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 cursor-default group"
+                            data-testid={`column-row-${col.key}`}
+                          >
+                            <span
+                              className="text-gray-300 group-hover:text-gray-400 cursor-grab active:cursor-grabbing shrink-0"
+                              title="Drag to reorder"
+                              data-testid={`drag-handle-${col.key}`}
+                            >
+                              <GripVertical className="w-3.5 h-3.5" />
+                            </span>
+                            <label
+                              htmlFor={`col-${col.key}`}
+                              className="flex items-center gap-2 flex-1 cursor-pointer"
+                            >
+                              <Checkbox
+                                id={`col-${col.key}`}
+                                checked={selectedColumns.has(col.key)}
+                                onCheckedChange={() => toggleColumn(col.key)}
+                                data-testid={`checkbox-col-${col.key}`}
+                              />
+                              <span className="text-sm text-gray-700 select-none">
+                                {col.label}
+                              </span>
+                            </label>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                   <Separator />
                   <div className="px-3 py-2 flex justify-between">
@@ -1088,7 +1160,12 @@ export default function AdminSubscriptions() {
                     <button
                       className="text-xs text-amber-600 hover:underline"
                       data-testid="button-col-reset-defaults"
-                      onClick={() => setSelectedColumns(new Set(DEFAULT_EXPORT_COLUMNS))}
+                      onClick={() => {
+                        setSelectedColumns(new Set(DEFAULT_EXPORT_COLUMNS));
+                        const defaultOrder = DEFAULT_EXPORT_COLUMNS;
+                        const rest = EXPORT_COLUMNS.map((c) => c.key).filter((k) => !defaultOrder.includes(k));
+                        setColumnOrder([...defaultOrder, ...rest]);
+                      }}
                     >
                       Reset to defaults
                     </button>
