@@ -14,6 +14,7 @@ import {
   Search,
   X,
   RefreshCw,
+  Filter,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,6 +32,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import { useState, useCallback } from "react";
 
@@ -59,7 +67,20 @@ type Filters = {
   search: string;
   startDate: string;
   endDate: string;
+  entityType: string;
 };
+
+const ENTITY_TYPE_OPTIONS = [
+  { value: "agent", label: "Agent" },
+  { value: "subscription", label: "Subscription" },
+  { value: "deal", label: "Deal" },
+  { value: "commission", label: "Commission" },
+  { value: "payout", label: "Payout" },
+  { value: "holdback", label: "Holdback" },
+  { value: "settings", label: "Settings" },
+  { value: "announcement", label: "Announcement" },
+  { value: "resource", label: "Resource" },
+];
 
 const ENTITY_ICONS: Record<string, React.ElementType> = {
   agent: User,
@@ -90,18 +111,19 @@ const ACTIVITY_LOG_PATH = "/api/admin/activity-log";
 export default function AdminActivityLog() {
   const [page, setPage] = useState(1);
   const pageSize = 50;
-  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "" });
-  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "" });
+  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "" });
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "" });
 
   function buildQuery() {
     const q: Record<string, string | number> = { page, pageSize };
     if (appliedFilters.search) q.search = appliedFilters.search;
     if (appliedFilters.startDate) q.startDate = appliedFilters.startDate;
     if (appliedFilters.endDate) q.endDate = appliedFilters.endDate;
+    if (appliedFilters.entityType) q.entityType = appliedFilters.entityType;
     return q;
   }
 
-  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate];
+  const queryKey = [ACTIVITY_LOG_PATH, page, appliedFilters.search, appliedFilters.startDate, appliedFilters.endDate, appliedFilters.entityType];
 
   const { data, isLoading } = useQuery<ActivityLogResponse>({
     queryKey,
@@ -123,13 +145,13 @@ export default function AdminActivityLog() {
   }, [filters]);
 
   function clearFilters() {
-    const blank: Filters = { search: "", startDate: "", endDate: "" };
+    const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "" };
     setFilters(blank);
     setAppliedFilters(blank);
     setPage(1);
   }
 
-  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate;
+  const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate || appliedFilters.entityType;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -165,6 +187,26 @@ export default function AdminActivityLog() {
                       onKeyDown={(e) => e.key === "Enter" && applyFilters()}
                     />
                   </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="log-entity-type">Entity Type</Label>
+                  <Select
+                    value={filters.entityType}
+                    onValueChange={(val) => setFilters({ ...filters, entityType: val === "all" ? "" : val })}
+                  >
+                    <SelectTrigger id="log-entity-type" data-testid="select-entity-type" className="w-44">
+                      <Filter className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      {ENTITY_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="log-start-date">From</Label>

@@ -1988,8 +1988,11 @@ export async function registerRoutes(
     const endDate = typeof req.query.endDate === 'string' && req.query.endDate
       ? new Date(req.query.endDate)
       : undefined;
+    const entityType = typeof req.query.entityType === 'string' && req.query.entityType.trim()
+      ? req.query.entityType.trim()
+      : undefined;
     
-    const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate });
+    const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate, entityType });
     res.json({ ...result, page, pageSize });
   }
 
