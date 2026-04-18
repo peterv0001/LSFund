@@ -53,7 +53,7 @@ import { format } from "date-fns";
 import type { Agent } from "@shared/schema";
 import { useLocation, Link } from "wouter";
 
-type AgentWithCount = Agent & { subscriptionCount: number };
+type AgentWithCount = Agent & { totalSubscriptionCount: number; activeSubscriptionCount: number };
 
 export default function AdminAgents() {
   const [search, setSearch] = useState("");
@@ -219,7 +219,7 @@ export default function AdminAgents() {
                 <TableHead>Email</TableHead>
                 <TableHead>Rank</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Subscriptions</TableHead>
+                <TableHead title="Active / Total subscriptions">Subscriptions</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -261,10 +261,13 @@ export default function AdminAgents() {
                       <Link
                         href={`/admin/subscriptions?agentId=${agent.id}`}
                         data-testid={`link-subscription-count-${agent.id}`}
+                        title="Active subscriptions / Total subscriptions"
                         className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
                       >
                         <CreditCard className="w-3.5 h-3.5" />
-                        {agent.subscriptionCount}
+                        <span data-testid={`text-active-count-${agent.id}`}>{agent.activeSubscriptionCount}</span>
+                        <span className="text-muted-foreground font-normal">/</span>
+                        <span data-testid={`text-total-count-${agent.id}`}>{agent.totalSubscriptionCount}</span>
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">

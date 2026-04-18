@@ -126,7 +126,7 @@ export class DatabaseStorage {
     search?: string;
     status?: string;
     rank?: string;
-  }): Promise<{ agents: (Agent & { subscriptionCount: number })[]; total: number }> {
+  }): Promise<{ agents: (Agent & { totalSubscriptionCount: number; activeSubscriptionCount: number })[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
     let conditions: any[] = [];
@@ -163,6 +163,7 @@ export class DatabaseStorage {
 
     const agentIds = results.map(a => a.id);
     let subCountMap: Record<number, number> = {};
+    let activeSubCountMap: Record<number, number> = {};
     if (agentIds.length > 0) {
       const subCounts = await db
         .select({ agentId: subscriptions.agentId, cnt: count() })
@@ -172,11 +173,20 @@ export class DatabaseStorage {
       for (const row of subCounts) {
         subCountMap[row.agentId] = row.cnt;
       }
+      const activeSubCounts = await db
+        .select({ agentId: subscriptions.agentId, cnt: count() })
+        .from(subscriptions)
+        .where(and(inArray(subscriptions.agentId, agentIds), eq(subscriptions.status, 'active')))
+        .groupBy(subscriptions.agentId);
+      for (const row of activeSubCounts) {
+        activeSubCountMap[row.agentId] = row.cnt;
+      }
     }
 
     const agentsWithCount = results.map(a => ({
       ...a,
-      subscriptionCount: subCountMap[a.id] ?? 0,
+      totalSubscriptionCount: subCountMap[a.id] ?? 0,
+      activeSubscriptionCount: activeSubCountMap[a.id] ?? 0,
     }));
     
     return { agents: agentsWithCount, total: totalResult.count };
