@@ -85,9 +85,20 @@ export async function runMigrations(): Promise<void> {
         }
 
         console.log(`[migrations] Applying ${migration.name}…`);
-        await migration.run(client);
-        await markRun(client, migration.name);
-        console.log(`[migrations] ${migration.name} applied`);
+        await client.query("BEGIN");
+        try {
+          await migration.run(client);
+          await markRun(client, migration.name);
+          await client.query("COMMIT");
+          console.log(`[migrations] ${migration.name} applied`);
+        } catch (err) {
+          await client.query("ROLLBACK");
+          console.error(
+            `[migrations] ${migration.name} failed — transaction rolled back`,
+            err
+          );
+          throw err;
+        }
       }
     } finally {
       await client.query(`SELECT pg_advisory_unlock($1)`, [ADVISORY_LOCK_KEY]);
