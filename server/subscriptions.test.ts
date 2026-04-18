@@ -316,6 +316,7 @@ describe("admin subscription status route – activity logging on pause", () => 
     expect(entry).toBeDefined();
     expect(entry?.action).toBe("pause");
     expect(entry?.actorType).toBe("admin");
+    expect(entry?.actorId).toBe(adminId);
     expect(entry?.entityId).toBe(sub.id);
 
     await cleanupActivityLog(sub.id);
@@ -339,6 +340,7 @@ describe("admin subscription status route – activity logging on cancel", () =>
     expect(entry).toBeDefined();
     expect(entry?.action).toBe("cancel");
     expect(entry?.actorType).toBe("admin");
+    expect(entry?.actorId).toBe(adminId);
     expect(entry?.entityId).toBe(sub.id);
 
     await cleanupActivityLog(sub.id);
