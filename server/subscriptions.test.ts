@@ -345,3 +345,45 @@ describe("admin subscription status route – activity logging on cancel", () =>
     await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
   });
 });
+
+// =========================================================
+// Commission calculations – getActiveSubscriptionRevenue
+// =========================================================
+
+describe("getActiveSubscriptionRevenue – status filtering", () => {
+  it("counts only active subscriptions and excludes paused ones", async () => {
+    const activeSub = await createTestSubscription(agentId, "active");
+    const pausedSub = await createTestSubscription(agentId, "paused");
+
+    try {
+      const revenue = await storage.getActiveSubscriptionRevenue(agentId);
+      expect(revenue).toBe(Number(activeSub.monthlyAmount));
+      expect(revenue).not.toBe(Number(activeSub.monthlyAmount) + Number(pausedSub.monthlyAmount));
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, pausedSub.id));
+    }
+  });
+
+  it("returns 0 when all subscriptions are paused", async () => {
+    const pausedSub = await createTestSubscription(agentId, "paused");
+
+    try {
+      const revenue = await storage.getActiveSubscriptionRevenue(agentId);
+      expect(revenue).toBe(0);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, pausedSub.id));
+    }
+  });
+
+  it("returns 0 when all subscriptions are cancelled", async () => {
+    const cancelledSub = await createTestSubscription(agentId, "cancelled");
+
+    try {
+      const revenue = await storage.getActiveSubscriptionRevenue(agentId);
+      expect(revenue).toBe(0);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, cancelledSub.id));
+    }
+  });
+});
