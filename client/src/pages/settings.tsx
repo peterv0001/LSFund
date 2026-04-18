@@ -11,7 +11,8 @@ import {
   Save,
   Loader2,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,14 @@ export default function SettingsPage() {
   const [payout, setPayout] = useState({
     payoutMethod: user?.payoutMethod || 'pending',
     payoutEmail: user?.payoutEmail || '',
+  });
+
+  // Notification preferences state
+  const defaultPrefs = (user?.subscriptionEmailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
+  const [notifPrefs, setNotifPrefs] = useState({
+    emailOnPaused: defaultPrefs.emailOnPaused !== false,
+    emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
+    emailOnReactivated: defaultPrefs.emailOnReactivated !== false,
   });
 
   // Mutations
@@ -123,6 +132,26 @@ export default function SettingsPage() {
     },
   });
 
+  const updateNotifPrefsMutation = useMutation({
+    mutationFn: async (data: typeof notifPrefs) => {
+      const res = await fetch(api.agents.updateNotificationPreferences.path, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to update notification preferences');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Success", description: "Notification preferences saved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save notification preferences", variant: "destructive" });
+    },
+  });
+
   const handlePasswordChange = () => {
     if (passwords.newPassword !== passwords.confirmPassword) {
       toast({ title: "Error", description: "Passwords don't match", variant: "destructive" });
@@ -169,6 +198,10 @@ export default function SettingsPage() {
             <TabsTrigger value="payout" className="gap-2">
               <CreditCard className="w-4 h-4" />
               Payout
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-2" data-testid="tab-notifications">
+              <Mail className="w-4 h-4" />
+              Notifications
             </TabsTrigger>
             <TabsTrigger value="referral" className="gap-2">
               <ExternalLink className="w-4 h-4" />
@@ -360,6 +393,73 @@ export default function SettingsPage() {
                 >
                   {updatePayoutMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save Payout Settings
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Subscription Email Notifications</CardTitle>
+                <CardDescription>
+                  Choose which subscription status emails you want to receive. Preferences take effect immediately.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 max-w-lg">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Subscription Paused</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when one of your subscriptions is paused.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-paused"
+                      checked={notifPrefs.emailOnPaused}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaused: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Subscription Cancelled</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when one of your subscriptions is cancelled.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-cancelled"
+                      checked={notifPrefs.emailOnCancelled}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnCancelled: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Subscription Reactivated</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when one of your subscriptions is reactivated.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-reactivated"
+                      checked={notifPrefs.emailOnReactivated}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnReactivated: checked }))}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  data-testid="button-save-notification-prefs"
+                  onClick={() => updateNotifPrefsMutation.mutate(notifPrefs)}
+                  disabled={updateNotifPrefsMutation.isPending}
+                >
+                  {updateNotifPrefsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Preferences
                 </Button>
               </CardContent>
             </Card>

@@ -118,6 +118,23 @@ export const migrations: Migration[] = [
       console.log("[migrations] Added cancelled_at, cancelled_by_id, paused_by_id columns to subscriptions table");
     },
   },
+  {
+    name: "005_add_subscription_email_preferences",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE agents
+        ADD COLUMN IF NOT EXISTS subscription_email_preferences jsonb
+        NOT NULL DEFAULT '{"emailOnPaused": true, "emailOnCancelled": true, "emailOnReactivated": true}'::jsonb
+      `);
+      console.log("[migrations] Added subscription_email_preferences column to agents table");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE agents DROP COLUMN IF EXISTS subscription_email_preferences
+      `);
+      console.log("[migrations] Dropped subscription_email_preferences column from agents table");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

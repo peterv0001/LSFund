@@ -6,6 +6,7 @@ import {
   insertResourceSchema,
   updateAgentProfileSchema,
   updatePayoutMethodSchema,
+  subscriptionEmailPreferencesSchema,
   agents, 
   deals, 
   commissions, 
@@ -164,6 +165,15 @@ export const api = {
       method: 'PATCH' as const,
       path: '/api/agents/payout-method',
       input: updatePayoutMethodSchema,
+      responses: {
+        200: z.custom<typeof agents.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    updateNotificationPreferences: {
+      method: 'PATCH' as const,
+      path: '/api/agents/notification-preferences',
+      input: subscriptionEmailPreferencesSchema,
       responses: {
         200: z.custom<typeof agents.$inferSelect>(),
         400: errorSchemas.validation,

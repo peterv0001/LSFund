@@ -76,6 +76,7 @@ export const agents = pgTable("agents", {
   // Notification preferences
   emailNotifications: boolean("email_notifications").default(true),
   smsNotifications: boolean("sms_notifications").default(false),
+  subscriptionEmailPreferences: jsonb("subscription_email_preferences").default({ emailOnPaused: true, emailOnCancelled: true, emailOnReactivated: true }),
   
   // Admin
   isAdmin: boolean("is_admin").default(false).notNull(),
@@ -714,6 +715,14 @@ export const updatePayoutMethodSchema = z.object({
   payoutMethod: z.enum(['stripe', 'paypal', 'bank', 'pending']),
   payoutEmail: z.string().email().optional(),
 });
+
+export const subscriptionEmailPreferencesSchema = z.object({
+  emailOnPaused: z.boolean(),
+  emailOnCancelled: z.boolean(),
+  emailOnReactivated: z.boolean(),
+});
+
+export type SubscriptionEmailPreferences = z.infer<typeof subscriptionEmailPreferencesSchema>;
 
 export const insertDealSchema = createInsertSchema(deals).omit({ 
   id: true, 

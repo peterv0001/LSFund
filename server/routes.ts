@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { Agent } from "@shared/schema";
+import { Agent, subscriptionEmailPreferencesSchema } from "@shared/schema";
 import { z } from "zod";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -450,6 +450,20 @@ export async function registerRoutes(
         return res.status(400).json({ message: err.errors[0].message });
       }
       res.status(500).json({ message: "Failed to update payout method" });
+    }
+  });
+
+  app.patch(api.agents.updateNotificationPreferences.path, requireAuth, async (req, res) => {
+    try {
+      const prefs = subscriptionEmailPreferencesSchema.parse(req.body);
+      // @ts-ignore
+      const updated = await storage.updateAgent(req.user!.id, { subscriptionEmailPreferences: prefs });
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update notification preferences" });
     }
   });
 
@@ -1512,10 +1526,11 @@ export async function registerRoutes(
             tier: tierLabel,
             effectiveDate,
           };
-          if (status === 'paused') {
+          const prefs = (agent.subscriptionEmailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
+          if (status === 'paused' && prefs.emailOnPaused !== false) {
             emailService.sendSubscriptionPausedEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send subscription paused email:', err));
-          } else {
+          } else if (status === 'cancelled' && prefs.emailOnCancelled !== false) {
             emailService.sendSubscriptionCancelledEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send subscription cancelled email:', err));
           }
@@ -1603,13 +1618,14 @@ export async function registerRoutes(
             tier: tierLabel,
             effectiveDate,
           };
-          if (status === 'paused') {
+          const prefs = (agent.subscriptionEmailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean } | null) ?? {};
+          if (status === 'paused' && prefs.emailOnPaused !== false) {
             emailService.sendSubscriptionPausedEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription paused email:', err));
-          } else if (status === 'cancelled') {
+          } else if (status === 'cancelled' && prefs.emailOnCancelled !== false) {
             emailService.sendSubscriptionCancelledEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription cancelled email:', err));
-          } else {
+          } else if (isReactivation && prefs.emailOnReactivated !== false) {
             emailService.sendSubscriptionReactivatedEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription reactivated email:', err));
           }
