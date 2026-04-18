@@ -12,6 +12,7 @@ import { pool } from "./db";
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
+import { migrations, revertMigration } from "./migrations";
 import { emailService } from "./email";
 
 // Extend Express User type
@@ -2268,6 +2269,64 @@ export async function registerRoutes(
   app.get(api.leads.myRequests.path, requireAuth, async (req, res) => {
     const requests = await storage.getLeadRequestsByAgent(req.user!.id);
     res.json(requests);
+  });
+
+  // Admin: List migrations with applied status
+  app.get("/api/admin/migrations", requireAdmin, async (req, res) => {
+    try {
+      const result = await pool.query<{ name: string; applied_at: string }>(
+        `SELECT name, applied_at FROM schema_migrations ORDER BY applied_at ASC`
+      );
+      const appliedMap = new Map(result.rows.map((r) => [r.name, r.applied_at]));
+      const list = migrations.map((m) => ({
+        name: m.name,
+        hasDown: !!m.down,
+        appliedAt: appliedMap.get(m.name) ?? null,
+      }));
+      res.json(list);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch migrations" });
+    }
+  });
+
+  // Admin: Revert a migration
+  app.post("/api/admin/migrations/:name/revert", requireAdmin, async (req, res) => {
+    const { name } = req.params;
+
+    // Pre-validate before running to avoid relying on string-matching of thrown errors
+    const migration = migrations.find((m) => m.name === name);
+    if (!migration) {
+      return res.status(400).json({ message: `Migration "${name}" not found` });
+    }
+    if (!migration.down) {
+      return res.status(400).json({ message: `Migration "${name}" does not have a down function` });
+    }
+    const appliedResult = await pool.query<{ exists: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE name = $1) AS exists`,
+      [name]
+    );
+    if (!appliedResult.rows[0].exists) {
+      return res.status(400).json({ message: `Migration "${name}" has not been applied` });
+    }
+
+    try {
+      await revertMigration(name);
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: "admin",
+        action: "revert_migration",
+        entityType: "migration",
+        entityId: 0,
+        description: `Reverted migration: ${name}`,
+        details: { migration: name },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers["user-agent"] ?? null,
+      });
+      res.json({ message: `Migration "${name}" reverted successfully` });
+    } catch (err: unknown) {
+      console.error(`[migrations] revert "${name}" failed`, err);
+      res.status(500).json({ message: "Migration revert failed due to a server error" });
+    }
   });
 
   // Seed Data (dev only)

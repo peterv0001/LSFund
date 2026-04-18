@@ -45,6 +45,7 @@ import AdminHoldbacks from "@/pages/admin/holdbacks";
 import AdminActivityLog from "@/pages/admin/activity-log";
 import AdminSettings from "@/pages/admin/settings";
 import AdminSubscriptions from "@/pages/admin/subscriptions";
+import AdminMigrations from "@/pages/admin/migrations";
 
 // Protected Route Wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -156,6 +157,7 @@ function Router() {
       <Route path="/admin/resources" component={() => <AdminRoute component={AdminResources} />} />
       <Route path="/admin/holdbacks" component={() => <AdminRoute component={AdminHoldbacks} />} />
       <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivityLog} />} />
+      <Route path="/admin/migrations" component={() => <AdminRoute component={AdminMigrations} />} />
       <Route path="/admin/settings" component={() => <AdminRoute component={AdminSettings} />} />
 
       {/* Fallback */}

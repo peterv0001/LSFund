@@ -17,6 +17,7 @@ import {
   Bot,
   RefreshCw,
   Lock,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +34,7 @@ const adminNavItems = [
   { href: "/admin/announcements", icon: Megaphone, label: "Announcements" },
   { href: "/admin/resources", icon: BookOpen, label: "Resources" },
   { href: "/admin/activity", icon: Activity, label: "Activity Log" },
+  { href: "/admin/migrations", icon: Database, label: "Migrations" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 

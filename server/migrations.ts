@@ -37,7 +37,7 @@ export type Migration = {
   down?: (client: PoolClient) => Promise<void>;
 };
 
-const migrations: Migration[] = [
+export const migrations: Migration[] = [
   {
     name: "001_add_paused_at_column",
     async run(client) {
