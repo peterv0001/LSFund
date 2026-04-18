@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { storage } from "./storage.js";
+import express from "express";
+import { createServer } from "http";
+import request from "supertest";
+import { registerRoutes } from "./routes.js";
+import { scrypt as scryptCallback, randomBytes } from "crypto";
+import { promisify } from "util";
 
 const { Pool } = pg;
 
@@ -206,5 +212,136 @@ describe("route validation – invalid status transitions", () => {
   it("allows cancelling a paused subscription", () => {
     const result = applyTransitionGuards("paused", "cancelled");
     expect(result.ok).toBe(true);
+  });
+});
+
+// =========================================================
+// Admin PATCH /api/admin/subscriptions/:id/status – route tests
+// These tests spin up the real Express app and hit the route
+// over HTTP to confirm it writes activity log entries with
+// the correct action, actorType, and entityId.
+// =========================================================
+
+const scryptAsync = promisify(scryptCallback);
+
+async function hashPasswordForTest(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+async function pollForActivityLogEntry(
+  subscriptionId: number,
+  action: string,
+  timeoutMs = 2000,
+  intervalMs = 50
+): Promise<(typeof schema.activityLog.$inferSelect) | undefined> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const { logs } = await storage.getActivityLogs(1, 100, {
+      entityType: "subscription",
+      entityId: subscriptionId,
+    });
+    const entry = logs.find((l) => l.action === action && l.entityId === subscriptionId);
+    if (entry) return entry;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return undefined;
+}
+
+async function cleanupActivityLog(subscriptionId: number) {
+  await db
+    .delete(schema.activityLog)
+    .where(
+      and(
+        eq(schema.activityLog.entityType, "subscription"),
+        eq(schema.activityLog.entityId, subscriptionId)
+      )
+    );
+}
+
+const ADMIN_PASSWORD = "AdminTestPass1!";
+const ADMIN_EMAIL_PREFIX = `admin-route-test-${Date.now()}`;
+
+let adminId: number;
+let testApp: ReturnType<typeof express>;
+
+beforeAll(async () => {
+  // Create a dedicated admin agent for route tests
+  const [admin] = await db
+    .insert(schema.agents)
+    .values({
+      email: `${ADMIN_EMAIL_PREFIX}@example.com`,
+      password: await hashPasswordForTest(ADMIN_PASSWORD),
+      firstName: "Admin",
+      lastName: "Tester",
+      currentRank: "agent",
+      highestRank: "agent",
+      isAdmin: true,
+    })
+    .returning();
+  adminId = admin.id;
+
+  // Spin up the real Express app with all routes registered
+  testApp = express();
+  testApp.use(express.json());
+  const httpServer = createServer(testApp);
+  await registerRoutes(httpServer, testApp);
+}, 30000);
+
+afterAll(async () => {
+  await db.delete(schema.agents).where(eq(schema.agents.id, adminId));
+});
+
+async function loginAsAdmin(): Promise<string[]> {
+  const res = await request(testApp)
+    .post("/api/login")
+    .send({ username: `${ADMIN_EMAIL_PREFIX}@example.com`, password: ADMIN_PASSWORD });
+  return res.headers["set-cookie"] as unknown as string[];
+}
+
+describe("admin subscription status route – activity logging on pause", () => {
+  it("creates an activity log entry with action 'pause' when an admin pauses a subscription", async () => {
+    const sub = await createTestSubscription(agentId, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "paused" })
+      .expect(200);
+
+    // logActivity in the route is fire-and-forget; poll until the entry appears
+    const entry = await pollForActivityLogEntry(sub.id, "pause");
+    expect(entry).toBeDefined();
+    expect(entry?.action).toBe("pause");
+    expect(entry?.actorType).toBe("admin");
+    expect(entry?.entityId).toBe(sub.id);
+
+    await cleanupActivityLog(sub.id);
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+});
+
+describe("admin subscription status route – activity logging on cancel", () => {
+  it("creates an activity log entry with action 'cancel' when an admin cancels a subscription", async () => {
+    const sub = await createTestSubscription(agentId, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "cancelled" })
+      .expect(200);
+
+    // logActivity in the route is fire-and-forget; poll until the entry appears
+    const entry = await pollForActivityLogEntry(sub.id, "cancel");
+    expect(entry).toBeDefined();
+    expect(entry?.action).toBe("cancel");
+    expect(entry?.actorType).toBe("admin");
+    expect(entry?.entityId).toBe(sub.id);
+
+    await cleanupActivityLog(sub.id);
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
   });
 });
