@@ -41,7 +41,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useLocation } from "wouter";
 
 type ActivityEntry = {
   id: number;
@@ -143,11 +144,60 @@ function formatAction(action: string): string {
 
 const ACTIVITY_LOG_PATH = "/api/admin/activity-log";
 
+function parseFiltersFromSearch(search: string): { filters: Filters; page: number } {
+  const params = new URLSearchParams(search);
+  return {
+    filters: {
+      search: params.get("search") ?? "",
+      startDate: params.get("startDate") ?? "",
+      endDate: params.get("endDate") ?? "",
+      entityType: params.get("entityType") ?? "",
+      action: params.get("action") ?? "",
+      actorType: params.get("actorType") ?? "",
+    },
+    page: parseInt(params.get("page") ?? "1", 10) || 1,
+  };
+}
+
+function buildSearchString(filters: Filters, page: number): string {
+  const params = new URLSearchParams();
+  if (filters.search) params.set("search", filters.search);
+  if (filters.startDate) params.set("startDate", filters.startDate);
+  if (filters.endDate) params.set("endDate", filters.endDate);
+  if (filters.entityType) params.set("entityType", filters.entityType);
+  if (filters.action) params.set("action", filters.action);
+  if (filters.actorType) params.set("actorType", filters.actorType);
+  if (page > 1) params.set("page", String(page));
+  const str = params.toString();
+  return str ? `?${str}` : "";
+}
+
 export default function AdminActivityLog() {
-  const [page, setPage] = useState(1);
   const pageSize = 50;
-  const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" });
-  const [appliedFilters, setAppliedFilters] = useState<Filters>({ search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" });
+  const [, setLocation] = useLocation();
+
+  const initial = parseFiltersFromSearch(window.location.search);
+  const [filters, setFilters] = useState<Filters>(initial.filters);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initial.filters);
+  const [page, setPage] = useState(initial.page);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const parsed = parseFiltersFromSearch(window.location.search);
+      setFilters(parsed.filters);
+      setAppliedFilters(parsed.filters);
+      setPage(parsed.page);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function pushUrl(newFilters: Filters, newPage: number) {
+    const search = buildSearchString(newFilters, newPage);
+    setLocation(`/admin/activity${search}`);
+    setAppliedFilters(newFilters);
+    setPage(newPage);
+  }
 
   function buildQuery() {
     const q: Record<string, string | number> = { page, pageSize };
@@ -177,15 +227,17 @@ export default function AdminActivityLog() {
   const totalPages = Math.ceil(total / pageSize);
 
   const applyFilters = useCallback(() => {
-    setPage(1);
-    setAppliedFilters({ ...filters });
+    pushUrl(filters, 1);
   }, [filters]);
 
   function clearFilters() {
     const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" };
     setFilters(blank);
-    setAppliedFilters(blank);
-    setPage(1);
+    pushUrl(blank, 1);
+  }
+
+  function goToPage(newPage: number) {
+    pushUrl(appliedFilters, newPage);
   }
 
   const hasActiveFilters = appliedFilters.search || appliedFilters.startDate || appliedFilters.endDate || appliedFilters.entityType || appliedFilters.action || appliedFilters.actorType;
@@ -406,7 +458,7 @@ export default function AdminActivityLog() {
                       variant="outline"
                       data-testid="button-prev-page"
                       disabled={page <= 1}
-                      onClick={() => setPage((p) => p - 1)}
+                      onClick={() => goToPage(page - 1)}
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -415,7 +467,7 @@ export default function AdminActivityLog() {
                       variant="outline"
                       data-testid="button-next-page"
                       disabled={page >= totalPages}
-                      onClick={() => setPage((p) => p + 1)}
+                      onClick={() => goToPage(page + 1)}
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
