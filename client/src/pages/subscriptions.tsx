@@ -477,7 +477,18 @@ function SubscriptionHistoryTimeline({ subId }: { subId: number }) {
               <p className="text-[10px] text-muted-foreground">
                 {format(new Date(log.createdAt), "MMM d, yyyy 'at' h:mm a")}
                 {log.actorName && (
-                  <span className="ml-1 text-purple-500">(by {log.actorName})</span>
+                  <span className="ml-1">
+                    <span className="text-muted-foreground">by {log.actorName}</span>
+                    {log.actorType && (
+                      <Badge
+                        variant="outline"
+                        className={`ml-1 text-[10px] px-1 py-0 h-auto ${log.actorType === "admin" ? "bg-purple-100 text-purple-700 border-purple-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}
+                        data-testid={`badge-history-actortype-${log.id}`}
+                      >
+                        {log.actorType === "admin" ? "Admin" : "Agent"}
+                      </Badge>
+                    )}
+                  </span>
                 )}
               </p>
             </div>
