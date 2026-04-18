@@ -59,7 +59,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearch, useLocation } from "wouter";
 
 type Agent = {
@@ -249,6 +249,7 @@ export default function AdminSubscriptions() {
   const initialParams = new URLSearchParams(search);
 
   const LS_KEY = "admin:subscriptions:dateFilter";
+  const COLUMNS_LS_KEY = "admin:subscriptions:exportColumns";
 
   function readStoredDateFilter(): { range: DateRangeFilter; start: string; end: string } {
     try {
@@ -333,7 +334,6 @@ export default function AdminSubscriptions() {
     const qs = params.toString();
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }, [setLocation]);
-
   const updateAgentInUrl = useCallback((agentId: number | null) => {
     const params = new URLSearchParams(window.location.search);
     if (agentId === null) {
@@ -360,9 +360,29 @@ export default function AdminSubscriptions() {
     setAgentFilter(agentId);
     updateAgentInUrl(agentId);
   }, [updateAgentInUrl]);
-  const [selectedColumns, setSelectedColumns] = useState<Set<ExportColumnKey>>(
-    new Set(DEFAULT_EXPORT_COLUMNS)
-  );
+  const [selectedColumns, setSelectedColumns] = useState<Set<ExportColumnKey>>(() => {
+    try {
+      const raw = localStorage.getItem(COLUMNS_LS_KEY);
+      if (raw !== null) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const validKeys = new Set(EXPORT_COLUMNS.map((c) => c.key));
+          const filtered = (parsed as string[]).filter((k) => validKeys.has(k as ExportColumnKey));
+          return new Set(filtered as ExportColumnKey[]);
+        }
+      }
+    } catch {
+    }
+    return new Set(DEFAULT_EXPORT_COLUMNS);
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMNS_LS_KEY, JSON.stringify(Array.from(selectedColumns)));
+    } catch {
+    }
+  }, [selectedColumns]);
+
   const [templates, setTemplates] = useState<ExportTemplate[]>(() => readTemplates());
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
