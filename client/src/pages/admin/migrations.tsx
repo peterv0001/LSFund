@@ -1,6 +1,6 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Database, CheckCircle2, Clock, RotateCcw, AlertTriangle, Play } from "lucide-react";
+import { Database, CheckCircle2, Clock, RotateCcw, AlertTriangle, Play, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,9 +38,13 @@ export default function AdminMigrations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: migrations, isLoading } = useQuery<MigrationEntry[]>({
+  const { data: migrations, isLoading, isFetching } = useQuery<MigrationEntry[]>({
     queryKey: ["/api/admin/migrations"],
   });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/migrations"] });
+  };
 
   const revertMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -135,14 +139,28 @@ export default function AdminMigrations() {
               {/* Applied Migrations */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    Applied Migrations
-                    <Badge variant="secondary" className="ml-1" data-testid="badge-applied-count">{applied.length}</Badge>
-                  </CardTitle>
-                  <CardDescription>
-                    These migrations have been applied to the database. Use Revert to roll back a migration.
-                  </CardDescription>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        Applied Migrations
+                        <Badge variant="secondary" className="ml-1" data-testid="badge-applied-count">{applied.length}</Badge>
+                      </CardTitle>
+                      <CardDescription className="mt-1.5">
+                        These migrations have been applied to the database. Use Revert to roll back a migration.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefresh}
+                      disabled={isFetching}
+                      data-testid="button-refresh-migrations"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+                      {isFetching ? "Refreshing…" : "Refresh"}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   {applied.length === 0 ? (
