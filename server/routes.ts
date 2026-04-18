@@ -1087,6 +1087,7 @@ export async function registerRoutes(
         action: 'update',
         entityType: 'agent',
         entityId: Number(req.params.id),
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} updated agent #${req.params.id}`,
         details: input,
       });
       
@@ -1109,6 +1110,7 @@ export async function registerRoutes(
       action: 'suspend',
       entityType: 'agent',
       entityId: Number(req.params.id),
+      description: `Admin ${req.user!.firstName} ${req.user!.lastName} suspended agent #${req.params.id}`,
       details: { reason: req.body.reason },
     });
     
@@ -1125,6 +1127,7 @@ export async function registerRoutes(
       action: 'activate',
       entityType: 'agent',
       entityId: Number(req.params.id),
+      description: `Admin ${req.user!.firstName} ${req.user!.lastName} activated agent #${req.params.id}`,
     });
     
     res.json({ success: true });
@@ -1781,7 +1784,7 @@ export async function registerRoutes(
         action: 'release',
         entityType: 'holdback',
         entityId: Number(req.params.id),
-        description: `Released holdback #${req.params.id} — $${Number(released.totalAmount).toFixed(2)}`,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} released holdback #${req.params.id} — $${Number(released.totalAmount).toFixed(2)}`,
         details: { releasedAmount: released.totalAmount, status: released.status },
         ipAddress: req.ip ?? null,
         userAgent: req.headers['user-agent'] ?? null,
@@ -1807,7 +1810,7 @@ export async function registerRoutes(
         action: 'clawback',
         entityType: 'holdback',
         entityId: Number(req.params.id),
-        description: `Applied ${percentage || 100}% clawback to holdback #${req.params.id}: ${reason || 'Default clawback'}`,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} applied ${percentage || 100}% clawback to holdback #${req.params.id}: ${reason || 'Default clawback'}`,
         details: { reason: reason || 'Default clawback', percentage: percentage || 100, clawbackAmount: result.clawbackAmount },
         ipAddress: req.ip ?? null,
         userAgent: req.headers['user-agent'] ?? null,
@@ -1832,7 +1835,7 @@ export async function registerRoutes(
           action: 'release',
           entityType: 'holdback',
           entityId: id,
-          description: `Status update: released holdback #${id}`,
+          description: `Admin ${req.user!.firstName} ${req.user!.lastName} released holdback #${id}`,
           details: { status: 'released' },
           ipAddress: req.ip ?? null,
           userAgent: req.headers['user-agent'] ?? null,
@@ -1852,7 +1855,7 @@ export async function registerRoutes(
           action: 'clawback',
           entityType: 'holdback',
           entityId: id,
-          description: `Status update: clawback ${pct}% on holdback #${id} — ${rsn}`,
+          description: `Admin ${req.user!.firstName} ${req.user!.lastName} applied ${pct}% clawback on holdback #${id} — ${rsn}`,
           details: { status: 'clawed_back', reason: rsn, percentage: pct },
           ipAddress: req.ip ?? null,
           userAgent: req.headers['user-agent'] ?? null,
@@ -1877,7 +1880,7 @@ export async function registerRoutes(
           action: 'release',
           entityType: 'holdback',
           entityId: holdback.id,
-          description: `Batch release: released holdback #${holdback.id}`,
+          description: `Admin ${req.user!.firstName} ${req.user!.lastName} batch released holdback #${holdback.id}`,
           ipAddress: req.ip ?? null,
           userAgent: req.headers['user-agent'] ?? null,
         });
@@ -1994,7 +1997,7 @@ export async function registerRoutes(
         expiresAt: input.expiresAt ?? null,
         createdById: req.user!.id,
       });
-      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'announcement', entityId: announcement.id, description: `Created announcement: "${announcement.title}"`, details: { title: announcement.title } });
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'announcement', entityId: announcement.id, description: `Admin ${req.user!.firstName} ${req.user!.lastName} created announcement: "${announcement.title}"`, details: { title: announcement.title } });
       res.status(201).json(announcement);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -2008,7 +2011,7 @@ export async function registerRoutes(
     try {
       const input = api.admin.announcements.update.input.parse(req.body);
       const updated = await storage.updateAnnouncement(Number(req.params.id), input);
-      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), description: `Updated announcement #${req.params.id}`, details: input });
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), description: `Admin ${req.user!.firstName} ${req.user!.lastName} updated announcement #${req.params.id}`, details: input });
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update announcement" });
@@ -2017,13 +2020,13 @@ export async function registerRoutes(
 
   app.delete(api.admin.announcements.delete.path, requireAdmin, async (req, res) => {
     await storage.deleteAnnouncement(Number(req.params.id));
-    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'announcement', entityId: Number(req.params.id) });
+    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'announcement', entityId: Number(req.params.id), description: `Admin ${req.user!.firstName} ${req.user!.lastName} deleted announcement #${req.params.id}` });
     res.json({ success: true });
   });
 
   app.post(api.admin.announcements.publish.path, requireAdmin, async (req, res) => {
     await storage.updateAnnouncement(Number(req.params.id), { isPublished: true, publishAt: new Date() });
-    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), details: { isPublished: true } });
+    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'announcement', entityId: Number(req.params.id), description: `Admin ${req.user!.firstName} ${req.user!.lastName} published announcement #${req.params.id}`, details: { isPublished: true } });
     res.json({ success: true });
   });
 
@@ -2045,7 +2048,7 @@ export async function registerRoutes(
         sortOrder: input.sortOrder ?? null,
         createdById: req.user!.id,
       });
-      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'resource', entityId: resource.id, description: `Created resource: "${resource.title}" (${resource.type})`, details: { title: resource.title, type: resource.type } });
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'create', entityType: 'resource', entityId: resource.id, description: `Admin ${req.user!.firstName} ${req.user!.lastName} created resource: "${resource.title}" (${resource.type})`, details: { title: resource.title, type: resource.type } });
       res.status(201).json(resource);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -2059,7 +2062,7 @@ export async function registerRoutes(
     try {
       const input = api.admin.resources.update.input.parse(req.body);
       const updated = await storage.updateResource(Number(req.params.id), input);
-      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'resource', entityId: Number(req.params.id), details: input });
+      await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'update', entityType: 'resource', entityId: Number(req.params.id), description: `Admin ${req.user!.firstName} ${req.user!.lastName} updated resource #${req.params.id}`, details: input });
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update resource" });
@@ -2068,7 +2071,7 @@ export async function registerRoutes(
 
   app.delete(api.admin.resources.delete.path, requireAdmin, async (req, res) => {
     await storage.deleteResource(Number(req.params.id));
-    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'resource', entityId: Number(req.params.id) });
+    await storage.logActivity({ actorId: req.user!.id, actorType: 'admin', action: 'delete', entityType: 'resource', entityId: Number(req.params.id), description: `Admin ${req.user!.firstName} ${req.user!.lastName} deleted resource #${req.params.id}` });
     res.json({ success: true });
   });
 
@@ -2112,6 +2115,7 @@ export async function registerRoutes(
         action: 'update',
         entityType: 'settings',
         entityId: 0,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} updated platform settings`,
         details: { commissionRates, rankRequirements, binaryBonusCaps, companyInfo },
       });
 
