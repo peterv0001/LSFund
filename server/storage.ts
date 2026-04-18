@@ -126,6 +126,8 @@ export class DatabaseStorage {
     search?: string;
     status?: string;
     rank?: string;
+    sortBy?: string;
+    sortOrder?: string;
   }): Promise<{ agents: (Agent & { totalSubscriptionCount: number; activeSubscriptionCount: number })[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
@@ -153,11 +155,21 @@ export class DatabaseStorage {
     const [totalResult] = await db.select({ count: count() })
       .from(agents)
       .where(whereClause);
-    
-    const results = await db.select()
+
+    const sortBySubCount = filters?.sortBy === 'subscriptionCount';
+    const sortDesc = filters?.sortOrder !== 'asc';
+
+    const subCountExpr = sql<number>`(SELECT COUNT(*) FROM subscriptions WHERE subscriptions.agent_id = agents.id)`;
+
+    const orderExpr = sortBySubCount
+      ? (sortDesc ? desc(subCountExpr) : asc(subCountExpr))
+      : (sortDesc ? desc(agents.createdAt) : asc(agents.createdAt));
+
+    const results = await db
+      .select()
       .from(agents)
       .where(whereClause)
-      .orderBy(desc(agents.createdAt))
+      .orderBy(orderExpr)
       .limit(pageSize)
       .offset(offset);
 
@@ -188,7 +200,7 @@ export class DatabaseStorage {
       totalSubscriptionCount: subCountMap[a.id] ?? 0,
       activeSubscriptionCount: activeSubCountMap[a.id] ?? 0,
     }));
-    
+
     return { agents: agentsWithCount, total: totalResult.count };
   }
 

@@ -1070,8 +1070,10 @@ export async function registerRoutes(
     const search = req.query.search as string | undefined;
     const status = req.query.status as string | undefined;
     const rank = req.query.rank as string | undefined;
+    const sortBy = req.query.sortBy as string | undefined;
+    const sortOrder = req.query.sortOrder as string | undefined;
     
-    const result = await storage.getAgentsPaginated(page, pageSize, { search, status, rank });
+    const result = await storage.getAgentsPaginated(page, pageSize, { search, status, rank, sortBy, sortOrder });
     res.json({ ...result, page, pageSize });
   });
 

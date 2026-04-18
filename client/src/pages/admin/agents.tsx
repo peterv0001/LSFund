@@ -12,7 +12,10 @@ import {
   Ban,
   CheckCircle,
   Loader2,
-  CreditCard
+  CreditCard,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +63,8 @@ export default function AdminAgents() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [rankFilter, setRankFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   
@@ -67,8 +72,18 @@ export default function AdminAgents() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
+  const handleSortBySubscriptionCount = () => {
+    if (sortBy === 'subscriptionCount') {
+      setSortOrder(o => o === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy('subscriptionCount');
+      setSortOrder('desc');
+    }
+    setPage(1);
+  };
+
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'agents', search, statusFilter, rankFilter, page],
+    queryKey: ['admin', 'agents', search, statusFilter, rankFilter, page, sortBy, sortOrder],
     queryFn: async () => {
       const url = buildUrlWithQuery(api.admin.agents.list.path, {}, {
         search: search || undefined,
@@ -76,6 +91,8 @@ export default function AdminAgents() {
         rank: rankFilter !== 'all' ? rankFilter : undefined,
         page,
         pageSize: 20,
+        sortBy: sortBy || undefined,
+        sortOrder: sortBy ? sortOrder : undefined,
       });
       const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch agents');
@@ -219,7 +236,21 @@ export default function AdminAgents() {
                 <TableHead>Email</TableHead>
                 <TableHead>Rank</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead title="Active / Total subscriptions">Subscriptions</TableHead>
+                <TableHead>
+                  <button
+                    data-testid="sort-subscriptions"
+                    onClick={handleSortBySubscriptionCount}
+                    title="Active / Total subscriptions"
+                    className="inline-flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                  >
+                    Subscriptions
+                    {sortBy === 'subscriptionCount' ? (
+                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
