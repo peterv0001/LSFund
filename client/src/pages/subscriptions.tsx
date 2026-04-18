@@ -61,6 +61,7 @@ type ActivityLogEntry = {
   description: string | null;
   createdAt: string;
   actorType: string | null;
+  actorName: string | null;
 };
 
 type Subscription = {
@@ -470,8 +471,8 @@ function SubscriptionHistoryTimeline({ subId }: { subId: number }) {
               </p>
               <p className="text-[10px] text-muted-foreground">
                 {format(new Date(log.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                {log.actorType === "admin" && (
-                  <span className="ml-1 text-purple-500">(by admin)</span>
+                {log.actorName && (
+                  <span className="ml-1 text-purple-500">(by {log.actorName})</span>
                 )}
               </p>
             </div>

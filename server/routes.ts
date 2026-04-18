@@ -1320,12 +1320,25 @@ export async function registerRoutes(
         return res.status(404).json({ message: 'Subscription not found or access denied' });
       }
       const { logs } = await storage.getActivityLogs(1, 100, { entityType: 'subscription', entityId: subId });
-      const safeLog = logs.map(({ id, action, description, createdAt, actorType }) => ({
+
+      const adminActorIds = Array.from(new Set(logs.filter(l => l.actorType === 'admin').map(l => l.actorId)));
+      const adminMap: Record<number, string> = {};
+      await Promise.all(
+        adminActorIds.map(async (aid) => {
+          const actor = await storage.getAgent(aid);
+          if (actor) adminMap[aid] = `${actor.firstName} ${actor.lastName}`;
+        })
+      );
+
+      const safeLog = logs.map(({ id, action, description, createdAt, actorType, actorId }) => ({
         id,
         action,
         description,
         createdAt,
         actorType,
+        actorName: actorType === 'admin'
+          ? `Admin ${adminMap[actorId] ?? `#${actorId}`}`
+          : null,
       }));
       res.json(safeLog);
     } catch (err) {
