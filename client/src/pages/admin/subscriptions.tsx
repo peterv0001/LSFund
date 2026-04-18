@@ -1099,30 +1099,69 @@ export default function AdminSubscriptions() {
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2" data-testid="summary-new-count">
+                  <button
+                    data-testid="summary-new-count"
+                    aria-pressed={statusFilter === "active"}
+                    onClick={() => {
+                      const next: StatusFilter = statusFilter === "active" ? "all" : "active";
+                      setStatusFilter(next);
+                      updateStatusInUrl(next);
+                    }}
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1 transition-colors cursor-pointer ${
+                      statusFilter === "active"
+                        ? "ring-2 ring-green-400 bg-green-50"
+                        : "hover:bg-green-50"
+                    }`}
+                  >
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-700 font-bold text-sm">
                       {dateRangeSummary.newCount}
                     </span>
                     <span className="text-sm text-gray-600">
                       New subscription{dateRangeSummary.newCount !== 1 ? "s" : ""}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2" data-testid="summary-paused-count">
+                  </button>
+                  <button
+                    data-testid="summary-paused-count"
+                    aria-pressed={statusFilter === "paused"}
+                    onClick={() => {
+                      const next: StatusFilter = statusFilter === "paused" ? "all" : "paused";
+                      setStatusFilter(next);
+                      updateStatusInUrl(next);
+                    }}
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1 transition-colors cursor-pointer ${
+                      statusFilter === "paused"
+                        ? "ring-2 ring-yellow-400 bg-yellow-50"
+                        : "hover:bg-yellow-50"
+                    }`}
+                  >
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-100 text-yellow-700 font-bold text-sm">
                       {dateRangeSummary.pausedCount}
                     </span>
                     <span className="text-sm text-gray-600">
                       Paused
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2" data-testid="summary-cancelled-count">
+                  </button>
+                  <button
+                    data-testid="summary-cancelled-count"
+                    aria-pressed={statusFilter === "cancelled"}
+                    onClick={() => {
+                      const next: StatusFilter = statusFilter === "cancelled" ? "all" : "cancelled";
+                      setStatusFilter(next);
+                      updateStatusInUrl(next);
+                    }}
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1 transition-colors cursor-pointer ${
+                      statusFilter === "cancelled"
+                        ? "ring-2 ring-red-400 bg-red-50"
+                        : "hover:bg-red-50"
+                    }`}
+                  >
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-700 font-bold text-sm">
                       {dateRangeSummary.cancelledCount}
                     </span>
                     <span className="text-sm text-gray-600">
                       Cancelled
                     </span>
-                  </div>
+                  </button>
                 </div>
               </CardContent>
             </Card>
