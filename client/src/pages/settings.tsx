@@ -12,7 +12,8 @@ import {
   Loader2,
   Copy,
   ExternalLink,
-  Mail
+  Mail,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -528,6 +529,16 @@ export default function SettingsPage() {
                     />
                   </div>
                 </div>
+
+                {!notifPrefs.emailOnPaused && !notifPrefs.emailOnCancelled && !notifPrefs.emailOnReactivated && (
+                  <div
+                    data-testid="warning-all-notifications-off"
+                    className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    <span>You have disabled all subscription email notifications. You will not receive emails when your subscriptions change status.</span>
+                  </div>
+                )}
 
                 <Button
                   data-testid="button-save-notification-prefs"
