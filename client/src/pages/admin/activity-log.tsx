@@ -48,6 +48,7 @@ type ActivityEntry = {
   id: number;
   actorId: number;
   actorType: string;
+  actorName: string | null;
   action: string;
   entityType: string;
   entityId: number;
@@ -405,7 +406,9 @@ export default function AdminActivityLog() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="text-sm font-medium">#{log.actorId}</span>
+                              <span className="text-sm font-medium" data-testid={`text-actor-name-${log.id}`}>
+                                {log.actorName ?? `#${log.actorId}`}
+                              </span>
                               <Badge
                                 variant="outline"
                                 className={`text-xs w-fit ${log.actorType === "admin" ? "border-primary/30 text-primary" : log.actorType === "system" ? "border-gray-300 text-gray-600" : "border-blue-300 text-blue-700"}`}

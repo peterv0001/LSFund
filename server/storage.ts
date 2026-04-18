@@ -1068,7 +1068,7 @@ export class DatabaseStorage {
     search?: string;
     startDate?: Date;
     endDate?: Date;
-  }): Promise<{ logs: (typeof activityLog.$inferSelect)[]; total: number }> {
+  }): Promise<{ logs: ((typeof activityLog.$inferSelect) & { actorName: string | null })[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
     const conditions: SQL<unknown>[] = [];
@@ -1115,12 +1115,55 @@ export class DatabaseStorage {
       .from(activityLog)
       .where(whereClause);
     
-    const logs = await db.select()
+    const actorAgent = alias(agents, "actor_agent");
+    const rawLogs = await db
+      .select({
+        id: activityLog.id,
+        actorId: activityLog.actorId,
+        actorType: activityLog.actorType,
+        action: activityLog.action,
+        entityType: activityLog.entityType,
+        entityId: activityLog.entityId,
+        description: activityLog.description,
+        details: activityLog.details,
+        ipAddress: activityLog.ipAddress,
+        userAgent: activityLog.userAgent,
+        createdAt: activityLog.createdAt,
+        actorFirstName: actorAgent.firstName,
+        actorLastName: actorAgent.lastName,
+        actorEmail: actorAgent.email,
+      })
       .from(activityLog)
+      .leftJoin(actorAgent, eq(activityLog.actorId, actorAgent.id))
       .where(whereClause)
       .orderBy(desc(activityLog.createdAt))
       .limit(pageSize)
       .offset(offset);
+
+    const logs = rawLogs.map((row) => {
+      let actorName: string | null = null;
+      if (row.actorType === "system") {
+        actorName = "System";
+      } else if (row.actorFirstName && row.actorLastName) {
+        actorName = `${row.actorFirstName} ${row.actorLastName}`;
+      } else if (row.actorEmail) {
+        actorName = row.actorEmail;
+      }
+      return {
+        id: row.id,
+        actorId: row.actorId,
+        actorType: row.actorType,
+        action: row.action,
+        entityType: row.entityType,
+        entityId: row.entityId,
+        description: row.description,
+        details: row.details,
+        ipAddress: row.ipAddress,
+        userAgent: row.userAgent,
+        createdAt: row.createdAt,
+        actorName,
+      };
+    });
     
     return { logs, total: totalResult.count };
   }
