@@ -610,6 +610,12 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         </p>
       )}
 
+      {sub.status === "cancelled" && sub.cancelledAt && (
+        <p className="mt-1 text-xs text-red-600 font-medium" data-testid={`text-cancelled-on-${sub.id}`}>
+          Cancelled on {format(new Date(sub.cancelledAt), "MMM d, yyyy")}
+        </p>
+      )}
+
       <DecayScheduleBar sub={sub} />
     </div>
     </>
