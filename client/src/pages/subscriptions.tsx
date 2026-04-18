@@ -75,6 +75,7 @@ type Subscription = {
   status: "active" | "paused" | "cancelled" | "expired";
   mcaPairedDealId: number | null;
   startDate: string;
+  endDate: string | null;
   cancelledAt: string | null;
   pausedAt: string | null;
   reactivatedAt: string | null;
@@ -712,6 +713,12 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         <span>Started {format(new Date(sub.startDate), "MMM d, yyyy")}</span>
         <span className="font-medium text-gray-600">Decay: {(decay * 100).toFixed(0)}%</span>
       </div>
+
+      {sub.endDate && sub.status !== "cancelled" && sub.status !== "expired" && (
+        <p className="mt-1 text-xs text-orange-600 font-medium" data-testid={`text-expires-on-${sub.id}`}>
+          Scheduled to expire on {format(new Date(sub.endDate), "MMM d, yyyy")}
+        </p>
+      )}
 
       {sub.status === "paused" && sub.pausedAt && (
         <p className="mt-1 text-xs text-yellow-600 font-medium" data-testid={`text-paused-since-${sub.id}`}>
