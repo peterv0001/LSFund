@@ -1766,12 +1766,24 @@ export async function registerRoutes(
   app.get("/api/admin/subscriptions/:id/activity", requireAdmin, async (req, res) => {
     try {
       const subId = Number(req.params.id);
-      const { logs } = await storage.getActivityLogs(1, 100, {
-        entityType: 'subscription',
-        entityId: subId,
-      });
+      const [{ logs }, sub] = await Promise.all([
+        storage.getActivityLogs(1, 100, { entityType: 'subscription', entityId: subId }),
+        storage.getSubscriptionById(subId),
+      ]);
 
-      const actorIds = [...new Set(logs.map((l) => l.actorId))];
+      type ActivityEntryResponse = {
+        id: number;
+        actorId: number | null;
+        actorType: string;
+        actorName: string;
+        action: string;
+        entityType: string;
+        entityId: number | null;
+        description: string | null;
+        createdAt: string;
+      };
+
+      const actorIds = [...new Set(logs.map((l) => l.actorId).filter((id): id is number => id != null))];
       const actorMap: Record<number, { firstName: string; lastName: string } | undefined> = {};
       await Promise.all(
         actorIds.map(async (aid) => {
@@ -1780,15 +1792,58 @@ export async function registerRoutes(
         })
       );
 
-      const enriched = logs.map((l) => {
-        const name = actorMap[l.actorId]
+      type ActivityEntryResponse = {
+        id: number;
+        actorId: number | null;
+        actorType: string;
+        actorName: string;
+        action: string;
+        entityType: string;
+        entityId: number | null;
+        description: string | null;
+        createdAt: string;
+      };
+
+      const enriched: ActivityEntryResponse[] = logs.map((l) => {
+        const name = l.actorId && actorMap[l.actorId]
           ? `${actorMap[l.actorId]!.firstName} ${actorMap[l.actorId]!.lastName}`
-          : `#${l.actorId}`;
+          : l.actorId ? `#${l.actorId}` : 'System';
         return {
-          ...l,
+          id: l.id,
+          actorId: l.actorId,
+          actorType: l.actorType,
           actorName: l.actorType === 'admin' ? `Admin ${name}` : name,
+          action: l.action,
+          entityType: l.entityType,
+          entityId: l.entityId,
+          description: l.description,
+          createdAt: l.createdAt instanceof Date ? l.createdAt.toISOString() : String(l.createdAt),
         };
       });
+
+      // Synthesize a reactivation entry from subscription fields when no activity log entry exists.
+      // This covers subscriptions reactivated before activity logging was introduced.
+      const hasReactivateLog = logs.some((l) => l.action === 'reactivate');
+      if (!hasReactivateLog && sub?.reactivatedAt) {
+        const reactivatorName = sub.reactivatedBy
+          ? `${sub.reactivatedBy.firstName} ${sub.reactivatedBy.lastName}`
+          : sub.reactivatedById ? `#${sub.reactivatedById}` : 'System';
+        const reactivatorType = sub.reactivatedBy?.isAdmin ? 'admin' : sub.reactivatedById ? 'agent' : 'system';
+        enriched.push({
+          id: -1,
+          actorId: sub.reactivatedById ?? null,
+          actorType: reactivatorType,
+          actorName: reactivatorType === 'admin' ? `Admin ${reactivatorName}` : reactivatorName,
+          action: 'reactivate',
+          entityType: 'subscription',
+          entityId: subId,
+          description: `Subscription #${subId} reactivated`,
+          createdAt: sub.reactivatedAt.toISOString(),
+        });
+      }
+
+      // Sort descending by timestamp (most recent first) — consistent with activity log default ordering.
+      enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       res.json(enriched);
     } catch (err) {

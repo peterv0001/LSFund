@@ -1514,6 +1514,22 @@ export class DatabaseStorage {
     }));
   }
 
+  async getSubscriptionById(id: number): Promise<(Subscription & { reactivatedBy: Agent | null }) | undefined> {
+    const reactivatedByAgents = alias(agents, 'reactivated_by_agents');
+    const [result] = await db.select({
+      subscription: subscriptions,
+      reactivatedBy: reactivatedByAgents,
+    })
+      .from(subscriptions)
+      .leftJoin(reactivatedByAgents, eq(subscriptions.reactivatedById, reactivatedByAgents.id))
+      .where(eq(subscriptions.id, id));
+    if (!result) return undefined;
+    return {
+      ...result.subscription,
+      reactivatedBy: result.reactivatedBy ?? null,
+    };
+  }
+
   async getAllSubscriptions(): Promise<(Subscription & { agent: Agent; pausedBy: Agent | null; cancelledBy: Agent | null; reactivatedBy: Agent | null })[]> {
     const pausedByAgents = alias(agents, 'paused_by_agents');
     const cancelledByAgents = alias(agents, 'cancelled_by_agents');

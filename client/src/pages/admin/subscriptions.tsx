@@ -95,26 +95,32 @@ type Subscription = {
 
 type ActivityEntry = {
   id: number;
-  actorId: number;
+  actorId: number | null;
   actorType: string;
   actorName: string;
   action: string;
   entityType: string;
-  entityId: number;
+  entityId: number | null;
   description: string | null;
   createdAt: string;
 };
 
 const ACTION_LABELS: Record<string, string> = {
+  create: "Created",
   pause: "Paused",
   cancel: "Cancelled",
   reactivate: "Reactivated",
+  expire: "Expired",
+  update: "Updated",
 };
 
 const ACTION_COLORS: Record<string, string> = {
+  create: "bg-blue-100 text-blue-700",
   pause: "bg-yellow-100 text-yellow-700",
   cancel: "bg-red-100 text-red-700",
   reactivate: "bg-green-100 text-green-700",
+  expire: "bg-gray-100 text-gray-600",
+  update: "bg-purple-100 text-purple-700",
 };
 
 const TIER_LABELS: Record<string, string> = {
@@ -1362,7 +1368,7 @@ export default function AdminSubscriptions() {
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
             ) : historyEntries.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">No pause or cancel events recorded for this subscription.</p>
+              <p className="text-sm text-gray-500 text-center py-8">No activity recorded for this subscription.</p>
             ) : (
               <ol className="relative border-l border-gray-200 ml-3 space-y-4">
                 {historyEntries.map((entry) => (
@@ -1379,10 +1385,16 @@ export default function AdminSubscriptions() {
                         {entry.actorName}
                       </span>
                       <Badge
-                        className={`text-xs ${entry.actorType === "admin" ? "bg-purple-100 text-purple-700 border-purple-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}
+                        className={`text-xs ${
+                          entry.actorType === "admin"
+                            ? "bg-purple-100 text-purple-700 border-purple-200"
+                            : entry.actorType === "system"
+                            ? "bg-gray-100 text-gray-500 border-gray-200"
+                            : "bg-blue-100 text-blue-700 border-blue-200"
+                        }`}
                         data-testid={`badge-history-actortype-${entry.id}`}
                       >
-                        {entry.actorType === "admin" ? "Admin" : "Agent"}
+                        {entry.actorType === "admin" ? "Admin" : entry.actorType === "system" ? "System" : "Agent"}
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5" data-testid={`text-history-date-${entry.id}`}>
