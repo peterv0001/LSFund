@@ -419,8 +419,15 @@ export default function AdminSubscriptions() {
     if (agentFilter === null) {
       agentLabel = "All agents";
     } else {
-      const found = agentSummary.find((a) => a.agentId === agentFilter);
-      agentLabel = found ? found.agentName : `Agent #${agentFilter}`;
+      const foundInSummary = agentSummary.find((a) => a.agentId === agentFilter);
+      if (foundInSummary) {
+        agentLabel = foundInSummary.agentName;
+      } else {
+        const subWithAgent = subscriptions.find((s) => s.agentId === agentFilter && s.agent?.firstName);
+        agentLabel = subWithAgent
+          ? `${subWithAgent.agent!.firstName} ${subWithAgent.agent!.lastName}`
+          : `Agent #${agentFilter}`;
+      }
     }
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const metaLines = [
