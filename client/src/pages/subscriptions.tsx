@@ -76,6 +76,8 @@ type Subscription = {
   cancelledAt: string | null;
   pausedAt: string | null;
   reactivatedAt: string | null;
+  reactivatedById: number | null;
+  reactivatedByName: string | null;
   createdAt: string;
 };
 
@@ -705,6 +707,11 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
       {sub.status === "active" && sub.reactivatedAt && (
         <p className="mt-1 text-xs text-green-600 font-medium" data-testid={`text-reactivated-on-${sub.id}`}>
           Reactivated on {format(new Date(sub.reactivatedAt), "MMM d, yyyy")}
+          {sub.reactivatedByName ? (
+            <span className="ml-1" data-testid={`text-reactivated-by-${sub.id}`}>by {sub.reactivatedByName}</span>
+          ) : sub.reactivatedById ? (
+            <span className="ml-1" data-testid={`text-reactivated-by-${sub.id}`}>by Admin</span>
+          ) : null}
         </p>
       )}
 

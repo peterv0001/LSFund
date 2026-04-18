@@ -1362,10 +1362,22 @@ export class DatabaseStorage {
     return newSub;
   }
 
-  async getSubscriptionsByAgent(agentId: number): Promise<Subscription[]> {
-    return await db.select().from(subscriptions)
+  async getSubscriptionsByAgent(agentId: number): Promise<(Subscription & { reactivatedByName: string | null })[]> {
+    const reactivatedByAgents = alias(agents, 'reactivated_by_agents');
+    const results = await db.select({
+      subscription: subscriptions,
+      reactivatedBy: reactivatedByAgents,
+    })
+      .from(subscriptions)
+      .leftJoin(reactivatedByAgents, eq(subscriptions.reactivatedById, reactivatedByAgents.id))
       .where(eq(subscriptions.agentId, agentId))
       .orderBy(desc(subscriptions.createdAt));
+    return results.map(r => ({
+      ...r.subscription,
+      reactivatedByName: r.reactivatedBy
+        ? `${r.reactivatedBy.firstName} ${r.reactivatedBy.lastName}`
+        : null,
+    }));
   }
 
   async getAllSubscriptions(): Promise<(Subscription & { agent: Agent; pausedBy: Agent | null; cancelledBy: Agent | null; reactivatedBy: Agent | null })[]> {
