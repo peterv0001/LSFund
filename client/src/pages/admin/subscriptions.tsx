@@ -57,10 +57,13 @@ type Subscription = {
   startDate: string;
   cancelledAt: string | null;
   pausedAt: string | null;
+  reactivatedAt: string | null;
   cancelledById: number | null;
   pausedById: number | null;
+  reactivatedById: number | null;
   pausedBy: Agent | null;
   cancelledBy: Agent | null;
+  reactivatedBy: Agent | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -340,6 +343,16 @@ export default function AdminSubscriptions() {
                                 {sub.pausedBy && (
                                   <span className="block text-gray-400" data-testid={`text-paused-by-${sub.id}`}>
                                     by {sub.pausedBy.firstName} {sub.pausedBy.lastName}
+                                  </span>
+                                )}
+                              </p>
+                            )}
+                            {sub.status === "active" && sub.reactivatedAt && (
+                              <p className="text-xs text-gray-400 mt-1" data-testid={`text-reactivated-at-${sub.id}`}>
+                                Reactivated {format(new Date(sub.reactivatedAt), "MMM d, yyyy")}
+                                {sub.reactivatedBy && (
+                                  <span className="block text-gray-400" data-testid={`text-reactivated-by-${sub.id}`}>
+                                    by {sub.reactivatedBy.firstName} {sub.reactivatedBy.lastName}
                                   </span>
                                 )}
                               </p>

@@ -1364,25 +1364,29 @@ export class DatabaseStorage {
       .orderBy(desc(subscriptions.createdAt));
   }
 
-  async getAllSubscriptions(): Promise<(Subscription & { agent: Agent; pausedBy: Agent | null; cancelledBy: Agent | null })[]> {
+  async getAllSubscriptions(): Promise<(Subscription & { agent: Agent; pausedBy: Agent | null; cancelledBy: Agent | null; reactivatedBy: Agent | null })[]> {
     const pausedByAgents = alias(agents, 'paused_by_agents');
     const cancelledByAgents = alias(agents, 'cancelled_by_agents');
+    const reactivatedByAgents = alias(agents, 'reactivated_by_agents');
     const results = await db.select({
       subscription: subscriptions,
       agent: agents,
       pausedBy: pausedByAgents,
       cancelledBy: cancelledByAgents,
+      reactivatedBy: reactivatedByAgents,
     })
       .from(subscriptions)
       .leftJoin(agents, eq(subscriptions.agentId, agents.id))
       .leftJoin(pausedByAgents, eq(subscriptions.pausedById, pausedByAgents.id))
       .leftJoin(cancelledByAgents, eq(subscriptions.cancelledById, cancelledByAgents.id))
+      .leftJoin(reactivatedByAgents, eq(subscriptions.reactivatedById, reactivatedByAgents.id))
       .orderBy(desc(subscriptions.createdAt));
     return results.map(r => ({
       ...r.subscription,
       agent: r.agent!,
       pausedBy: r.pausedBy ?? null,
       cancelledBy: r.cancelledBy ?? null,
+      reactivatedBy: r.reactivatedBy ?? null,
     }));
   }
 
@@ -1396,7 +1400,14 @@ export class DatabaseStorage {
       updates.pausedAt = new Date();
       if (actorId) updates.pausedById = actorId;
     }
-    if (status === 'active') updates.pausedAt = null;
+    if (status === 'active') {
+      updates.pausedAt = null;
+      const [current] = await db.select({ status: subscriptions.status }).from(subscriptions).where(eq(subscriptions.id, id));
+      if (current?.status === 'paused') {
+        updates.reactivatedAt = new Date();
+        if (actorId) updates.reactivatedById = actorId;
+      }
+    }
     const [updated] = await db.update(subscriptions)
       .set(updates)
       .where(eq(subscriptions.id, id))

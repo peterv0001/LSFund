@@ -56,6 +56,18 @@ const migrations: Migration[] = [
       );
     },
   },
+  {
+    name: "003_add_reactivated_columns",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS reactivated_at timestamp
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS reactivated_by_id integer
+      `);
+      console.log("[migrations] Added reactivated_at and reactivated_by_id columns to subscriptions table");
+    },
+  },
 ];
 
 export async function runMigrations(): Promise<void> {
