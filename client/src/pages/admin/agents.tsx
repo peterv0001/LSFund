@@ -51,7 +51,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Agent } from "@shared/schema";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
+
+type AgentWithCount = Agent & { subscriptionCount: number };
 
 export default function AdminAgents() {
   const [search, setSearch] = useState("");
@@ -217,6 +219,7 @@ export default function AdminAgents() {
                 <TableHead>Email</TableHead>
                 <TableHead>Rank</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Subscriptions</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -224,13 +227,13 @@ export default function AdminAgents() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
+                  <TableCell colSpan={7} className="text-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                     Loading agents...
                   </TableCell>
                 </TableRow>
               ) : data?.agents?.length > 0 ? (
-                data.agents.map((agent: Agent) => (
+                data.agents.map((agent: AgentWithCount) => (
                   <TableRow key={agent.id} className="hover:bg-gray-50/50">
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -253,6 +256,16 @@ export default function AdminAgents() {
                       <Badge variant="secondary" className={getStatusBadgeColor(agent.status)}>
                         {agent.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/admin/subscriptions?agentId=${agent.id}`}
+                        data-testid={`link-subscription-count-${agent.id}`}
+                        className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        {agent.subscriptionCount}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(agent.createdAt), "MMM d, yyyy")}
@@ -305,7 +318,7 @@ export default function AdminAgents() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     No agents found
                   </TableCell>
                 </TableRow>

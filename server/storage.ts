@@ -126,7 +126,7 @@ export class DatabaseStorage {
     search?: string;
     status?: string;
     rank?: string;
-  }): Promise<{ agents: Agent[]; total: number }> {
+  }): Promise<{ agents: (Agent & { subscriptionCount: number })[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
     let conditions: any[] = [];
@@ -160,8 +160,26 @@ export class DatabaseStorage {
       .orderBy(desc(agents.createdAt))
       .limit(pageSize)
       .offset(offset);
+
+    const agentIds = results.map(a => a.id);
+    let subCountMap: Record<number, number> = {};
+    if (agentIds.length > 0) {
+      const subCounts = await db
+        .select({ agentId: subscriptions.agentId, cnt: count() })
+        .from(subscriptions)
+        .where(inArray(subscriptions.agentId, agentIds))
+        .groupBy(subscriptions.agentId);
+      for (const row of subCounts) {
+        subCountMap[row.agentId] = row.cnt;
+      }
+    }
+
+    const agentsWithCount = results.map(a => ({
+      ...a,
+      subscriptionCount: subCountMap[a.id] ?? 0,
+    }));
     
-    return { agents: results, total: totalResult.count };
+    return { agents: agentsWithCount, total: totalResult.count };
   }
 
   async getTeamSize(agentId: number): Promise<number> {

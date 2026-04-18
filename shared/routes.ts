@@ -549,7 +549,7 @@ export const api = {
         path: '/api/admin/agents',
         responses: {
           200: z.object({
-            agents: z.array(z.custom<typeof agents.$inferSelect>()),
+            agents: z.array(z.custom<typeof agents.$inferSelect & { subscriptionCount: number }>()),
             total: z.number(),
             page: z.number(),
             pageSize: z.number(),
