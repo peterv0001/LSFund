@@ -2088,6 +2088,18 @@ export async function registerRoutes(
     }
   });
 
+  // Admin Migrations — list applied schema migrations
+  app.get(api.migrations.list.path, requireAdmin, async (req, res) => {
+    try {
+      const result = await pool.query<{ name: string; applied_at: string }>(
+        `SELECT name, applied_at FROM schema_migrations ORDER BY applied_at ASC`
+      );
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch migrations" });
+    }
+  });
+
   // Admin Activity Log — accessible at both /api/admin/activity-log and /api/admin/activity
   async function activityLogHandler(req: Request, res: Response) {
     const page = Number(req.query.page) || 1;

@@ -1108,6 +1108,20 @@ export const api = {
     },
   },
 
+  // === MIGRATIONS (Admin) ===
+  migrations: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/admin/migrations',
+      responses: {
+        200: z.array(z.object({
+          name: z.string(),
+          applied_at: z.string(),
+        })),
+      },
+    },
+  },
+
   // === HOLDBACKS (Agent Portal) ===
   holdbacks: {
     list: {
