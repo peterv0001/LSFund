@@ -57,8 +57,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useState } from "react";
-import { useSearch } from "wouter";
+import { useState, useCallback } from "react";
+import { useSearch, useLocation } from "wouter";
 
 type Agent = {
   id: number;
@@ -202,18 +202,89 @@ export default function AdminSubscriptions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const search = useSearch();
+  const [, setLocation] = useLocation();
+
+  const initialParams = new URLSearchParams(search);
+
+  const LS_KEY = "admin:subscriptions:dateFilter";
+
+  function readStoredDateFilter(): { range: DateRangeFilter; start: string; end: string } {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return { range: "all", start: "", end: "" };
+      const parsed = JSON.parse(raw);
+      const range = (["all", "7d", "30d", "custom"] as DateRangeFilter[]).includes(parsed.range)
+        ? parsed.range as DateRangeFilter
+        : "all";
+      return {
+        range,
+        start: typeof parsed.start === "string" ? parsed.start : "",
+        end: typeof parsed.end === "string" ? parsed.end : "",
+      };
+    } catch {
+      return { range: "all", start: "", end: "" };
+    }
+  }
+
+  function persistDateFilter(range: DateRangeFilter, start: string, end: string) {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({ range, start, end }));
+    } catch {
+    }
+  }
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
+
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>(() => {
+    const urlRange = initialParams.get("range");
+    if (urlRange === "7d" || urlRange === "30d" || urlRange === "custom") return urlRange;
+    if (initialParams.has("range")) return "all";
+    return readStoredDateFilter().range;
+  });
+
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const urlRange = initialParams.get("range");
+    if (urlRange === "custom") return initialParams.get("start") ?? "";
+    if (urlRange != null) return "";
+    const stored = readStoredDateFilter();
+    return stored.range === "custom" ? stored.start : "";
+  });
+
+  const [customEndDate, setCustomEndDate] = useState<string>(() => {
+    const urlRange = initialParams.get("range");
+    if (urlRange === "custom") return initialParams.get("end") ?? "";
+    if (urlRange != null) return "";
+    const stored = readStoredDateFilter();
+    return stored.range === "custom" ? stored.end : "";
+  });
+
   const [agentFilter, setAgentFilter] = useState<number | null>(() => {
-    const params = new URLSearchParams(search);
-    const id = params.get("agentId");
+    const id = initialParams.get("agentId");
     if (!id) return null;
     const parsed = parseInt(id, 10);
     return Number.isFinite(parsed) ? parsed : null;
   });
   const [historySubId, setHistorySubId] = useState<number | null>(null);
-  const [customStartDate, setCustomStartDate] = useState<string>("");
-  const [customEndDate, setCustomEndDate] = useState<string>("");
+
+  const updateDateRangeInUrl = useCallback((range: DateRangeFilter, start: string, end: string) => {
+    persistDateFilter(range, start, end);
+    const params = new URLSearchParams(window.location.search);
+    if (range === "all") {
+      params.delete("range");
+      params.delete("start");
+      params.delete("end");
+    } else if (range === "custom") {
+      params.set("range", "custom");
+      if (start) params.set("start", start); else params.delete("start");
+      if (end) params.set("end", end); else params.delete("end");
+    } else {
+      params.set("range", range);
+      params.delete("start");
+      params.delete("end");
+    }
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
   const [selectedColumns, setSelectedColumns] = useState<Set<ExportColumnKey>>(
     new Set(DEFAULT_EXPORT_COLUMNS)
   );
@@ -355,7 +426,10 @@ export default function AdminSubscriptions() {
   function clearAllFilters() {
     setStatusFilter("all");
     setDateRangeFilter("all");
+    setCustomStartDate("");
+    setCustomEndDate("");
     setAgentFilter(null);
+    updateDateRangeInUrl("all", "", "");
   }
 
   function toggleColumn(key: ExportColumnKey) {
@@ -527,10 +601,14 @@ export default function AdminSubscriptions() {
               <Select
                 value={dateRangeFilter}
                 onValueChange={(v) => {
-                  setDateRangeFilter(v as DateRangeFilter);
-                  if (v !== "custom") {
+                  const next = v as DateRangeFilter;
+                  setDateRangeFilter(next);
+                  if (next !== "custom") {
                     setCustomStartDate("");
                     setCustomEndDate("");
+                    updateDateRangeInUrl(next, "", "");
+                  } else {
+                    updateDateRangeInUrl(next, customStartDate, customEndDate);
                   }
                 }}
               >
@@ -551,7 +629,10 @@ export default function AdminSubscriptions() {
                   <Input
                     type="date"
                     value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setCustomStartDate(e.target.value);
+                      updateDateRangeInUrl("custom", e.target.value, customEndDate);
+                    }}
                     className="h-9 text-sm w-36"
                     data-testid="input-custom-start-date"
                     aria-label="Start date"
@@ -560,7 +641,10 @@ export default function AdminSubscriptions() {
                   <Input
                     type="date"
                     value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setCustomEndDate(e.target.value);
+                      updateDateRangeInUrl("custom", customStartDate, e.target.value);
+                    }}
                     className="h-9 text-sm w-36"
                     data-testid="input-custom-end-date"
                     aria-label="End date"
