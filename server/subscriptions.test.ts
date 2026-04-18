@@ -494,6 +494,42 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
     }
   });
+
+  it("skips cancelled and expired subscriptions, creating a commission only for the active one", async () => {
+    const activeSub = await createTestSubscription(commRouteAgentId, "active");
+    const cancelledSub = await createTestSubscription(commRouteAgentId, "cancelled");
+    const expiredSub = await createTestSubscription(commRouteAgentId, "expired");
+    try {
+      const cookie = await loginAsAdmin();
+
+      const res = await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", cookie)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("processed");
+      expect(res.body).toHaveProperty("totalActive");
+
+      const agentCommissions = await db
+        .select()
+        .from(schema.commissions)
+        .where(eq(schema.commissions.agentId, commRouteAgentId));
+
+      // Exactly one commission: for the active sub only
+      expect(agentCommissions).toHaveLength(1);
+      expect(Number(agentCommissions[0].amount)).toBeGreaterThan(0);
+
+      // Verify the commission amount matches the active sub, not the cancelled/expired ones
+      const expectedRate = 0.50 * 1.00;
+      const expectedAmount = Number(activeSub.monthlyAmount) * expectedRate;
+      expect(Number(agentCommissions[0].amount)).toBeCloseTo(expectedAmount, 2);
+    } finally {
+      await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, cancelledSub.id));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, expiredSub.id));
+    }
+  });
 });
 
 // =========================================================
