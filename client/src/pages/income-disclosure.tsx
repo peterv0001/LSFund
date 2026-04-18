@@ -28,7 +28,7 @@ export default function IncomeDisclosurePage() {
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain" />
+            <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Network</span>
           </div>
           <Link href="/">
             <Button variant="ghost" size="sm" data-testid="button-back-home">

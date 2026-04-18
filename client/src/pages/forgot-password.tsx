@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-md space-y-8">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain" />
+          <span className="font-display font-bold text-primary text-xl tracking-wide">Leader Shield Network</span>
         </div>
 
         <div className="bg-card border border-border/50 shadow-xl shadow-black/5 rounded-2xl p-6 lg:p-8">

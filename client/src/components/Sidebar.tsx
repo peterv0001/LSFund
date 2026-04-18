@@ -70,11 +70,9 @@ export function Sidebar() {
       {/* Header / Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center justify-between">
-          <img
-            src="/logo.png"
-            alt="Leadershield Network"
-            className="h-9 w-auto object-contain brightness-0 invert"
-          />
+          <span className="font-display font-bold text-white text-base leading-tight tracking-wide">
+            Leader Shield<br />Network
+          </span>
           <div className="flex items-center gap-2">
             <NotificationBell />
             <button
@@ -202,11 +200,7 @@ export function Sidebar() {
           <Menu className="w-5 h-5" />
         </button>
 
-        <img
-          src="/logo.png"
-          alt="Leadershield Network"
-          className="h-7 w-auto object-contain brightness-0 invert"
-        />
+        <span className="font-display font-bold text-white text-sm tracking-wide">Leader Shield Network</span>
 
         <NotificationBell />
       </header>

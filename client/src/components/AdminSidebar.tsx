@@ -47,11 +47,9 @@ export function AdminSidebar() {
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex flex-col gap-1">
-          <img
-            src="/logo.png"
-            alt="Leadershield Network"
-            className="h-9 w-auto object-contain brightness-0 invert"
-          />
+          <span className="font-display font-bold text-white text-base leading-tight tracking-wide">
+            Leader Shield Network
+          </span>
           <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-1 pl-0.5">Admin Portal</p>
         </div>
       </div>

@@ -40,7 +40,7 @@ export default function AuthPage() {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-16">
-            <img src="/logo.png" alt="Leadershield Network" className="h-10 w-auto object-contain brightness-0 invert" />
+            <span className="font-display font-bold text-white text-xl tracking-wide">Leader Shield Network</span>
           </div>
 
           <h2 className="text-5xl font-display font-bold text-white leading-tight mb-6">
@@ -95,7 +95,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md space-y-8">
           {/* Mobile branding */}
           <div className="lg:hidden flex items-center justify-center mb-4">
-            <img src="/logo.png" alt="Leadershield Network" className="h-10 w-auto object-contain" />
+            <span className="font-display font-bold text-primary text-xl tracking-wide">Leader Shield Network</span>
           </div>
 
           <div className="text-center lg:text-left">

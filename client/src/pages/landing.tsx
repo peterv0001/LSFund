@@ -123,7 +123,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/95 backdrop-blur-xl shadow-sm border-b border-border' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain" />
+            <span className="font-display font-bold text-primary text-lg tracking-wide">Leader Shield Network</span>
           </div>
 
           <div className="hidden md:flex items-center gap-8">
@@ -1041,7 +1041,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-5 gap-10 mb-12">
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
-                <img src="/logo.png" alt="Leadershield Network" className="h-9 w-auto object-contain brightness-0 invert" />
+                <span className="font-display font-bold text-white text-lg tracking-wide">Leader Shield Network</span>
               </div>
               <p className="text-white/40 max-w-sm leading-relaxed">
                 Empowering agents. Transforming merchants. Building legacies. Two revenue streams, one powerful platform.

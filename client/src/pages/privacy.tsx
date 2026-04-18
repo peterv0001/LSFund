@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
               </Button>
             </Link>
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="Leadershield Network" className="h-8 w-auto object-contain" />
+              <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Network</span>
             </div>
           </div>
           <Link href="/login">
