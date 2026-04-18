@@ -1126,7 +1126,8 @@ export const api = {
       responses: {
         200: z.array(z.object({
           name: z.string(),
-          applied_at: z.string(),
+          hasDown: z.boolean(),
+          appliedAt: z.string().nullable(),
         })),
       },
     },
