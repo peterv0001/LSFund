@@ -15,6 +15,7 @@ import {
   X,
   RefreshCw,
   Filter,
+  Database,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -84,6 +85,7 @@ const ACTION_OPTIONS = [
   { value: "void", label: "Void" },
   { value: "release", label: "Release" },
   { value: "clawback", label: "Clawback" },
+  { value: "revert_migration", label: "Revert Migration" },
 ];
 
 const ENTITY_TYPE_OPTIONS = [
@@ -96,6 +98,7 @@ const ENTITY_TYPE_OPTIONS = [
   { value: "settings", label: "Settings" },
   { value: "announcement", label: "Announcement" },
   { value: "resource", label: "Resource" },
+  { value: "migration", label: "Migration" },
 ];
 
 const ENTITY_ICONS: Record<string, React.ElementType> = {
@@ -105,6 +108,7 @@ const ENTITY_ICONS: Record<string, React.ElementType> = {
   payout: CreditCard,
   settings: Settings,
   subscription: RefreshCw,
+  migration: Database,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -121,7 +125,12 @@ const ACTION_COLORS: Record<string, string> = {
   pause: "bg-amber-100 text-amber-700",
   cancel: "bg-red-100 text-red-700",
   reactivate: "bg-green-100 text-green-700",
+  revert_migration: "bg-orange-100 text-orange-700",
 };
+
+function formatAction(action: string): string {
+  return action.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 const ACTIVITY_LOG_PATH = "/api/admin/activity-log";
 
@@ -325,8 +334,8 @@ export default function AdminActivityLog() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={`${ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-700"} capitalize`}>
-                              {log.action}
+                            <Badge className={`${ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-700"}`}>
+                              {formatAction(log.action)}
                             </Badge>
                           </TableCell>
                           <TableCell>
