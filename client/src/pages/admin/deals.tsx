@@ -45,7 +45,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useSearch, useLocation } from "wouter";
 
 const COMMISSION_TYPE_LABELS: Record<string, string> = {
   mac_primary: "MAC Primary",
@@ -113,7 +114,25 @@ function WaterfallBreakdown({ deal }: { deal: any }) {
 export default function AdminDeals() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const params = new URLSearchParams(search);
+    const s = params.get("status");
+    return s && s !== "all" ? s : "all";
+  });
+
+  const updateStatusInUrl = useCallback((status: string) => {
+    const params = new URLSearchParams(window.location.search);
+    if (status === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", status);
+    }
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
 
   const { data, isLoading } = useQuery({
@@ -222,7 +241,7 @@ export default function AdminDeals() {
               <CardTitle>All Deals</CardTitle>
               <CardDescription>View and manage deal details with GBR waterfall</CardDescription>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); updateStatusInUrl(v); }}>
               <SelectTrigger className="w-36" data-testid="select-status-filter">
                 <SelectValue placeholder="Filter status" />
               </SelectTrigger>

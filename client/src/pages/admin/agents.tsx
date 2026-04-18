@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrlWithQuery, buildUrl } from "@shared/routes";
@@ -54,13 +54,20 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Agent } from "@shared/schema";
-import { useLocation, Link } from "wouter";
+import { useSearch, useLocation, Link } from "wouter";
 
 type AgentWithCount = Agent & { totalSubscriptionCount: number; activeSubscriptionCount: number };
 
 export default function AdminAgents() {
+  const urlSearch = useSearch();
+  const [, setLocation] = useLocation();
+
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const params = new URLSearchParams(urlSearch);
+    const s = params.get("status");
+    return s && s !== "all" ? s : "all";
+  });
   const [rankFilter, setRankFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<string | null>(null);
@@ -70,7 +77,17 @@ export default function AdminAgents() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+
+  const updateStatusInUrl = useCallback((status: string) => {
+    const params = new URLSearchParams(window.location.search);
+    if (status === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", status);
+    }
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
 
   const handleSortBySubscriptionCount = () => {
     if (sortBy === 'subscriptionCount') {
@@ -201,7 +218,7 @@ export default function AdminAgents() {
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); updateStatusInUrl(v); setPage(1); }}>
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Status" />
             </SelectTrigger>

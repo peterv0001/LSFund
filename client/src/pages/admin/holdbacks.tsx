@@ -41,7 +41,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useSearch, useLocation } from "wouter";
 
 type HoldbackAgent = {
   id: number;
@@ -90,7 +91,25 @@ const STATUS_LABELS: Record<string, string> = {
 export default function AdminHoldbacks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const params = new URLSearchParams(search);
+    const s = params.get("status");
+    return s && s !== "all" ? s : "all";
+  });
+
+  const updateStatusInUrl = useCallback((status: string) => {
+    const params = new URLSearchParams(window.location.search);
+    if (status === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", status);
+    }
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
   const [clawbackDialog, setClawbackDialog] = useState<HoldbackEntry | null>(null);
   const [clawbackReason, setClawbackReason] = useState("");
   const [clawbackPct, setClawbackPct] = useState("100");
@@ -221,7 +240,7 @@ export default function AdminHoldbacks() {
                 size="sm"
                 variant={statusFilter === s ? "default" : "outline"}
                 data-testid={`button-filter-${s}`}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => { setStatusFilter(s); updateStatusInUrl(s); }}
                 className="capitalize"
               >
                 {s === "all" ? "All" : STATUS_LABELS[s] ?? s}
