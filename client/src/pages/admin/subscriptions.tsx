@@ -16,6 +16,9 @@ import {
   History,
   CalendarRange,
   Settings2,
+  Bookmark,
+  Trash2,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -169,6 +172,42 @@ const DEFAULT_EXPORT_COLUMNS: ExportColumnKey[] = [
   "changeDate",
 ];
 
+type ExportTemplate = {
+  name: string;
+  columns: ExportColumnKey[];
+};
+
+const TEMPLATES_LS_KEY = "admin:export:templates";
+const VALID_COLUMN_KEYS = new Set<string>(EXPORT_COLUMNS.map((c) => c.key));
+
+function readTemplates(): ExportTemplate[] {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_LS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (t): t is ExportTemplate =>
+          typeof t?.name === "string" && t.name.trim().length > 0 && Array.isArray(t?.columns)
+      )
+      .map((t: ExportTemplate) => ({
+        name: t.name,
+        columns: t.columns.filter((k): k is ExportColumnKey => VALID_COLUMN_KEYS.has(k)),
+      }))
+      .filter((t) => t.columns.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function persistTemplates(templates: ExportTemplate[]) {
+  try {
+    localStorage.setItem(TEMPLATES_LS_KEY, JSON.stringify(templates));
+  } catch {
+  }
+}
+
 function getChangedAt(sub: Subscription): Date {
   if (sub.status === "cancelled" && sub.cancelledAt) return new Date(sub.cancelledAt);
   return new Date(sub.updatedAt);
@@ -307,6 +346,9 @@ export default function AdminSubscriptions() {
   const [selectedColumns, setSelectedColumns] = useState<Set<ExportColumnKey>>(
     new Set(DEFAULT_EXPORT_COLUMNS)
   );
+  const [templates, setTemplates] = useState<ExportTemplate[]>(() => readTemplates());
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [showSaveForm, setShowSaveForm] = useState(false);
 
   const { data: historyEntries = [], isLoading: historyLoading } = useQuery<ActivityEntry[]>({
     queryKey: [api.admin.subscriptions.activity.path, historySubId],
@@ -566,6 +608,36 @@ export default function AdminSubscriptions() {
       }
       return next;
     });
+  }
+
+  function saveTemplate() {
+    const trimmed = newTemplateName.trim();
+    if (!trimmed) return;
+    if (selectedColumns.size === 0) {
+      toast({ title: "Select at least one column before saving a template", variant: "destructive" });
+      return;
+    }
+    const trimmedLower = trimmed.toLowerCase();
+    const updated = [
+      ...templates.filter((t) => t.name.toLowerCase() !== trimmedLower),
+      { name: trimmed, columns: Array.from(selectedColumns) },
+    ];
+    persistTemplates(updated);
+    setTemplates(updated);
+    setNewTemplateName("");
+    setShowSaveForm(false);
+    toast({ title: `Template "${trimmed}" saved` });
+  }
+
+  function applyTemplate(template: ExportTemplate) {
+    setSelectedColumns(new Set(template.columns));
+  }
+
+  function deleteTemplate(name: string) {
+    const updated = templates.filter((t) => t.name !== name);
+    persistTemplates(updated);
+    setTemplates(updated);
+    toast({ title: `Template "${name}" deleted` });
   }
 
   return (
@@ -831,12 +903,50 @@ export default function AdminSubscriptions() {
                     </span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-56 p-0">
+                <PopoverContent align="end" className="w-64 p-0">
                   <div className="px-3 py-2.5 border-b border-gray-100">
                     <p className="text-sm font-semibold text-gray-800">Export columns</p>
                     <p className="text-xs text-gray-400 mt-0.5">Select which columns to include</p>
                   </div>
-                  <div className="py-2">
+
+                  {/* Templates section */}
+                  {templates.length > 0 && (
+                    <>
+                      <div className="px-3 pt-2 pb-1">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Saved templates</p>
+                        <div className="space-y-1" data-testid="export-templates-list">
+                          {templates.map((tpl) => (
+                            <div
+                              key={tpl.name}
+                              className="flex items-center justify-between gap-1 group"
+                              data-testid={`export-template-${tpl.name.replace(/\s+/g, "-").toLowerCase()}`}
+                            >
+                              <button
+                                className="flex-1 text-left text-sm text-gray-700 px-2 py-1 rounded hover:bg-gray-50 truncate"
+                                onClick={() => applyTemplate(tpl)}
+                                data-testid={`button-apply-template-${tpl.name.replace(/\s+/g, "-").toLowerCase()}`}
+                                title={`Apply "${tpl.name}" template`}
+                              >
+                                {tpl.name}
+                              </button>
+                              <button
+                                className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1 rounded"
+                                onClick={() => deleteTemplate(tpl.name)}
+                                data-testid={`button-delete-template-${tpl.name.replace(/\s+/g, "-").toLowerCase()}`}
+                                title={`Delete "${tpl.name}" template`}
+                                aria-label={`Delete ${tpl.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <Separator />
+                    </>
+                  )}
+
+                  <div className="py-2 max-h-52 overflow-y-auto">
                     {EXPORT_COLUMNS.map((col) => (
                       <label
                         key={col.key}
@@ -871,6 +981,53 @@ export default function AdminSubscriptions() {
                     >
                       Clear all
                     </button>
+                  </div>
+                  <Separator />
+
+                  {/* Save as template */}
+                  <div className="px-3 py-2">
+                    {showSaveForm ? (
+                      <div className="flex gap-1.5" data-testid="save-template-form">
+                        <Input
+                          autoFocus
+                          placeholder="Template name"
+                          value={newTemplateName}
+                          onChange={(e) => setNewTemplateName(e.target.value)}
+                          className="h-7 text-xs flex-1"
+                          data-testid="input-template-name"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveTemplate();
+                            if (e.key === "Escape") { setShowSaveForm(false); setNewTemplateName(""); }
+                          }}
+                        />
+                        <button
+                          className="shrink-0 text-primary hover:text-primary/80 transition-colors p-1 rounded"
+                          onClick={saveTemplate}
+                          data-testid="button-save-template-confirm"
+                          aria-label="Confirm save template"
+                          disabled={!newTemplateName.trim()}
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded"
+                          onClick={() => { setShowSaveForm(false); setNewTemplateName(""); }}
+                          data-testid="button-save-template-cancel"
+                          aria-label="Cancel save template"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        onClick={() => setShowSaveForm(true)}
+                        data-testid="button-save-as-template"
+                      >
+                        <Bookmark className="w-3.5 h-3.5" />
+                        Save as template
+                      </button>
+                    )}
                   </div>
                 </PopoverContent>
               </Popover>
