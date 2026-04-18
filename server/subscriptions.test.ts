@@ -960,6 +960,89 @@ describe("GET /api/subscriptions/history – pagination", () => {
 });
 
 // =========================================================
+// PATCH /api/subscriptions/:id/status – agent-initiated status changes
+// Verifies that the activity log entry's actorId matches the
+// authenticated agent and actorType is 'agent'.
+// =========================================================
+
+const AGENT_ROUTE_EMAIL_PREFIX = `agent-route-test-${Date.now()}`;
+const AGENT_ROUTE_PASSWORD = "AgentTestPass1!";
+let agentRouteAgentId: number;
+
+beforeAll(async () => {
+  const [agent] = await db
+    .insert(schema.agents)
+    .values({
+      email: `${AGENT_ROUTE_EMAIL_PREFIX}@example.com`,
+      password: await hashPasswordForTest(AGENT_ROUTE_PASSWORD),
+      firstName: "AgentRoute",
+      lastName: "Tester",
+      currentRank: "agent",
+      highestRank: "agent",
+    })
+    .returning();
+  agentRouteAgentId = agent.id;
+}, 30000);
+
+afterAll(async () => {
+  await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, agentRouteAgentId));
+  await db.delete(schema.agents).where(eq(schema.agents.id, agentRouteAgentId));
+});
+
+async function loginAsAgent(): Promise<string[]> {
+  const res = await request(testApp)
+    .post("/api/login")
+    .send({ username: `${AGENT_ROUTE_EMAIL_PREFIX}@example.com`, password: AGENT_ROUTE_PASSWORD });
+  return res.headers["set-cookie"] as unknown as string[];
+}
+
+describe("agent subscription status route – activity logging on pause", () => {
+  it("logs actorId equal to the agent's ID and actorType 'agent' when an agent pauses their subscription", async () => {
+    const sub = await createTestSubscription(agentRouteAgentId, "active");
+    const cookie = await loginAsAgent();
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "paused" })
+      .expect(200);
+
+    const entry = await pollForActivityLogEntry(sub.id, "pause");
+    expect(entry).toBeDefined();
+    expect(entry?.action).toBe("pause");
+    expect(entry?.actorType).toBe("agent");
+    expect(entry?.actorId).toBe(agentRouteAgentId);
+    expect(entry?.entityId).toBe(sub.id);
+
+    await cleanupActivityLog(sub.id);
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+});
+
+describe("agent subscription status route – activity logging on cancel", () => {
+  it("logs actorId equal to the agent's ID and actorType 'agent' when an agent cancels their subscription", async () => {
+    const sub = await createTestSubscription(agentRouteAgentId, "active");
+    const cookie = await loginAsAgent();
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "cancelled" })
+      .expect(200);
+
+    const entry = await pollForActivityLogEntry(sub.id, "cancel");
+    expect(entry).toBeDefined();
+    expect(entry?.action).toBe("cancel");
+    expect(entry?.actorType).toBe("agent");
+    expect(entry?.actorId).toBe(agentRouteAgentId);
+    expect(entry?.entityId).toBe(sub.id);
+
+    await cleanupActivityLog(sub.id);
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+});
+
+// =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
 

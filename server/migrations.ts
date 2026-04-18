@@ -179,6 +179,29 @@ export const migrations: Migration[] = [
       console.log("[migrations] Renamed email_preferences back to subscription_email_preferences on agents table");
     },
   },
+  {
+    name: "008_add_subscription_id_to_commissions",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE commissions ADD COLUMN IF NOT EXISTS subscription_id integer
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS commissions_agent_sub_period_type_idx
+        ON commissions (agent_id, subscription_id, period_date, type)
+        WHERE subscription_id IS NOT NULL
+      `);
+      console.log("[migrations] Added subscription_id column and unique index to commissions table");
+    },
+    async down(client) {
+      await client.query(`
+        DROP INDEX IF EXISTS commissions_agent_sub_period_type_idx
+      `);
+      await client.query(`
+        ALTER TABLE commissions DROP COLUMN IF EXISTS subscription_id
+      `);
+      console.log("[migrations] Dropped subscription_id column and index from commissions table");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {
