@@ -346,6 +346,29 @@ describe("admin subscription status route – activity logging on cancel", () =>
   });
 });
 
+describe("admin subscription status route – activity logging on reactivate", () => {
+  it("creates an activity log entry with action 'reactivate' when an admin reactivates a subscription", async () => {
+    const sub = await createTestSubscription(agentId, "paused");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "active" })
+      .expect(200);
+
+    // logActivity in the route is fire-and-forget; poll until the entry appears
+    const entry = await pollForActivityLogEntry(sub.id, "reactivate");
+    expect(entry).toBeDefined();
+    expect(entry?.action).toBe("reactivate");
+    expect(entry?.actorType).toBe("admin");
+    expect(entry?.entityId).toBe(sub.id);
+
+    await cleanupActivityLog(sub.id);
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+});
+
 // =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
