@@ -1398,6 +1398,24 @@ export async function registerRoutes(
         }
       }
       
+      // Log subscription creation to activity log
+      storage.logActivity({
+        actorId: agentId,
+        actorType: 'agent',
+        action: 'create',
+        entityType: 'subscription',
+        entityId: sub.id,
+        description: `Logged new ${input.tier} subscription for merchant "${input.merchantName}" ($${monthlyAmount}/mo)`,
+        details: {
+          merchantName: input.merchantName,
+          tier: input.tier,
+          monthlyAmount,
+          mcaPairedDealId: verifiedPairedDealId ?? null,
+        },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers['user-agent'] ?? null,
+      }).catch((err) => console.error('[ActivityLog] Failed to log subscription creation:', err));
+
       res.status(201).json(sub);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -1477,6 +1495,20 @@ export async function registerRoutes(
         }
       }
 
+      // Log subscription status change to activity log
+      const actionLabel = status === 'paused' ? 'pause' : status === 'cancelled' ? 'cancel' : 'reactivate';
+      storage.logActivity({
+        actorId: agentId,
+        actorType: 'agent',
+        action: actionLabel,
+        entityType: 'subscription',
+        entityId: subId,
+        description: `Agent ${actionLabel === 'cancel' ? 'cancelled' : actionLabel + 'd'} subscription #${subId} for merchant "${sub.merchantName}"`,
+        details: { previousStatus: sub.status, newStatus: status, merchantName: sub.merchantName, tier: sub.tier },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers['user-agent'] ?? null,
+      }).catch((err) => console.error('[ActivityLog] Failed to log subscription status change:', err));
+
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -1494,28 +1526,34 @@ export async function registerRoutes(
 
   app.patch("/api/admin/subscriptions/:id/status", requireAdmin, async (req, res) => {
     try {
+      const subId = Number(req.params.id);
       const { status } = req.body;
       const actorId = req.user?.id;
-      const updated = await storage.updateSubscriptionStatus(Number(req.params.id), status, actorId);
 
-      if ((status === 'paused' || status === 'cancelled') && actorId) {
-        const action = status === 'paused' ? 'pause' : 'cancel';
-        await storage.logActivity({
+      // Fetch current subscription to record previous state
+      const allSubs = await storage.getAllSubscriptions();
+      const existingSub = allSubs.find((s) => s.id === subId);
+
+      const updated = await storage.updateSubscriptionStatus(subId, status, actorId);
+
+      // Log status change to activity log (all status transitions)
+      if (actorId) {
+        storage.logActivity({
           actorId,
           actorType: 'admin',
-          action,
+          action: 'update',
           entityType: 'subscription',
-          entityId: updated.id,
-          description: `Admin ${status} subscription #${updated.id} (merchant: ${updated.merchantName}, tier: ${updated.tier})`,
+          entityId: subId,
+          description: `Admin updated subscription #${subId}${existingSub ? ` for merchant "${existingSub.merchantName}"` : ''} status to "${status}"`,
           details: {
-            subscriptionId: updated.id,
-            merchantName: updated.merchantName,
-            tier: updated.tier,
-            status,
+            previousStatus: existingSub?.status ?? null,
+            newStatus: status,
+            merchantName: existingSub?.merchantName ?? null,
+            tier: existingSub?.tier ?? null,
           },
           ipAddress: req.ip ?? null,
           userAgent: req.headers['user-agent'] ?? null,
-        });
+        }).catch((err) => console.error('[ActivityLog] Failed to log admin subscription status update:', err));
       }
 
       res.json(updated);
