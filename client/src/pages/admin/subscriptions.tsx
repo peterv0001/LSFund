@@ -53,7 +53,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -393,6 +392,39 @@ export default function AdminSubscriptions() {
       toast({ title: "Select at least one column to export", variant: "destructive" });
       return;
     }
+
+    const exportDate = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+    const statusLabel = statusFilter === "all" ? "All statuses" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
+    let dateLabel: string;
+    if (dateRangeFilter === "all") {
+      dateLabel = "All time";
+    } else if (dateRangeFilter === "7d") {
+      dateLabel = "Last 7 days";
+    } else if (dateRangeFilter === "30d") {
+      dateLabel = "Last 30 days";
+    } else if (dateRangeFilter === "custom") {
+      const start = customStartDate || "—";
+      const end = customEndDate || "—";
+      dateLabel = `${start} to ${end}`;
+    } else {
+      dateLabel = dateRangeFilter;
+    }
+    let agentLabel: string;
+    if (agentFilter === null) {
+      agentLabel = "All agents";
+    } else {
+      const found = agentSummary.find((a) => a.agentId === agentFilter);
+      agentLabel = found ? found.agentName : `Agent #${agentFilter}`;
+    }
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const metaLines = [
+      `${esc("Exported")},${esc(exportDate)}`,
+      `${esc("Status filter")},${esc(statusLabel)}`,
+      `${esc("Date range")},${esc(dateLabel)}`,
+      `${esc("Agent filter")},${esc(agentLabel)}`,
+      "",
+    ];
+
     const headers = cols.map((c) => c.label);
     const rows = filteredSubscriptions.map((s) =>
       cols.map((c) => `"${getCellValue(c.key, s).replace(/"/g, '""')}"`).join(",")
@@ -417,7 +449,7 @@ export default function AdminSubscriptions() {
       return "";
     });
     const summaryRow = summaryValues.map((v) => `"${v.replace(/"/g, '""')}"`).join(",");
-    const csv = [headers.join(","), ...rows, summaryRow].join("\n");
+    const csv = [...metaLines, headers.join(","), ...rows, summaryRow].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
