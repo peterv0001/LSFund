@@ -1293,6 +1293,32 @@ export async function registerRoutes(
     res.json(subs);
   });
 
+  app.get("/api/subscriptions/:id/history", requireAuth, async (req, res) => {
+    try {
+      const agentId = req.user!.id;
+      const subId = Number(req.params.id);
+      if (!subId || subId <= 0) {
+        return res.status(400).json({ message: 'Invalid subscription ID' });
+      }
+      const agentSubs = await storage.getSubscriptionsByAgent(agentId);
+      const sub = agentSubs.find((s) => s.id === subId);
+      if (!sub) {
+        return res.status(404).json({ message: 'Subscription not found or access denied' });
+      }
+      const { logs } = await storage.getActivityLogs(1, 100, { entityType: 'subscription', entityId: subId });
+      const safeLog = logs.map(({ id, action, description, createdAt, actorType }) => ({
+        id,
+        action,
+        description,
+        createdAt,
+        actorType,
+      }));
+      res.json(safeLog);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch subscription history' });
+    }
+  });
+
   app.post("/api/subscriptions", requireAuth, async (req, res) => {
     try {
       // @ts-ignore

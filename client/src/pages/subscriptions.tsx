@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle } from "lucide-react";
+import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInMonths } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -54,6 +54,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // === Types ===
+
+type ActivityLogEntry = {
+  id: number;
+  action: string;
+  description: string | null;
+  createdAt: string;
+  actorType: string | null;
+};
 
 type Subscription = {
   id: number;
@@ -396,6 +404,81 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
   );
 }
 
+// === Action Icon/Color Helpers ===
+
+const ACTION_STYLES: Record<string, { color: string; dot: string }> = {
+  create: { color: "text-green-700", dot: "bg-green-500" },
+  pause: { color: "text-yellow-700", dot: "bg-yellow-500" },
+  cancel: { color: "text-red-700", dot: "bg-red-500" },
+  reactivate: { color: "text-blue-700", dot: "bg-blue-500" },
+};
+
+function getActionStyle(action: string) {
+  const key = Object.keys(ACTION_STYLES).find((k) => action.toLowerCase().includes(k));
+  return key ? ACTION_STYLES[key] : { color: "text-gray-600", dot: "bg-gray-400" };
+}
+
+// === Subscription History Timeline ===
+
+function SubscriptionHistoryTimeline({ subId }: { subId: number }) {
+  const { data: logs = [], isLoading } = useQuery<ActivityLogEntry[]>({
+    queryKey: ["/api/subscriptions", subId, "history"],
+    queryFn: async () => {
+      const res = await fetch(`/api/subscriptions/${subId}/history`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load history");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2 pt-2" data-testid={`history-loading-${subId}`}>
+        {[1, 2].map((i) => (
+          <div key={i} className="flex items-start gap-2">
+            <Skeleton className="w-2 h-2 rounded-full mt-1.5 shrink-0" />
+            <div className="space-y-1 flex-1">
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground pt-2 italic" data-testid={`history-empty-${subId}`}>
+        No history recorded yet.
+      </p>
+    );
+  }
+
+  return (
+    <ol className="space-y-2 pt-2" data-testid={`history-list-${subId}`}>
+      {logs.map((log) => {
+        const style = getActionStyle(log.action);
+        return (
+          <li key={log.id} className="flex items-start gap-2.5" data-testid={`history-entry-${log.id}`}>
+            <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${style.dot}`} />
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-medium ${style.color}`}>
+                {log.description || log.action}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {format(new Date(log.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                {log.actorType === "admin" && (
+                  <span className="ml-1 text-purple-500">(by admin)</span>
+                )}
+              </p>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 // === Decay Schedule Visualization ===
 
 function DecayScheduleBar({ sub }: { sub: Subscription }) {
@@ -444,6 +527,7 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
   const decay = getDecayRate(months);
   const estimatedComm = getEstimatedCommission(sub);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -454,6 +538,7 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
     },
     onSuccess: (_data, status) => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", sub.id, "history"] });
       const labels: Record<string, string> = {
         paused: "Subscription paused",
         cancelled: "Subscription cancelled",
@@ -617,6 +702,29 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
       )}
 
       <DecayScheduleBar sub={sub} />
+
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors w-full text-left"
+          onClick={() => setHistoryOpen((prev) => !prev)}
+          data-testid={`button-toggle-history-${sub.id}`}
+          aria-expanded={historyOpen}
+        >
+          <History className="w-3 h-3" />
+          <span className="font-medium">Subscription History</span>
+          {historyOpen ? (
+            <ChevronUp className="w-3 h-3 ml-auto" />
+          ) : (
+            <ChevronDown className="w-3 h-3 ml-auto" />
+          )}
+        </button>
+        {historyOpen && (
+          <div data-testid={`history-panel-${sub.id}`}>
+            <SubscriptionHistoryTimeline subId={sub.id} />
+          </div>
+        )}
+      </div>
     </div>
     </>
   );
