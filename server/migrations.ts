@@ -117,6 +117,18 @@ export const migrations: Migration[] = [
       `);
       console.log("[migrations] Added cancelled_at, cancelled_by_id, paused_by_id columns to subscriptions table");
     },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS cancelled_at
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS cancelled_by_id
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS paused_by_id
+      `);
+      console.log("[migrations] Dropped cancelled_at, cancelled_by_id, paused_by_id columns from subscriptions table");
+    },
   },
   {
     name: "005_add_subscription_email_preferences",

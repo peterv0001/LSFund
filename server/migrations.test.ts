@@ -262,6 +262,72 @@ describe("revertMigration", () => {
   });
 });
 
+describe("004_add_cancelled_and_paused_by_columns rollback", () => {
+  const MIGRATION_NAME = "004_add_cancelled_and_paused_by_columns";
+  const migration: Migration = {
+    name: MIGRATION_NAME,
+    async run(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_at timestamp
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_by_id integer
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_by_id integer
+      `);
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS cancelled_at
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS cancelled_by_id
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS paused_by_id
+      `);
+    },
+  };
+
+  afterAll(async () => {
+    const client = await testPool.connect();
+    try {
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_at timestamp
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_by_id integer
+      `);
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_by_id integer
+      `);
+      await client.query(
+        `INSERT INTO schema_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING`,
+        [MIGRATION_NAME]
+      );
+    } finally {
+      client.release();
+    }
+  });
+
+  it("drops cancelled_at, cancelled_by_id, and paused_by_id columns and removes the migration record", async () => {
+    await runMigrations({ pool: testPool, migrations: [migration] });
+
+    expect(await columnExists("subscriptions", "cancelled_at")).toBe(true);
+    expect(await columnExists("subscriptions", "cancelled_by_id")).toBe(true);
+    expect(await columnExists("subscriptions", "paused_by_id")).toBe(true);
+    expect(await migrationRecorded(MIGRATION_NAME)).toBe(true);
+
+    await revertMigration(MIGRATION_NAME, { pool: testPool, migrations: [migration] });
+
+    expect(await columnExists("subscriptions", "cancelled_at")).toBe(false);
+    expect(await columnExists("subscriptions", "cancelled_by_id")).toBe(false);
+    expect(await columnExists("subscriptions", "paused_by_id")).toBe(false);
+    expect(await migrationRecorded(MIGRATION_NAME)).toBe(false);
+  });
+});
+
 describe("003_add_reactivated_columns rollback", () => {
   const MIGRATION_NAME = "003_add_reactivated_columns";
   const migration: Migration = {
