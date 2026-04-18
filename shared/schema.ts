@@ -378,6 +378,8 @@ export const subscriptions = pgTable("subscriptions", {
   startDate: timestamp("start_date").defaultNow().notNull(),
   cancelledAt: timestamp("cancelled_at"),
   pausedAt: timestamp("paused_at"),
+  cancelledById: integer("cancelled_by_id"),
+  pausedById: integer("paused_by_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

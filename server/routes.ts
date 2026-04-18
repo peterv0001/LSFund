@@ -1495,7 +1495,8 @@ export async function registerRoutes(
   app.patch("/api/admin/subscriptions/:id/status", requireAdmin, async (req, res) => {
     try {
       const { status } = req.body;
-      const updated = await storage.updateSubscriptionStatus(Number(req.params.id), status);
+      const actorId = req.user?.id;
+      const updated = await storage.updateSubscriptionStatus(Number(req.params.id), status, actorId);
       res.json(updated);
     } catch (err) {
       res.status(500).json({ message: "Failed to update subscription" });

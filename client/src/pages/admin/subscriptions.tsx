@@ -57,6 +57,10 @@ type Subscription = {
   startDate: string;
   cancelledAt: string | null;
   pausedAt: string | null;
+  cancelledById: number | null;
+  pausedById: number | null;
+  pausedBy: Agent | null;
+  cancelledBy: Agent | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -323,11 +327,21 @@ export default function AdminSubscriptions() {
                             {sub.status === "cancelled" && sub.cancelledAt && (
                               <p className="text-xs text-gray-400 mt-1" data-testid={`text-cancelled-at-${sub.id}`}>
                                 {format(new Date(sub.cancelledAt), "MMM d, yyyy")}
+                                {sub.cancelledBy && (
+                                  <span className="block text-gray-400" data-testid={`text-cancelled-by-${sub.id}`}>
+                                    by {sub.cancelledBy.firstName} {sub.cancelledBy.lastName}
+                                  </span>
+                                )}
                               </p>
                             )}
                             {sub.status === "paused" && sub.pausedAt && (
                               <p className="text-xs text-gray-400 mt-1" data-testid={`text-paused-at-${sub.id}`}>
                                 {format(new Date(sub.pausedAt), "MMM d, yyyy")}
+                                {sub.pausedBy && (
+                                  <span className="block text-gray-400" data-testid={`text-paused-by-${sub.id}`}>
+                                    by {sub.pausedBy.firstName} {sub.pausedBy.lastName}
+                                  </span>
+                                )}
                               </p>
                             )}
                           </div>

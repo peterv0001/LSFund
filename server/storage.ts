@@ -8,6 +8,7 @@ import {
   type Subscription, type Holdback, type FulfillmentTier
 } from "@shared/schema";
 import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum, SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // Helper to get start of current week (Monday)
 function getWeekStart(date: Date = new Date()): Date {
@@ -1363,21 +1364,38 @@ export class DatabaseStorage {
       .orderBy(desc(subscriptions.createdAt));
   }
 
-  async getAllSubscriptions(): Promise<(Subscription & { agent: Agent })[]> {
+  async getAllSubscriptions(): Promise<(Subscription & { agent: Agent; pausedBy: Agent | null; cancelledBy: Agent | null })[]> {
+    const pausedByAgents = alias(agents, 'paused_by_agents');
+    const cancelledByAgents = alias(agents, 'cancelled_by_agents');
     const results = await db.select({
       subscription: subscriptions,
       agent: agents,
+      pausedBy: pausedByAgents,
+      cancelledBy: cancelledByAgents,
     })
       .from(subscriptions)
       .leftJoin(agents, eq(subscriptions.agentId, agents.id))
+      .leftJoin(pausedByAgents, eq(subscriptions.pausedById, pausedByAgents.id))
+      .leftJoin(cancelledByAgents, eq(subscriptions.cancelledById, cancelledByAgents.id))
       .orderBy(desc(subscriptions.createdAt));
-    return results.map(r => ({ ...r.subscription, agent: r.agent! }));
+    return results.map(r => ({
+      ...r.subscription,
+      agent: r.agent!,
+      pausedBy: r.pausedBy ?? null,
+      cancelledBy: r.cancelledBy ?? null,
+    }));
   }
 
-  async updateSubscriptionStatus(id: number, status: 'active' | 'paused' | 'cancelled' | 'expired'): Promise<Subscription> {
+  async updateSubscriptionStatus(id: number, status: 'active' | 'paused' | 'cancelled' | 'expired', actorId?: number): Promise<Subscription> {
     const updates: any = { status, updatedAt: new Date() };
-    if (status === 'cancelled') updates.cancelledAt = new Date();
-    if (status === 'paused') updates.pausedAt = new Date();
+    if (status === 'cancelled') {
+      updates.cancelledAt = new Date();
+      if (actorId) updates.cancelledById = actorId;
+    }
+    if (status === 'paused') {
+      updates.pausedAt = new Date();
+      if (actorId) updates.pausedById = actorId;
+    }
     if (status === 'active') updates.pausedAt = null;
     const [updated] = await db.update(subscriptions)
       .set(updates)
