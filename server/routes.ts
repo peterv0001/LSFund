@@ -1790,8 +1790,11 @@ export async function registerRoutes(
         const commType = monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
         
         if (commissionAmount > 0) {
+          const existing = await storage.findSubscriptionCommission(sub.agentId, sub.id, periodDate, commType);
+          if (existing) continue;
           await storage.createCommission({
             agentId: sub.agentId,
+            subscriptionId: sub.id,
             type: commType,
             amount: commissionAmount.toFixed(2),
             periodDate,

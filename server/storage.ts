@@ -507,11 +507,12 @@ export class DatabaseStorage {
   // ==================== COMMISSIONS ====================
 
   async createCommission(commission: Partial<Commission> & { agentId: number; type: Commission['type']; amount: string; periodDate: string }): Promise<Commission> {
-    const [newComm] = await db.insert(commissions).values({
+    const values = {
       agentId: commission.agentId,
       type: commission.type,
       amount: commission.amount,
       dealId: commission.dealId ?? null,
+      subscriptionId: commission.subscriptionId ?? null,
       sourceAgentId: commission.sourceAgentId ?? null,
       periodDate: commission.periodDate,
       periodWeekStart: commission.periodWeekStart ?? null,
@@ -522,8 +523,36 @@ export class DatabaseStorage {
       voidedAt: commission.voidedAt ?? null,
       voidReason: commission.voidReason ?? null,
       payoutId: commission.payoutId ?? null,
-    }).returning();
+    };
+
+    if (commission.subscriptionId != null) {
+      const [inserted] = await db.insert(commissions).values(values).onConflictDoNothing().returning();
+      if (inserted) return inserted;
+      const [existing] = await db.select().from(commissions).where(
+        and(
+          eq(commissions.agentId, commission.agentId),
+          eq(commissions.subscriptionId, commission.subscriptionId),
+          eq(commissions.periodDate, commission.periodDate),
+          eq(commissions.type, commission.type),
+        )
+      ).limit(1);
+      return existing;
+    }
+
+    const [newComm] = await db.insert(commissions).values(values).returning();
     return newComm;
+  }
+
+  async findSubscriptionCommission(agentId: number, subscriptionId: number, periodDate: string, type: Commission['type']): Promise<Commission | null> {
+    const [existing] = await db.select().from(commissions).where(
+      and(
+        eq(commissions.agentId, agentId),
+        eq(commissions.subscriptionId, subscriptionId),
+        eq(commissions.periodDate, periodDate),
+        eq(commissions.type, type),
+      )
+    ).limit(1);
+    return existing ?? null;
   }
 
   async getCommissionsByAgent(agentId: number): Promise<Commission[]> {

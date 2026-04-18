@@ -1,5 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, decimal, date, pgEnum, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -176,6 +176,7 @@ export const commissions = pgTable("commissions", {
   
   // Source tracking
   dealId: integer("deal_id"),
+  subscriptionId: integer("subscription_id"), // For subscription-based commissions (enables idempotency)
   sourceAgentId: integer("source_agent_id"), // Who generated this commission (for overrides)
   
   // Period tracking
@@ -196,7 +197,14 @@ export const commissions = pgTable("commissions", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   paidAt: timestamp("paid_at"),
-});
+}, (table) => ({
+  // Prevent duplicate subscription commissions for the same agent+subscription+period+type.
+  // Partial index (WHERE subscription_id IS NOT NULL) leaves non-subscription commission
+  // types (deal-based, bonuses, etc.) unrestricted.
+  subPeriodUniqueIdx: uniqueIndex("commissions_sub_period_unique")
+    .on(table.agentId, table.subscriptionId, table.periodDate, table.type)
+    .where(sql`${table.subscriptionId} IS NOT NULL`),
+}));
 
 export const payouts = pgTable("payouts", {
   id: serial("id").primaryKey(),

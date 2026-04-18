@@ -462,6 +462,38 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, pausedSub.id));
     }
   });
+
+  it("does not create duplicate commissions when the route is called twice for the same period", async () => {
+    const activeSub = await createTestSubscription(commRouteAgentId, "active");
+    try {
+      const cookie = await loginAsAdmin();
+
+      await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", cookie)
+        .expect(200);
+
+      await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", cookie)
+        .expect(200);
+
+      const agentCommissions = await db
+        .select()
+        .from(schema.commissions)
+        .where(
+          and(
+            eq(schema.commissions.agentId, commRouteAgentId),
+            eq(schema.commissions.subscriptionId, activeSub.id),
+          )
+        );
+
+      expect(agentCommissions).toHaveLength(1);
+    } finally {
+      await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
+    }
+  });
 });
 
 // =========================================================
