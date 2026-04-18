@@ -325,10 +325,10 @@ export default function AdminSubscriptions() {
                               {sub.status}
                             </Badge>
                             {sub.status === "cancelled" && sub.cancelledAt && (
-                              <p className="text-xs text-gray-400 mt-1" data-testid={`text-cancelled-at-${sub.id}`}>
-                                {format(new Date(sub.cancelledAt), "MMM d, yyyy")}
+                              <p className="text-xs text-red-500 font-medium mt-1" data-testid={`text-cancelled-at-${sub.id}`}>
+                                Cancelled on {format(new Date(sub.cancelledAt), "MMM d, yyyy")}
                                 {sub.cancelledBy && (
-                                  <span className="block text-gray-400" data-testid={`text-cancelled-by-${sub.id}`}>
+                                  <span className="block text-gray-400 font-normal" data-testid={`text-cancelled-by-${sub.id}`}>
                                     by {sub.cancelledBy.firstName} {sub.cancelledBy.lastName}
                                   </span>
                                 )}
