@@ -1746,12 +1746,15 @@ export async function registerRoutes(
         })
       );
 
-      const enriched = logs.map((l) => ({
-        ...l,
-        actorName: actorMap[l.actorId]
+      const enriched = logs.map((l) => {
+        const name = actorMap[l.actorId]
           ? `${actorMap[l.actorId]!.firstName} ${actorMap[l.actorId]!.lastName}`
-          : `#${l.actorId}`,
-      }));
+          : `#${l.actorId}`;
+        return {
+          ...l,
+          actorName: l.actorType === 'admin' ? `Admin ${name}` : name,
+        };
+      });
 
       res.json(enriched);
     } catch (err) {
