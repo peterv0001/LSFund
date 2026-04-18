@@ -237,7 +237,12 @@ export default function AdminSubscriptions() {
         changeDate,
       ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
     });
-    const csv = [headers.join(","), ...rows].join("\n");
+    const totalAmount = filteredSubscriptions.reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
+    const formattedTotal = `$${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const countLabel = `${filteredSubscriptions.length} subscription${filteredSubscriptions.length !== 1 ? "s" : ""}`;
+    const summaryRow = ["Total", "", "", "", formattedTotal, countLabel, ""]
+      .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    const csv = [headers.join(","), ...rows, summaryRow].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
