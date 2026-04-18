@@ -12,6 +12,7 @@ import {
   Filter,
   Clock,
   X,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -174,6 +175,37 @@ export default function AdminSubscriptions() {
     : null;
 
   const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null;
+
+  function exportCsv() {
+    const headers = ["ID", "Merchant Name", "Agent Name", "Tier", "Monthly Amount", "Status", "Change Date"];
+    const rows = filteredSubscriptions.map((s) => {
+      const agentName = s.agent?.firstName
+        ? `${s.agent.firstName} ${s.agent.lastName}`
+        : `#${s.agentId}`;
+      const changeDate = s.status === "cancelled" && s.cancelledAt
+        ? format(new Date(s.cancelledAt), "yyyy-MM-dd")
+        : s.status === "paused" && s.pausedAt
+          ? format(new Date(s.pausedAt), "yyyy-MM-dd")
+          : format(new Date(s.updatedAt), "yyyy-MM-dd");
+      return [
+        s.id,
+        s.merchantName,
+        agentName,
+        TIER_LABELS[s.tier] ?? s.tier,
+        s.monthlyAmount,
+        s.status,
+        changeDate,
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `subscriptions-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -367,6 +399,18 @@ export default function AdminSubscriptions() {
                 {filteredSubscriptions.length} result{filteredSubscriptions.length !== 1 ? "s" : ""}
               </span>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              data-testid="button-export-csv"
+              onClick={exportCsv}
+              disabled={filteredSubscriptions.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
           </div>
 
           {/* Agent Summary Panel */}
