@@ -1527,7 +1527,12 @@ export async function registerRoutes(
   app.patch("/api/admin/subscriptions/:id/status", requireAdmin, async (req, res) => {
     try {
       const subId = Number(req.params.id);
-      const { status } = req.body;
+      const adminStatusSchema = z.object({ status: z.enum(['active', 'paused', 'cancelled', 'expired']) });
+      const parseResult = adminStatusSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: parseResult.error.errors[0].message });
+      }
+      const { status } = parseResult.data;
       const actorId = req.user?.id;
 
       // Fetch current subscription to record previous state
@@ -1535,6 +1540,54 @@ export async function registerRoutes(
       const existingSub = allSubs.find((s) => s.id === subId);
 
       const updated = await storage.updateSubscriptionStatus(subId, status, actorId);
+
+      // Notify the agent by email and in-app notification
+      // Only notify on genuine status transitions (skip if status is unchanged)
+      // Only send reactivation notice when subscription was previously paused
+      const isReactivation = status === 'active' && existingSub?.status === 'paused';
+      if (existingSub && existingSub.status !== status && (status === 'paused' || status === 'cancelled' || isReactivation)) {
+        const agent = await storage.getAgent(existingSub.agentId);
+        if (agent) {
+          const effectiveDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          const tierLabel = existingSub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+          const notificationTitle = status === 'paused'
+            ? `Subscription Paused: ${existingSub.merchantName}`
+            : status === 'cancelled'
+            ? `Subscription Cancelled: ${existingSub.merchantName}`
+            : `Subscription Reactivated: ${existingSub.merchantName}`;
+          const notificationMessage = status === 'paused'
+            ? `Your ${tierLabel} subscription for ${existingSub.merchantName} has been paused as of ${effectiveDate}. Commission accrual is on hold until reactivated.`
+            : status === 'cancelled'
+            ? `Your ${tierLabel} subscription for ${existingSub.merchantName} has been cancelled as of ${effectiveDate}.`
+            : `Your ${tierLabel} subscription for ${existingSub.merchantName} has been reactivated as of ${effectiveDate}. Commission accrual has resumed.`;
+          // isReactivation is guaranteed true here if status === 'active' (enforced by outer condition)
+
+          storage.createNotification({
+            agentId: existingSub.agentId,
+            type: 'system',
+            title: notificationTitle,
+            message: notificationMessage,
+          }).catch((err) => console.error('[Notification] Failed to create admin subscription status notification:', err));
+
+          const emailData = {
+            firstName: agent.firstName,
+            merchantName: existingSub.merchantName,
+            tier: tierLabel,
+            effectiveDate,
+          };
+          if (status === 'paused') {
+            emailService.sendSubscriptionPausedEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send admin-triggered subscription paused email:', err));
+          } else if (status === 'cancelled') {
+            emailService.sendSubscriptionCancelledEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send admin-triggered subscription cancelled email:', err));
+          } else {
+            emailService.sendSubscriptionReactivatedEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send admin-triggered subscription reactivated email:', err));
+          }
+        }
+      }
 
       // Log status change to activity log (all status transitions)
       if (actorId) {
