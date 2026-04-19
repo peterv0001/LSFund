@@ -1124,6 +1124,7 @@ export class DatabaseStorage {
   }): Promise<{ logs: ((typeof activityLog.$inferSelect) & { actorName: string | null })[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
+    const actorAgent = alias(agents, "actor_agent");
     const conditions: SQL<unknown>[] = [];
     
     if (filters?.actorId) {
@@ -1151,6 +1152,8 @@ export class DatabaseStorage {
         like(activityLog.action, term),
         like(activityLog.entityType, term),
         like(activityLog.description, term),
+        like(actorAgent.firstName, term),
+        like(actorAgent.lastName, term),
       );
       if (searchCond) conditions.push(searchCond);
     }
@@ -1168,9 +1171,8 @@ export class DatabaseStorage {
     
     const [totalResult] = await db.select({ count: count() })
       .from(activityLog)
+      .leftJoin(actorAgent, eq(activityLog.actorId, actorAgent.id))
       .where(whereClause);
-    
-    const actorAgent = alias(agents, "actor_agent");
     const rawLogs = await db
       .select({
         id: activityLog.id,

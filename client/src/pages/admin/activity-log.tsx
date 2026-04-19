@@ -311,7 +311,7 @@ export default function AdminActivityLog() {
                     <Input
                       id="log-search"
                       data-testid="input-log-search"
-                      placeholder="Search action, entity, description..."
+                      placeholder="Search action, entity, description, or actor name..."
                       className="pl-8"
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
