@@ -20,15 +20,14 @@ Leadershield Network is a full-stack network marketing (MLM) platform for Mercha
 - Platform fee management with production-based waivers.
 - Lead distribution system with AI follow-up.
 - Quarterly Performance Accelerators and renewal commissions.
-- Binary tree agent hierarchy
-- Fulfillment agent tiering
-- Rank advancement system (Agent → Builder → Leader → Director → Partner)
-- Platform fee management with production-based waivers
+- Binary tree agent hierarchy management.
+- Fulfillment agent tiering.
+- Rank advancement system (Agent → Builder → Leader → Director → Partner).
 
 **Branding:**
 - **Domain:** leadershield.com
 - **Color Palette:** Deep navy (#002147) and platinum (#E5E4E2)
-- **Fonts:** Montserrat (headings), Cinzel (display), and Manrope/Open Sans (body)
+- **Fonts:** Montserrat (headings/display), Cinzel (display), and Manrope/Open Sans (body)
 - **Logo:** ShieldCheck icon (lucide-react) with gold gradient
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -42,14 +41,18 @@ Preferred communication style: Simple, everyday language.
 - **Routing:** Wouter
 - **State Management:** TanStack React Query
 - **UI Components:** shadcn/ui (Radix UI primitives)
-- **Styling:** Tailwind CSS with custom design tokens (deep navy + gold)
-- **Fonts:** Cinzel (display) and Manrope (body)
-- **Logo:** ShieldCheck icon (lucide-react) with gold gradient background
+- **Styling:** Tailwind CSS with custom design tokens (Deep navy #002147, Platinum #E5E4E2)
+- **Fonts:** Montserrat (display/headings), Cinzel (display), Manrope/Open Sans (body)
+- **Logo:** ShieldCheck icon (lucide-react) with gold gradient
 
 **Key Design Decisions:**
 - Component library uses New York style shadcn/ui for a polished, professional look.
 - Path aliases (`@/` for client/src, `@shared/` for shared code) for organization.
 - Protected routes enforce authentication.
+- Public landing page features immersive dark hero with animated elements (Framer Motion), social proof, "How It Works" section, two revenue streams, Merchant Growth Platform tiers, income scenarios, compensation plan details, testimonials, platform tools, 30-day roadmap, compliance information (FTC-compliant), FAQs, and a final CTA.
+- Comprehensive legal and compliance pages for Income Disclosure, Terms of Service, Privacy Policy, and Refund Policy.
+- Authentication page includes immersive design with dark gradient panel, login/registration forms, sponsor search, placement preference, and a forgot password flow.
+- Training page (Leadershield Academy) offers a 6-module video course with progress tracking, sales playbooks, and a "Your First 30 Days" checklist.
 
 #### Backend Architecture
 **Key Features:**
@@ -72,8 +75,7 @@ Preferred communication style: Simple, everyday language.
 
 #### Data Storage
 - **Database:** PostgreSQL with Drizzle ORM
-- **Schema Location:** `shared/schema.ts`
-- **Migrations:** Custom migration runner with transactional integrity and advisory lock concurrency control ensuring data integrity.
+- **Schema Management:** Drizzle ORM with shared schema (`shared/schema.ts`) and custom migration runner with transactional integrity and advisory lock concurrency control.
 
 **Core Data Models:**
 - `agents`: User accounts, binary tree structure (sponsorId, placementId, leg).
