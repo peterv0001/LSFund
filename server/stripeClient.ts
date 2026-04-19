@@ -58,19 +58,3 @@ export async function getStripeSecretKey(): Promise<string> {
   return secretKey;
 }
 
-let stripeSyncInstance: any = null;
-
-export async function getStripeSync() {
-  if (!stripeSyncInstance) {
-    const { StripeSync } = await import('stripe-replit-sync');
-    const secretKey = await getStripeSecretKey();
-    stripeSyncInstance = new StripeSync({
-      poolConfig: {
-        connectionString: process.env.DATABASE_URL!,
-        max: 2,
-      },
-      stripeSecretKey: secretKey,
-    });
-  }
-  return stripeSyncInstance;
-}

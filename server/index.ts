@@ -6,8 +6,10 @@ import { runMigrations } from "./migrations";
 import { startScheduler } from "./scheduler";
 import { logSchemaHealth } from "./schema-health";
 import { WebhookHandlers } from "./webhookHandlers";
-import { getStripeSync, getStripePublishableKey } from "./stripeClient";
-import { runMigrations as runStripeMigrations } from "stripe-replit-sync";
+import { getStripePublishableKey, getUncachableStripeClient } from "./stripeClient";
+import { db } from "./db";
+import { platformSettings } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const app = express();
 const httpServer = createServer(app);
@@ -88,32 +90,92 @@ app.use((req, res, next) => {
 });
 
 async function initStripe() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.warn('[Stripe] DATABASE_URL not set, skipping Stripe init');
-    return;
-  }
-
   try {
-    console.log('[Stripe] Running stripe-replit-sync migrations...');
-    await runStripeMigrations({ databaseUrl, schema: 'stripe' });
-    console.log('[Stripe] Stripe schema ready');
-
-    const stripeSync = await getStripeSync();
+    const stripe = await getUncachableStripeClient();
 
     const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
-    if (webhookBaseUrl && webhookBaseUrl !== 'https://undefined') {
-      console.log('[Stripe] Setting up managed webhook...');
-      await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
-      console.log('[Stripe] Webhook configured');
+    if (!webhookBaseUrl || webhookBaseUrl === 'https://undefined') {
+      console.warn('[Stripe] REPLIT_DOMAINS not set, skipping webhook setup');
+      return;
     }
 
-    stripeSync.syncBackfill()
-      .then(() => console.log('[Stripe] Data sync complete'))
-      .catch((err: any) => console.error('[Stripe] Sync error:', err));
+    const webhookUrl = `${webhookBaseUrl}/api/stripe/webhook`;
+    console.log(`[Stripe] Setting up webhook for ${webhookUrl}`);
+
+    const [existingSecretRow] = await db.select()
+      .from(platformSettings)
+      .where(eq(platformSettings.key, 'stripe_webhook_secret'));
+
+    if (existingSecretRow) {
+      const existingEndpointIdRow = await db.select()
+        .from(platformSettings)
+        .where(eq(platformSettings.key, 'stripe_webhook_endpoint_id'));
+      const endpointId = existingEndpointIdRow[0]?.value as string | undefined;
+
+      if (endpointId) {
+        try {
+          await stripe.webhookEndpoints.retrieve(endpointId);
+          console.log('[Stripe] Webhook endpoint already configured');
+          return;
+        } catch {
+          console.warn('[Stripe] Stored endpoint no longer valid, recreating...');
+        }
+      } else {
+        // Secret is stored but endpoint ID is missing — verify endpoint exists by URL before trusting the secret
+        console.warn('[Stripe] Webhook secret found but endpoint ID missing — verifying by URL');
+        const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
+        const byUrl = endpoints.data.find((ep) => ep.url === webhookUrl);
+        if (byUrl) {
+          // Endpoint exists; store its ID for future checks (secret is already stored)
+          await db.insert(platformSettings)
+            .values({ key: 'stripe_webhook_endpoint_id', value: byUrl.id })
+            .onConflictDoUpdate({
+              target: platformSettings.key,
+              set: { value: byUrl.id, updatedAt: new Date() },
+            });
+          console.log(`[Stripe] Webhook endpoint verified (${byUrl.id}), endpoint ID stored`);
+          return;
+        }
+        // Endpoint not found — fall through to recreate it (secret will be refreshed below)
+        console.warn('[Stripe] No matching endpoint found for URL, recreating...');
+      }
+    }
+
+    const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
+    const existing = endpoints.data.find((ep) => ep.url === webhookUrl);
+
+    if (existing) {
+      console.log(`[Stripe] Webhook endpoint exists (${existing.id}) but secret is unknown — deleting and recreating`);
+      await stripe.webhookEndpoints.del(existing.id);
+    }
+
+    const endpoint = await stripe.webhookEndpoints.create({
+      url: webhookUrl,
+      enabled_events: [
+        'invoice.paid',
+        'invoice.payment_failed',
+        'customer.subscription.deleted',
+      ],
+    });
+
+    await db.insert(platformSettings)
+      .values({ key: 'stripe_webhook_secret', value: endpoint.secret! })
+      .onConflictDoUpdate({
+        target: platformSettings.key,
+        set: { value: endpoint.secret!, updatedAt: new Date() },
+      });
+
+    await db.insert(platformSettings)
+      .values({ key: 'stripe_webhook_endpoint_id', value: endpoint.id })
+      .onConflictDoUpdate({
+        target: platformSettings.key,
+        set: { value: endpoint.id, updatedAt: new Date() },
+      });
+
+    console.log(`[Stripe] Webhook endpoint created (${endpoint.id}) and secret stored`);
   } catch (error: any) {
     console.error('[Stripe] Init failed:', error.message);
-    // Non-fatal - app continues without Stripe if credentials aren't available
+    // Non-fatal - app continues without Stripe webhook if credentials aren't available
   }
 }
 

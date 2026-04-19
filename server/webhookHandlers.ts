@@ -1,10 +1,10 @@
-import { getStripeSync } from './stripeClient';
 import { db } from './db';
-import { subscriptions } from '@shared/schema';
+import { subscriptions, platformSettings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
 import { CONFIG } from './config';
 import Stripe from 'stripe';
+import { getUncachableStripeClient } from './stripeClient';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -16,8 +16,48 @@ export class WebhookHandlers {
       );
     }
 
-    const sync = await getStripeSync();
-    await sync.processWebhook(payload, signature);
+    const [row] = await db.select().from(platformSettings).where(eq(platformSettings.key, 'stripe_webhook_secret'));
+    const webhookSecret = row?.value as string | undefined;
+
+    if (!webhookSecret) {
+      throw new Error('[Webhook] No stripe_webhook_secret found in platform_settings — cannot verify signature');
+    }
+
+    const stripe = await getUncachableStripeClient();
+    let event: Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (err: any) {
+      throw new Error(`Webhook signature verification failed: ${err.message}`);
+    }
+
+    console.log(`[Webhook] Processing event: ${event.type}`);
+
+    switch (event.type) {
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+        if (subId) {
+          await WebhookHandlers.handleInvoicePaid(subId, invoice);
+        }
+        break;
+      }
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+        if (subId) {
+          await WebhookHandlers.handleInvoicePaymentFailed(subId);
+        }
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object as Stripe.Subscription;
+        await WebhookHandlers.handleSubscriptionDeleted(sub.id);
+        break;
+      }
+      default:
+        console.log(`[Webhook] Unhandled event type: ${event.type}`);
+    }
   }
 
   static async handleInvoicePaid(stripeSubscriptionId: string, invoiceData: any): Promise<void> {
