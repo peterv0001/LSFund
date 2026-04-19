@@ -59,3 +59,10 @@ timeoutMs = 20000
 
 [agent]
 integrations = ["stripe:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+STRIPE_PRICE_TIER_1 = "price_1TNkzdA4YyDC2xraN0ZIE9gI"
+STRIPE_PRICE_TIER_2 = "price_1TNkzdA4YyDC2xraSXMMsIoC"
+STRIPE_PRICE_TIER_3 = "price_1TNkzdA4YyDC2xra77sJOW3n"
