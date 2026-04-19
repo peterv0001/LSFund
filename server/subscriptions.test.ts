@@ -1105,4 +1105,15 @@ describe("getActiveSubscriptionRevenue – status filtering", () => {
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, cancelledSub.id));
     }
   });
+
+  it("returns 0 when all subscriptions are expired", async () => {
+    const expiredSub = await createTestSubscription(agentId, "expired");
+
+    try {
+      const revenue = await storage.getActiveSubscriptionRevenue(agentId);
+      expect(revenue).toBe(0);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, expiredSub.id));
+    }
+  });
 });
