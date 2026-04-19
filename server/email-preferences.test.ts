@@ -129,6 +129,9 @@ async function cleanupAgent(agentId: number) {
       )
     );
   await db
+    .delete(schema.notifications)
+    .where(eq(schema.notifications.agentId, agentId));
+  await db
     .delete(schema.subscriptions)
     .where(eq(schema.subscriptions.agentId, agentId));
   await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
@@ -529,5 +532,173 @@ describe("preference gate unit tests – explicit null emailPreferences", () => 
     const withNull = emailGate("paused", false, null);
     const withEmpty = emailGate("paused", false, {});
     expect(withNull.paused).toBe(withEmpty.paused);
+  });
+});
+
+// ── In-app notification delivery regardless of email preferences ───────────────
+//
+// These tests assert that storage.createNotification is always called (a
+// notification row appears in the DB) when a subscription status changes,
+// even when every email preference flag is explicitly set to false.  The
+// notification creation must NOT be gated behind any email-preference check.
+
+async function getNotificationsForAgent(agentId: number) {
+  return db
+    .select()
+    .from(schema.notifications)
+    .where(eq(schema.notifications.agentId, agentId));
+}
+
+describe("in-app notification delivery – agent self-service route", () => {
+  it("creates a paused notification even when emailOnPaused is false", async () => {
+    const agent = await createAgent("notif-agent-pause", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "paused" })
+      .expect(200);
+
+    await shortDelay(50);
+
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(notifs.length).toBeGreaterThan(0);
+    expect(
+      notifs.some(
+        (n) =>
+          n.title === "Subscription Paused: Test Merchant" &&
+          n.message?.includes("Test Merchant")
+      )
+    ).toBe(true);
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("creates a cancelled notification even when emailOnCancelled is false", async () => {
+    const agent = await createAgent("notif-agent-cancel", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "cancelled" })
+      .expect(200);
+
+    await shortDelay(50);
+
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(notifs.length).toBeGreaterThan(0);
+    expect(
+      notifs.some(
+        (n) =>
+          n.title === "Subscription Cancelled: Test Merchant" &&
+          n.message?.includes("Test Merchant")
+      )
+    ).toBe(true);
+
+    await cleanupAgent(agent.id);
+  });
+});
+
+describe("in-app notification delivery – admin route", () => {
+  it("creates a paused notification even when agent emailOnPaused is false", async () => {
+    const agent = await createAgent("notif-admin-pause", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "paused" })
+      .expect(200);
+
+    await shortDelay(50);
+
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(notifs.length).toBeGreaterThan(0);
+    expect(
+      notifs.some(
+        (n) =>
+          n.title === "Subscription Paused: Test Merchant" &&
+          n.message?.includes("Test Merchant")
+      )
+    ).toBe(true);
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("creates a cancelled notification even when agent emailOnCancelled is false", async () => {
+    const agent = await createAgent("notif-admin-cancel", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "cancelled" })
+      .expect(200);
+
+    await shortDelay(50);
+
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(notifs.length).toBeGreaterThan(0);
+    expect(
+      notifs.some(
+        (n) =>
+          n.title === "Subscription Cancelled: Test Merchant" &&
+          n.message?.includes("Test Merchant")
+      )
+    ).toBe(true);
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("creates a reactivated notification even when agent emailOnReactivated is false", async () => {
+    const agent = await createAgent("notif-admin-react", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "paused");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "active" })
+      .expect(200);
+
+    await shortDelay(50);
+
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(notifs.length).toBeGreaterThan(0);
+    expect(
+      notifs.some(
+        (n) =>
+          n.title === "Subscription Reactivated: Test Merchant" &&
+          n.message?.includes("Test Merchant")
+      )
+    ).toBe(true);
+
+    await cleanupAgent(agent.id);
   });
 });
