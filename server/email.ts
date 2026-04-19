@@ -353,6 +353,68 @@ const templates = {
     `,
   }),
 
+  subscriptionExpiringWarning: (data: { firstName: string; merchantName: string; tier: string; expirationDate: string; daysUntilExpiry: number; dashboardUrl: string }) => ({
+    subject: `⚠️ Subscription Expiring Soon: ${data.merchantName} (${data.daysUntilExpiry} days left)`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Subscription Expiring Soon</h1>
+    </div>
+
+    <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
+      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        Your subscription for <strong>${data.merchantName}</strong> is expiring in <strong>${data.daysUntilExpiry} day${data.daysUntilExpiry === 1 ? '' : 's'}</strong>. Once expired, commission accrual for this merchant will stop.
+      </p>
+
+      <div style="background: #faf5ff; border: 1px solid #c4b5fd; border-radius: 12px; padding: 24px; margin: 20px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Merchant</span>
+          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Tier</span>
+          <strong style="color: #1e3a5f;">${data.tier}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #c4b5fd;">
+          <span style="color: #718096;">Expiration Date</span>
+          <strong style="color: #7c3aed;">${data.expirationDate}</strong>
+        </div>
+      </div>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 20px 0;">
+        To keep your commission accrual active for this merchant, please take action before the expiration date. Visit your dashboard to manage this subscription.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Manage Your Subscription →
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 14px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        If you have questions about this subscription, please contact support.
+      </p>
+    </div>
+
+    <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
+      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
   subscriptionExpired: (data: { firstName: string; merchantName: string; tier: string; effectiveDate: string; dashboardUrl: string }) => ({
     subject: `⏰ Subscription Expired: ${data.merchantName}`,
     html: `
@@ -594,6 +656,31 @@ export const emailService = {
       console.log(`[Email] Password reset email sent to ${to}`);
     } catch (error) {
       console.error('[Email] Failed to send password reset email:', error);
+    }
+  },
+
+  async sendSubscriptionExpiringWarningEmail(to: string, data: { firstName: string; merchantName: string; tier: string; expirationDate: string; daysUntilExpiry: number }) {
+    if (!process.env.RESEND_API_KEY) {
+      console.log('[Email] Skipping subscription expiring warning email - RESEND_API_KEY not set');
+      return;
+    }
+
+    try {
+      const template = templates.subscriptionExpiringWarning({
+        ...data,
+        dashboardUrl: `${APP_URL}/subscriptions`,
+      });
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+
+      console.log(`[Email] Subscription expiring warning email sent to ${to}`);
+    } catch (error) {
+      console.error('[Email] Failed to send subscription expiring warning email:', error);
     }
   },
 

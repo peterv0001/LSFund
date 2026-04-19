@@ -1627,6 +1627,21 @@ export class DatabaseStorage {
       ));
   }
 
+  async getSubscriptionsApproachingExpiry(daysAhead: number): Promise<Subscription[]> {
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+    const windowStart = new Date(windowEnd.getTime() - 60 * 60 * 1000); // 1-hour window
+    return await db.select().from(subscriptions)
+      .where(and(
+        gte(subscriptions.endDate, windowStart),
+        lte(subscriptions.endDate, windowEnd),
+        or(
+          eq(subscriptions.status, 'active'),
+          eq(subscriptions.status, 'paused')
+        )
+      ));
+  }
+
   async getActiveSubscriptionRevenue(agentId: number): Promise<number> {
     const subs = await db.select().from(subscriptions)
       .where(and(eq(subscriptions.agentId, agentId), eq(subscriptions.status, 'active')));
