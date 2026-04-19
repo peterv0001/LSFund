@@ -468,15 +468,23 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
     try {
       const cookie = await loginAsAdmin();
 
-      await request(testApp)
+      const firstRes = await request(testApp)
         .post("/api/admin/subscriptions/calculate-commissions")
         .set("Cookie", cookie)
         .expect(200);
 
-      await request(testApp)
+      // First call: commission created, skipped should be 0 for this agent's sub
+      expect(firstRes.body).toHaveProperty("skipped");
+
+      const secondRes = await request(testApp)
         .post("/api/admin/subscriptions/calculate-commissions")
         .set("Cookie", cookie)
         .expect(200);
+
+      // Second call: commission already exists, skipped should be >= 1
+      expect(secondRes.body).toHaveProperty("skipped");
+      expect(secondRes.body.skipped).toBeGreaterThanOrEqual(1);
+      expect(secondRes.body.processed).toBe(0);
 
       const agentCommissions = await db
         .select()

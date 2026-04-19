@@ -206,7 +206,8 @@ export default function AdminCommissions() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'commissions'] });
-      toast({ title: "Success", description: `Subscription commissions calculated for ${data.processed} subscriptions` });
+      const skippedNote = data.skipped > 0 ? `, ${data.skipped} skipped (already existed)` : '';
+      toast({ title: "Success", description: `Subscription commissions calculated for ${data.processed} subscriptions${skippedNote}` });
     },
   });
 

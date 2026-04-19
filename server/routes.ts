@@ -2225,6 +2225,7 @@ export async function registerRoutes(
         s.status === 'active' && (s.billingStatus === 'active' || s.billingStatus === null)
       );
       let processed = 0;
+      let skipped = 0;
       const periodDate = new Date().toISOString().split('T')[0];
       const now = new Date();
       
@@ -2251,7 +2252,7 @@ export async function registerRoutes(
         
         if (commissionAmount > 0) {
           const existing = await storage.findSubscriptionCommission(sub.agentId, sub.id, periodDate, commType);
-          if (existing) continue;
+          if (existing) { skipped++; continue; }
           await storage.createCommission({
             agentId: sub.agentId,
             subscriptionId: sub.id,
@@ -2278,7 +2279,7 @@ export async function registerRoutes(
         }
       }
       
-      res.json({ message: "Subscription commissions calculated", processed, totalActive: activeSubs.length });
+      res.json({ message: "Subscription commissions calculated", processed, skipped, totalActive: activeSubs.length });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Subscription commission calculation failed" });
