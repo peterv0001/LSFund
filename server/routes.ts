@@ -3044,6 +3044,27 @@ export async function registerRoutes(
       return res.status(400).json({ message: `Migration "${name}" has not been applied` });
     }
 
+    // Block revert if any later migrations in the list are still applied
+    const migrationIndex = migrations.findIndex((m) => m.name === name);
+    const laterMigrations = migrations.slice(migrationIndex + 1);
+    const appliedLater: string[] = [];
+    for (const later of laterMigrations) {
+      const laterResult = await pool.query<{ exists: boolean }>(
+        `SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE name = $1) AS exists`,
+        [later.name]
+      );
+      if (laterResult.rows[0].exists) {
+        appliedLater.push(later.name);
+      }
+    }
+    if (appliedLater.length > 0) {
+      const list = appliedLater.map((n) => `"${n}"`).join(", ");
+      const plural = appliedLater.length > 1 ? "s" : "";
+      return res.status(400).json({
+        message: `Cannot revert "${name}" — the following later migration${plural} must be reverted first: ${list}`,
+      });
+    }
+
     try {
       await revertMigration(name);
       await storage.logActivity({

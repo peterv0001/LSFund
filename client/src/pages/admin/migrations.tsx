@@ -128,6 +128,16 @@ export default function AdminMigrations() {
       .map((m) => m.name);
   }
 
+  // For each applied migration, find any later migrations (by list order) that are still applied
+  function appliedSuccessors(migrationName: string): string[] {
+    if (!migrations) return [];
+    const idx = migrations.findIndex((m) => m.name === migrationName);
+    return migrations
+      .slice(idx + 1)
+      .filter((m) => appliedNames.has(m.name))
+      .map((m) => m.name);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <AdminSidebar />
@@ -180,7 +190,10 @@ export default function AdminMigrations() {
                     <p className="px-6 py-4 text-sm text-gray-400">No migrations have been applied yet.</p>
                   ) : (
                     <ul className="divide-y divide-gray-100">
-                      {applied.map((m) => (
+                      {applied.map((m) => {
+                        const successors = appliedSuccessors(m.name);
+                        const isUnsafeRevert = successors.length > 0;
+                        return (
                         <li
                           key={m.name}
                           className="flex items-center justify-between px-6 py-4"
@@ -214,10 +227,31 @@ export default function AdminMigrations() {
                                   </TooltipContent>
                                 </Tooltip>
                               )}
+                              {isUnsafeRevert && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span data-testid={`badge-unsafe-revert-${m.name}`}>
+                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <span className="text-xs">
+                                      Reverting is unsafe — later migration{successors.length > 1 ? "s are" : " is"} still applied: {successors.join(", ")}
+                                    </span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
                               Applied {m.appliedAt ? new Date(m.appliedAt).toLocaleString() : ""}
                             </p>
+                            {isUnsafeRevert && (
+                              <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1" data-testid={`text-unsafe-revert-${m.name}`}>
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                Cannot revert — later migration{successors.length > 1 ? "s" : ""} still applied:{" "}
+                                <span className="font-mono">{successors.join(", ")}</span>
+                              </p>
+                            )}
                           </div>
 
                           {m.hasDown ? (
@@ -237,8 +271,21 @@ export default function AdminMigrations() {
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Revert migration?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will run the rollback for <span className="font-mono font-semibold">{m.name}</span>. This action modifies the database schema and cannot be undone without re-applying the migration.
+                                  <AlertDialogDescription asChild>
+                                    <div className="space-y-3">
+                                      <p>
+                                        This will run the rollback for <span className="font-mono font-semibold">{m.name}</span>. This action modifies the database schema and cannot be undone without re-applying the migration.
+                                      </p>
+                                      {isUnsafeRevert && (
+                                        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800" data-testid={`warning-unsafe-revert-dialog-${m.name}`}>
+                                          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                                          <p className="text-sm font-medium">
+                                            This revert will be blocked. The following later migration{successors.length > 1 ? "s are" : " is"} still applied and must be reverted first:{" "}
+                                            <span className="font-mono font-semibold">{successors.join(", ")}</span>
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -278,7 +325,8 @@ export default function AdminMigrations() {
                             </Tooltip>
                           )}
                         </li>
-                      ))}
+                      );
+                      })}
                     </ul>
                   )}
                 </CardContent>
