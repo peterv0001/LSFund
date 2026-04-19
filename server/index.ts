@@ -23,7 +23,7 @@ declare module "http" {
 // CRITICAL: Register Stripe webhook route BEFORE express.json() middleware
 // Stripe webhooks require raw Buffer body for signature verification
 app.post(
-  '/api/stripe/webhook',
+  '/api/webhooks/stripe',
   express.raw({ type: 'application/json' }),
   async (req, res) => {
     const signature = req.headers['stripe-signature'];
@@ -99,7 +99,7 @@ async function initStripe() {
       return;
     }
 
-    const webhookUrl = `${webhookBaseUrl}/api/stripe/webhook`;
+    const webhookUrl = `${webhookBaseUrl}/api/webhooks/stripe`;
     console.log(`[Stripe] Setting up webhook for ${webhookUrl}`);
 
     const [existingSecretRow] = await db.select()
@@ -114,9 +114,12 @@ async function initStripe() {
 
       if (endpointId) {
         try {
-          await stripe.webhookEndpoints.retrieve(endpointId);
-          console.log('[Stripe] Webhook endpoint already configured');
-          return;
+          const ep = await stripe.webhookEndpoints.retrieve(endpointId);
+          if (ep.url === webhookUrl) {
+            console.log('[Stripe] Webhook endpoint already configured');
+            return;
+          }
+          console.warn(`[Stripe] Stored endpoint URL (${ep.url}) doesn't match expected (${webhookUrl}) — recreating`);
         } catch {
           console.warn('[Stripe] Stored endpoint no longer valid, recreating...');
         }

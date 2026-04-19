@@ -16,11 +16,13 @@ export class WebhookHandlers {
       );
     }
 
+    const envSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const [row] = await db.select().from(platformSettings).where(eq(platformSettings.key, 'stripe_webhook_secret'));
-    const webhookSecret = row?.value as string | undefined;
+    const dbSecret = row?.value as string | undefined;
+    const webhookSecret = envSecret || dbSecret;
 
     if (!webhookSecret) {
-      throw new Error('[Webhook] No stripe_webhook_secret found in platform_settings — cannot verify signature');
+      throw new Error('[Webhook] No STRIPE_WEBHOOK_SECRET env var or stripe_webhook_secret in platform_settings — cannot verify signature');
     }
 
     const stripe = await getUncachableStripeClient();
