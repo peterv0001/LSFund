@@ -4,7 +4,7 @@ import { emailService } from "./email";
 const EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const EXPIRY_WARNING_DAYS = 7;
 
-async function expireOverdueSubscriptions(): Promise<void> {
+export async function expireOverdueSubscriptions(): Promise<void> {
   try {
     const due = await storage.getSubscriptionsDueForExpiry();
     if (due.length === 0) return;

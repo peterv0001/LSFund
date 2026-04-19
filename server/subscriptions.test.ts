@@ -1167,3 +1167,107 @@ describe("getActiveSubscriptionRevenue – status filtering", () => {
     }
   });
 });
+
+// =========================================================
+// Storage layer – getSubscriptionsDueForExpiry
+// =========================================================
+
+async function createTestSubscriptionWithEndDate(
+  agentId: number,
+  status: "active" | "paused" | "cancelled" | "expired",
+  endDate: Date | null
+) {
+  const [sub] = await db
+    .insert(schema.subscriptions)
+    .values({
+      agentId,
+      merchantName: "Expiry Test Corp",
+      tier: "tier_1",
+      monthlyAmount: "99.00",
+      status,
+      endDate,
+    })
+    .returning();
+  return sub;
+}
+
+describe("getSubscriptionsDueForExpiry – returns subscriptions past their endDate", () => {
+  it("returns an active subscription whose endDate is in the past", async () => {
+    const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sub = await createTestSubscriptionWithEndDate(agentId, "active", pastDate);
+
+    try {
+      const due = await storage.getSubscriptionsDueForExpiry();
+      const ids = due.map((s) => s.id);
+      expect(ids).toContain(sub.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("returns a paused subscription whose endDate is in the past", async () => {
+    const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sub = await createTestSubscriptionWithEndDate(agentId, "paused", pastDate);
+
+    try {
+      const due = await storage.getSubscriptionsDueForExpiry();
+      const ids = due.map((s) => s.id);
+      expect(ids).toContain(sub.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+});
+
+describe("getSubscriptionsDueForExpiry – excludes subscriptions that should not be expired", () => {
+  it("does not include a subscription with no endDate", async () => {
+    const sub = await createTestSubscriptionWithEndDate(agentId, "active", null);
+
+    try {
+      const due = await storage.getSubscriptionsDueForExpiry();
+      const ids = due.map((s) => s.id);
+      expect(ids).not.toContain(sub.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("does not include an active subscription with a future endDate", async () => {
+    const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const sub = await createTestSubscriptionWithEndDate(agentId, "active", futureDate);
+
+    try {
+      const due = await storage.getSubscriptionsDueForExpiry();
+      const ids = due.map((s) => s.id);
+      expect(ids).not.toContain(sub.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("does not include an already-expired subscription even with a past endDate", async () => {
+    const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sub = await createTestSubscriptionWithEndDate(agentId, "expired", pastDate);
+
+    try {
+      const due = await storage.getSubscriptionsDueForExpiry();
+      const ids = due.map((s) => s.id);
+      expect(ids).not.toContain(sub.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("does not include a cancelled subscription even with a past endDate", async () => {
+    const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sub = await createTestSubscriptionWithEndDate(agentId, "cancelled", pastDate);
+
+    try {
+      const due = await storage.getSubscriptionsDueForExpiry();
+      const ids = due.map((s) => s.id);
+      expect(ids).not.toContain(sub.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+});
