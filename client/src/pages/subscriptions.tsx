@@ -1088,8 +1088,9 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
   const page = Math.max(1, parseInt(searchParams.get("actPage") ?? "1", 10) || 1);
   const subscriptionId = searchParams.get("actSub") ?? "all";
   const action = searchParams.get("actAction") ?? "all";
+  const actSearch = searchParams.get("actSearch") ?? "";
 
-  const updateUrl = (updates: { actPage?: string; actSub?: string; actAction?: string }) => {
+  const updateUrl = (updates: { actPage?: string; actSub?: string; actAction?: string; actSearch?: string }) => {
     const next = new URLSearchParams(search);
     if (updates.actPage !== undefined) {
       if (updates.actPage === "1") next.delete("actPage");
@@ -1103,6 +1104,10 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
       if (updates.actAction === "all") next.delete("actAction");
       else next.set("actAction", updates.actAction);
     }
+    if (updates.actSearch !== undefined) {
+      if (!updates.actSearch.trim()) next.delete("actSearch");
+      else next.set("actSearch", updates.actSearch.trim());
+    }
     const qs = next.toString();
     setLocation(qs ? `?${qs}` : window.location.pathname, { replace: true });
   };
@@ -1111,11 +1116,12 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (subscriptionId !== "all") params.set("subscriptionId", subscriptionId);
     if (action !== "all") params.set("action", action);
+    if (actSearch.trim()) params.set("search", actSearch.trim());
     return `/api/subscriptions/history?${params.toString()}`;
   };
 
   const { data, isLoading, isError, refetch } = useQuery<AllActivityResponse>({
-    queryKey: ["/api/subscriptions/history", page, subscriptionId, action],
+    queryKey: ["/api/subscriptions/history", page, subscriptionId, action, actSearch],
     queryFn: async () => {
       const res = await fetch(buildUrl(), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load activity");
@@ -1135,10 +1141,20 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
     updateUrl({ actAction: value, actPage: "1" });
   };
 
-  const filtersActive = subscriptionId !== "all" || action !== "all";
+  const filtersActive = subscriptionId !== "all" || action !== "all" || actSearch.trim() !== "";
 
   const filterBar = (
     <div className="flex flex-wrap gap-3 mb-5" data-testid="activity-filter-bar">
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground font-medium">Search</label>
+        <Input
+          className="h-8 text-sm w-52"
+          placeholder="Search activity..."
+          value={actSearch}
+          onChange={(e) => updateUrl({ actSearch: e.target.value, actPage: "1" })}
+          data-testid="input-activity-search"
+        />
+      </div>
       <div className="flex flex-col gap-1">
         <label className="text-xs text-muted-foreground font-medium">Subscription</label>
         <Select value={subscriptionId} onValueChange={handleSubscriptionChange}>
@@ -1177,7 +1193,7 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
             variant="ghost"
             size="sm"
             className="h-8 text-xs text-muted-foreground"
-            onClick={() => updateUrl({ actSub: "all", actAction: "all", actPage: "1" })}
+            onClick={() => updateUrl({ actSub: "all", actAction: "all", actSearch: "", actPage: "1" })}
             data-testid="button-clear-activity-filters"
           >
             Clear filters

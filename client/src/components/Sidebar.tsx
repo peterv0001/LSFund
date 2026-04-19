@@ -228,17 +228,7 @@ export function Sidebar() {
       </aside>
 
       {/* Desktop Sidebar */}
-      <style>{`
-        .desktop-sidebar-container {
-          display: none !important;
-        }
-        @media (min-width: 1024px) {
-          .desktop-sidebar-container {
-            display: flex !important;
-          }
-        }
-      `}</style>
-      <aside className="desktop-sidebar-container w-64 bg-primary text-primary-foreground flex-col h-screen fixed left-0 top-0 z-50 shadow-2xl">
+      <aside className="hidden lg:flex w-64 bg-primary text-primary-foreground flex-col h-screen fixed left-0 top-0 z-50 shadow-2xl">
         <SidebarContent />
       </aside>
     </>

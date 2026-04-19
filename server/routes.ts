@@ -1384,6 +1384,9 @@ export async function registerRoutes(
         actionParam = rawAction;
       }
 
+      const rawSearch = req.query.search;
+      const searchParam: string | undefined = typeof rawSearch === 'string' && rawSearch.trim() ? rawSearch.trim() : undefined;
+
       const agentSubs = await storage.getSubscriptionsByAgent(agentId);
       if (agentSubs.length === 0) {
         return res.json({ logs: [], total: 0, page, pageSize });
@@ -1411,6 +1414,7 @@ export async function registerRoutes(
         entityType: 'subscription',
         ...(filteredEntityId ? { entityId: filteredEntityId } : { entityIds: filteredEntityIds }),
         ...(actionParam ? { action: actionParam } : {}),
+        ...(searchParam ? { search: searchParam } : {}),
       });
 
       const safeLog = logs.map(({ id, action, description, createdAt, actorType, entityId }) => ({
