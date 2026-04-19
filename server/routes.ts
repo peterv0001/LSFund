@@ -1454,9 +1454,11 @@ export async function registerRoutes(
         description,
         createdAt,
         actorType,
-        actorName: actorType === 'admin'
-          ? `Admin ${adminMap[actorId] ?? `#${actorId}`}`
-          : null,
+        actorName: actorType === 'system'
+          ? 'System'
+          : actorType === 'admin'
+            ? `Admin ${adminMap[actorId] ?? `#${actorId}`}`
+            : null,
       }));
       res.json(safeLog);
     } catch (err) {
@@ -2000,9 +2002,11 @@ export async function registerRoutes(
       };
 
       const enriched: ActivityEntryResponse[] = logs.map((l) => {
-        const name = l.actorId && actorMap[l.actorId]
-          ? `${actorMap[l.actorId]!.firstName} ${actorMap[l.actorId]!.lastName}`
-          : l.actorId ? `#${l.actorId}` : 'System';
+        const name = l.actorType === 'system'
+          ? 'System'
+          : l.actorId && actorMap[l.actorId]
+            ? `${actorMap[l.actorId]!.firstName} ${actorMap[l.actorId]!.lastName}`
+            : l.actorId ? `#${l.actorId}` : 'System';
         return {
           id: l.id,
           actorId: l.actorId,
