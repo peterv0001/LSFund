@@ -1642,10 +1642,10 @@ export class DatabaseStorage {
       ));
   }
 
-  async getSubscriptionsDueForWarning(): Promise<Subscription[]> {
+  async getSubscriptionsDueForWarning(days: number = 7): Promise<Subscription[]> {
     const now = new Date();
-    const warningWindowStart = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
-    const warningWindowEnd = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);
+    const warningWindowStart = new Date(now.getTime() + (days - 1) * 24 * 60 * 60 * 1000);
+    const warningWindowEnd = new Date(now.getTime() + (days + 1) * 24 * 60 * 60 * 1000);
     return await db.select().from(subscriptions)
       .where(and(
         gte(subscriptions.endDate, warningWindowStart),

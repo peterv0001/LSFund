@@ -858,6 +858,7 @@ export const api = {
             rankRequirements: z.any(),
             binaryBonusCaps: z.any(),
             companyInfo: z.any(),
+            expiryWarningDays: z.number(),
           }),
         },
       },
@@ -869,6 +870,7 @@ export const api = {
           rankRequirements: z.any().optional(),
           binaryBonusCaps: z.any().optional(),
           companyInfo: z.any().optional(),
+          expiryWarningDays: z.number().int().min(1).max(90).optional(),
         }),
         responses: {
           200: z.object({ success: z.boolean() }),

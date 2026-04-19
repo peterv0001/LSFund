@@ -7,7 +7,10 @@ export const EXPIRY_CHECK_INTERVAL_MS = process.env.EXPIRY_CHECK_INTERVAL_MS
 
 async function warnUpcomingExpirations(): Promise<void> {
   try {
-    const due = await storage.getSubscriptionsDueForWarning();
+    const savedDays = await storage.getPlatformSetting('expiryWarningDays');
+    const rawDays = typeof savedDays === 'number' ? savedDays : 7;
+    const expiryWarningDays: number = Math.min(90, Math.max(1, Math.round(rawDays)));
+    const due = await storage.getSubscriptionsDueForWarning(expiryWarningDays);
     if (due.length === 0) return;
 
     console.log(`[Scheduler] Found ${due.length} subscription(s) expiring soon — sending warnings`);

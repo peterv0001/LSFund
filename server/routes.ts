@@ -2609,12 +2609,13 @@ export async function registerRoutes(
         name: "Leadershield Network",
         supportEmail: "support@leadershield.com",
       },
+      expiryWarningDays: saved.expiryWarningDays ?? 7,
     });
   });
 
   app.patch(api.admin.settings.update.path, requireAdmin, async (req, res) => {
     try {
-      const { commissionRates, rankRequirements, binaryBonusCaps, companyInfo } = api.admin.settings.update.input.parse(req.body);
+      const { commissionRates, rankRequirements, binaryBonusCaps, companyInfo, expiryWarningDays } = api.admin.settings.update.input.parse(req.body);
 
       // Persist each provided key to the DB
       if (commissionRates !== undefined) {
@@ -2631,6 +2632,9 @@ export async function registerRoutes(
       if (companyInfo !== undefined) {
         await storage.savePlatformSetting('companyInfo', companyInfo, req.user!.id);
       }
+      if (expiryWarningDays !== undefined) {
+        await storage.savePlatformSetting('expiryWarningDays', expiryWarningDays, req.user!.id);
+      }
 
       await storage.logActivity({
         actorId: req.user!.id,
@@ -2639,7 +2643,7 @@ export async function registerRoutes(
         entityType: 'settings',
         entityId: 0,
         description: `Admin ${req.user!.firstName} ${req.user!.lastName} updated platform settings`,
-        details: { commissionRates, rankRequirements, binaryBonusCaps, companyInfo },
+        details: { commissionRates, rankRequirements, binaryBonusCaps, companyInfo, expiryWarningDays },
       });
 
       res.json({ success: true });

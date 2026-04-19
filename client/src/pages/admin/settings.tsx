@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Building,
   Zap,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ type PlatformSettings = {
   rankRequirements: Record<string, { personalVolume: number; weakLegVolume: number }> | null;
   binaryBonusCaps: Record<string, { rate: number; max: number }> | null;
   companyInfo: { name: string; supportEmail: string } | null;
+  expiryWarningDays: number;
 };
 
 export default function AdminSettings() {
@@ -41,6 +43,7 @@ export default function AdminSettings() {
 
   const [companyInfo, setCompanyInfo] = useState({ name: "", supportEmail: "" });
   const [rankReqs, setRankReqs] = useState<Record<string, { personalVolume: number; weakLegVolume: number }>>({});
+  const [expiryWarningDays, setExpiryWarningDays] = useState<number>(7);
 
   useEffect(() => {
     if (settings) {
@@ -54,6 +57,7 @@ export default function AdminSettings() {
         director: { personalVolume: 50000, weakLegVolume: 30000 },
         partner: { personalVolume: 100000, weakLegVolume: 60000 },
       });
+      setExpiryWarningDays(settings.expiryWarningDays ?? 7);
     }
   }, [settings]);
 
@@ -73,6 +77,11 @@ export default function AdminSettings() {
 
   function handleSaveRankReqs() {
     saveMutation.mutate({ rankRequirements: rankReqs });
+  }
+
+  function handleSaveExpiryWarning() {
+    const days = Math.max(1, Math.min(90, Math.round(expiryWarningDays)));
+    saveMutation.mutate({ expiryWarningDays: days });
   }
 
   function updateRankReq(rank: string, field: "personalVolume" | "weakLegVolume", value: string) {
@@ -187,6 +196,45 @@ export default function AdminSettings() {
                   >
                     {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     Save Rank Requirements
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Expiry Warning Lead Time */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Bell className="w-5 h-5 text-primary" />
+                    Subscription Expiry Warning
+                  </CardTitle>
+                  <CardDescription>
+                    How many days before a subscription expires to send the warning email to the agent (1–90 days)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-end gap-4">
+                    <div className="space-y-1 w-48">
+                      <Label>Days Before Expiry</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={90}
+                        data-testid="input-expiry-warning-days"
+                        value={expiryWarningDays}
+                        onChange={(e) => setExpiryWarningDays(parseInt(e.target.value) || 7)}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 pb-2">
+                      Currently set to <span className="font-medium text-gray-700">{expiryWarningDays} day{expiryWarningDays !== 1 ? 's' : ''}</span> before expiry
+                    </p>
+                  </div>
+                  <Button
+                    data-testid="button-save-expiry-warning"
+                    onClick={handleSaveExpiryWarning}
+                    disabled={saveMutation.isPending}
+                  >
+                    {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Save Warning Lead Time
                   </Button>
                 </CardContent>
               </Card>
