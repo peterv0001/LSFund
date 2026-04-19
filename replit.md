@@ -94,7 +94,7 @@ Preferred communication style: Simple, everyday language.
 - **Platform Fee:** $99/month, with reductions and waivers based on agent revenue.
 ## External Dependencies
 
-- **Stripe Billing:** Payment processing for merchant subscriptions. Utilizes `stripe` npm package, `stripe-replit-sync` for webhook event mirroring (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`), and `@stripe/stripe-js` / `@stripe/react-stripe-js` for frontend elements. Environment variables: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_TIER_1`, `STRIPE_PRICE_TIER_2`, `STRIPE_PRICE_TIER_3`.
+- **Stripe Billing:** Payment processing for merchant subscriptions. Utilizes `stripe` npm package for direct webhook handling (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`), and `@stripe/stripe-js` / `@stripe/react-stripe-js` for frontend elements. Environment variables: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_TIER_1`, `STRIPE_PRICE_TIER_2`, `STRIPE_PRICE_TIER_3`.
 - **PostgreSQL:** Primary database, connected via `DATABASE_URL`.
 - **Drizzle ORM:** Type-safe database queries and schema management.
 - **Passport.js:** Authentication middleware.
