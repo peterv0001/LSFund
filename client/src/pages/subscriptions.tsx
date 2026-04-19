@@ -628,12 +628,12 @@ function UpdateCardDialog({ subId, open, onOpenChange }: { subId: number; open: 
 
 // === Action Icon/Color Helpers ===
 
-const ACTION_STYLES: Record<string, { color: string; dot: string }> = {
-  create: { color: "text-green-700", dot: "bg-green-500" },
-  pause: { color: "text-yellow-700", dot: "bg-yellow-500" },
-  cancel: { color: "text-red-700", dot: "bg-red-500" },
-  reactivate: { color: "text-blue-700", dot: "bg-blue-500" },
-  expire: { color: "text-orange-700", dot: "bg-orange-500" },
+const ACTION_STYLES: Record<string, { color: string; dot: string; label: string }> = {
+  create: { color: "text-green-700", dot: "bg-green-500", label: "Created" },
+  pause: { color: "text-yellow-700", dot: "bg-yellow-500", label: "Paused" },
+  cancel: { color: "text-red-700", dot: "bg-red-500", label: "Cancelled" },
+  reactivate: { color: "text-blue-700", dot: "bg-blue-500", label: "Reactivated" },
+  expire: { color: "text-orange-700", dot: "bg-orange-500", label: "Expired" },
 };
 
 function getActionStyle(action: string) {
@@ -678,8 +678,24 @@ function SubscriptionHistoryTimeline({ subId }: { subId: number }) {
   }
 
   return (
-    <ol className="space-y-2 pt-2" data-testid={`history-list-${subId}`}>
-      {logs.map((log) => {
+    <div>
+      <div
+        className="flex flex-wrap gap-x-3 gap-y-1 pb-2 pt-1"
+        data-testid={`history-legend-${subId}`}
+      >
+        {Object.entries(ACTION_STYLES).map(([key, style]) => (
+          <span
+            key={key}
+            className="flex items-center gap-1"
+            data-testid={`legend-entry-${key}`}
+          >
+            <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
+            <span className="text-[10px] text-muted-foreground">{style.label}</span>
+          </span>
+        ))}
+      </div>
+      <ol className="space-y-2" data-testid={`history-list-${subId}`}>
+        {logs.map((log) => {
         const style = getActionStyle(log.action);
         return (
           <li key={log.id} className="flex items-start gap-2.5" data-testid={`history-entry-${log.id}`}>
@@ -709,7 +725,8 @@ function SubscriptionHistoryTimeline({ subId }: { subId: number }) {
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </div>
   );
 }
 
