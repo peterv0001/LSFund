@@ -99,11 +99,11 @@ export default function AdminAgents() {
     setPage(1);
   };
 
-  const SortIcon = ({ column }: { column: string }) => {
-    if (sortBy !== column) return <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />;
+  const SortIcon = ({ column, testIdPrefix }: { column: string; testIdPrefix?: string }) => {
+    if (sortBy !== column) return <ArrowUpDown data-testid={testIdPrefix ? `${testIdPrefix}-neutral` : undefined} className="w-3.5 h-3.5 text-muted-foreground" />;
     return sortOrder === 'desc'
-      ? <ArrowDown className="w-3.5 h-3.5" />
-      : <ArrowUp className="w-3.5 h-3.5" />;
+      ? <ArrowDown data-testid={testIdPrefix ? `${testIdPrefix}-desc` : undefined} className="w-3.5 h-3.5" />
+      : <ArrowUp data-testid={testIdPrefix ? `${testIdPrefix}-asc` : undefined} className="w-3.5 h-3.5" />;
   };
 
   const { data, isLoading } = useQuery({
@@ -287,7 +287,7 @@ export default function AdminAgents() {
                     className="inline-flex items-center gap-1 font-medium hover:text-foreground transition-colors"
                   >
                     Subscriptions
-                    <SortIcon column="subscriptionCount" />
+                    <SortIcon column="subscriptionCount" testIdPrefix="icon-sort" />
                   </button>
                 </TableHead>
                 <TableHead>
