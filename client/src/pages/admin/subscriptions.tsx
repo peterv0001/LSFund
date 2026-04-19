@@ -98,6 +98,7 @@ type Subscription = {
   cancelledBy: Agent | null;
   reactivatedBy: Agent | null;
   billingStatus: "pending" | "active" | "past_due" | "failed" | "cancelled" | null;
+  stripeSubscriptionId: string | null;
   cardLast4: string | null;
   cardBrand: string | null;
   lastChargedAt: string | null;
@@ -540,6 +541,25 @@ export default function AdminSubscriptions() {
       toast({ title: `Calculated commissions for ${data.processed} of ${data.totalActive} active subscriptions` });
     },
     onError: () => toast({ title: "Failed to calculate commissions", variant: "destructive" }),
+  });
+
+  const retryPaymentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/admin/subscriptions/${id}/retry-payment`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.message || "Payment retry failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.admin.subscriptions.list.path] });
+      toast({ title: "Payment retried successfully", description: "Billing status has been updated." });
+    },
+    onError: (err: Error) => {
+      queryClient.invalidateQueries({ queryKey: [api.admin.subscriptions.list.path] });
+      toast({ title: err.message || "Payment retry failed", variant: "destructive" });
+    },
   });
 
   const activeCount = subscriptions.filter((s) => s.status === "active").length;
@@ -1612,6 +1632,23 @@ export default function AdminSubscriptions() {
                             >
                               <History className="w-4 h-4" />
                             </Button>
+                            {(sub.billingStatus === "past_due" || sub.billingStatus === "failed") && sub.stripeSubscriptionId && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-400 hover:text-red-600"
+                                title="Retry payment with card on file"
+                                data-testid={`button-retry-payment-${sub.id}`}
+                                disabled={retryPaymentMutation.isPending}
+                                onClick={() => retryPaymentMutation.mutate(sub.id)}
+                              >
+                                {retryPaymentMutation.isPending ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

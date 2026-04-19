@@ -88,6 +88,7 @@ type Subscription = {
   cancelledById: number | null;
   cancelledByName: string | null;
   billingStatus: "pending" | "active" | "past_due" | "failed" | "cancelled" | null;
+  stripeSubscriptionId: string | null;
   cardLast4: string | null;
   cardBrand: string | null;
   lastChargedAt: string | null;
@@ -510,6 +511,121 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
   );
 }
 
+// === Update Card Dialog ===
+
+function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const stripe = useStripe();
+  const elements = useElements();
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [cardComplete, setCardComplete] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!stripe || !elements) throw new Error("Stripe not initialized");
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error("Card element not found");
+
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement,
+      });
+      if (error) throw new Error(error.message);
+      if (!paymentMethod) throw new Error("Failed to create payment method");
+
+      const res = await apiRequest("PATCH", `/api/subscriptions/${subId}/payment-method`, {
+        paymentMethodId: paymentMethod.id,
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.message || "Failed to update card");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      toast({ title: "Card updated successfully", description: "Payment has been retried with your new card." });
+      onClose();
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message || "Failed to update card", variant: "destructive" });
+    },
+  });
+
+  if (!stripe || !elements) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="text-sm">Loading payment form…</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Enter a new card to attach to this merchant subscription and retry the outstanding payment.
+      </p>
+      <div>
+        <label className="text-sm font-medium leading-none mb-1.5 block">New Card Details</label>
+        <div
+          className="rounded-md border border-input px-3 py-2.5 bg-background"
+          data-testid="update-card-element"
+        >
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: "14px",
+                  color: "hsl(var(--foreground))",
+                  "::placeholder": { color: "hsl(var(--muted-foreground))" },
+                },
+              },
+            }}
+            onChange={(e) => {
+              setCardError(e.error?.message ?? null);
+              setCardComplete(e.complete);
+            }}
+          />
+        </div>
+        {cardError && <p className="text-sm text-destructive mt-1">{cardError}</p>}
+      </div>
+      <div className="flex justify-end gap-2 pt-1">
+        <Button variant="outline" onClick={onClose} data-testid="button-cancel-update-card">
+          Cancel
+        </Button>
+        <Button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending || !cardComplete}
+          data-testid="button-submit-update-card"
+        >
+          {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Update Card & Retry
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function UpdateCardDialog({ subId, open, onOpenChange }: { subId: number; open: boolean; onOpenChange: (v: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md" data-testid="dialog-update-card">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-primary" />
+            Update Payment Method
+          </DialogTitle>
+        </DialogHeader>
+        <StripeProvider>
+          <UpdateCardDialogInner subId={subId} onClose={() => onOpenChange(false)} />
+        </StripeProvider>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // === Action Icon/Color Helpers ===
 
 const ACTION_STYLES: Record<string, { color: string; dot: string }> = {
@@ -646,6 +762,7 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
   const estimatedComm = getEstimatedCommission(sub);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [updateCardOpen, setUpdateCardOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -673,6 +790,7 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
 
   return (
     <>
+    <UpdateCardDialog subId={sub.id} open={updateCardOpen} onOpenChange={setUpdateCardOpen} />
     <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -812,9 +930,21 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
           data-testid={`banner-payment-failed-${sub.id}`}
         >
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span>
+          <span className="flex-1">
             <strong>Payment {sub.billingStatus === "past_due" ? "past due" : "failed"}.</strong> Commissions are paused until billing is resolved.
           </span>
+          {sub.stripeSubscriptionId && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[10px] px-2 border-red-300 text-red-700 hover:bg-red-100 shrink-0"
+              onClick={() => setUpdateCardOpen(true)}
+              data-testid={`button-update-card-${sub.id}`}
+            >
+              <CreditCard className="w-3 h-3 mr-1" />
+              Update Card
+            </Button>
+          )}
         </div>
       ) : null}
 

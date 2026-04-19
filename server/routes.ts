@@ -1772,6 +1772,99 @@ export async function registerRoutes(
     }
   });
 
+  // Agent update card / retry payment
+  app.patch("/api/subscriptions/:id/payment-method", requireAuth, async (req, res) => {
+    try {
+      const agentId = req.user!.id;
+      const subId = Number(req.params.id);
+      if (!subId || subId <= 0) {
+        return res.status(400).json({ message: 'Invalid subscription ID' });
+      }
+
+      const schema = z.object({ paymentMethodId: z.string().min(1) });
+      const parseResult = schema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: parseResult.error.errors[0].message });
+      }
+      const { paymentMethodId } = parseResult.data;
+
+      // Ensure subscription belongs to this agent
+      const agentSubs = await storage.getSubscriptionsByAgent(agentId);
+      const sub = agentSubs.find((s) => s.id === subId);
+      if (!sub) {
+        return res.status(404).json({ message: 'Subscription not found or access denied' });
+      }
+
+      if (!sub.stripeSubscriptionId || !sub.stripeCustomerId) {
+        return res.status(400).json({ message: 'This subscription does not have an active Stripe billing setup' });
+      }
+
+      const stripe = await getUncachableStripeClient();
+
+      // Attach payment method to customer
+      await stripe.paymentMethods.attach(paymentMethodId, { customer: sub.stripeCustomerId });
+
+      // Set as default on customer and subscription
+      await stripe.customers.update(sub.stripeCustomerId, {
+        invoice_settings: { default_payment_method: paymentMethodId },
+      });
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+        default_payment_method: paymentMethodId,
+      });
+
+      // Retrieve payment method details for local storage
+      const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+      const cardLast4 = pm.card?.last4 ?? null;
+      const cardBrand = pm.card?.brand ?? null;
+
+      // Pay the latest open invoice if one exists
+      let newBillingStatus: 'active' | 'past_due' | 'failed' | undefined;
+      try {
+        const invoices = await stripe.invoices.list({
+          subscription: sub.stripeSubscriptionId,
+          status: 'open',
+          limit: 1,
+        });
+        if (invoices.data.length > 0) {
+          const paid = await stripe.invoices.pay(invoices.data[0].id, {
+            payment_method: paymentMethodId,
+          });
+          newBillingStatus = paid.status === 'paid' ? 'active' : 'past_due';
+        }
+      } catch (invoiceErr: unknown) {
+        // Invoice pay failure — card still attached, status remains past_due/failed
+        const invoiceMsg = invoiceErr instanceof Error ? invoiceErr.message : String(invoiceErr);
+        console.warn('[PaymentRetry] Invoice payment failed after card update:', invoiceMsg);
+        newBillingStatus = 'failed';
+      }
+
+      const updated = await storage.updateSubscriptionBilling(subId, {
+        stripePaymentMethodId: paymentMethodId,
+        cardLast4,
+        cardBrand,
+        ...(newBillingStatus ? { billingStatus: newBillingStatus } : {}),
+      });
+
+      storage.logActivity({
+        actorId: agentId,
+        actorType: 'agent',
+        action: 'update',
+        entityType: 'subscription',
+        entityId: subId,
+        description: `Agent updated payment method for subscription #${subId} (${sub.merchantName}); billing status: ${newBillingStatus ?? 'unchanged'}`,
+        details: { cardLast4, cardBrand, billingStatus: newBillingStatus ?? null },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers['user-agent'] ?? null,
+      }).catch((err) => console.error('[ActivityLog] Failed to log payment method update:', err));
+
+      res.json(updated);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update payment method';
+      console.error('[PaymentMethod] Update failed:', err);
+      res.status(500).json({ message });
+    }
+  });
+
   // Admin subscription management
   app.get("/api/admin/subscriptions", requireAdmin, async (req, res) => {
     const subs = await storage.getAllSubscriptions();
@@ -1855,6 +1948,71 @@ export async function registerRoutes(
     } catch (err) {
       console.error('[Admin] Failed to update subscription end date:', err);
       res.status(500).json({ message: 'Failed to update subscription end date' });
+    }
+  });
+
+  // Admin retry payment with existing payment method on file
+  app.post("/api/admin/subscriptions/:id/retry-payment", requireAdmin, async (req, res) => {
+    try {
+      const subId = Number(req.params.id);
+      if (!subId || subId <= 0) {
+        return res.status(400).json({ message: 'Invalid subscription ID' });
+      }
+
+      const allSubs = await storage.getAllSubscriptions();
+      const sub = allSubs.find((s) => s.id === subId);
+      if (!sub) {
+        return res.status(404).json({ message: 'Subscription not found' });
+      }
+
+      if (!sub.stripeSubscriptionId || !sub.stripeCustomerId) {
+        return res.status(400).json({ message: 'This subscription does not have an active Stripe billing setup' });
+      }
+
+      const stripe = await getUncachableStripeClient();
+
+      // Find the latest open invoice and pay it
+      const invoices = await stripe.invoices.list({
+        subscription: sub.stripeSubscriptionId,
+        status: 'open',
+        limit: 1,
+      });
+
+      if (invoices.data.length === 0) {
+        return res.status(400).json({ message: 'No open invoice found to retry for this subscription' });
+      }
+
+      let newBillingStatus: 'active' | 'past_due' | 'failed';
+      try {
+        const paid = await stripe.invoices.pay(invoices.data[0].id);
+        newBillingStatus = paid.status === 'paid' ? 'active' : 'past_due';
+      } catch (invoiceErr: unknown) {
+        const invoiceMsg = invoiceErr instanceof Error ? invoiceErr.message : 'Payment failed';
+        console.warn('[AdminRetry] Invoice payment failed:', invoiceMsg);
+        newBillingStatus = 'failed';
+        const updated = await storage.updateSubscriptionBilling(subId, { billingStatus: newBillingStatus });
+        return res.status(402).json({ message: invoiceMsg, subscription: updated });
+      }
+
+      const updated = await storage.updateSubscriptionBilling(subId, { billingStatus: newBillingStatus });
+
+      storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'subscription',
+        entityId: subId,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} retried payment for subscription #${subId} (${sub.merchantName}); result: ${newBillingStatus}`,
+        details: { billingStatus: newBillingStatus },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers['user-agent'] ?? null,
+      }).catch((err) => console.error('[ActivityLog] Failed to log admin payment retry:', err));
+
+      res.json(updated);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to retry payment';
+      console.error('[AdminRetry] Failed:', err);
+      res.status(500).json({ message });
     }
   });
 
