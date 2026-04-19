@@ -1042,6 +1042,29 @@ describe("agent subscription status route – activity logging on cancel", () =>
   });
 });
 
+describe("agent subscription status route – activity logging on reactivate", () => {
+  it("logs actorId equal to the agent's ID and actorType 'agent' when an agent reactivates their paused subscription", async () => {
+    const sub = await createTestSubscription(agentRouteAgentId, "paused");
+    const cookie = await loginAsAgent();
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "active" })
+      .expect(200);
+
+    const entry = await pollForActivityLogEntry(sub.id, "reactivate");
+    expect(entry).toBeDefined();
+    expect(entry?.action).toBe("reactivate");
+    expect(entry?.actorType).toBe("agent");
+    expect(entry?.actorId).toBe(agentRouteAgentId);
+    expect(entry?.entityId).toBe(sub.id);
+
+    await cleanupActivityLog(sub.id);
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+});
+
 // =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
