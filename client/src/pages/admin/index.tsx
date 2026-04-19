@@ -1,4 +1,5 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
 import { StatsCard } from "@/components/StatsCard";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@shared/routes";
@@ -51,6 +52,8 @@ export default function AdminDashboard() {
       <AdminSidebar />
       
       <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
+        <SchemaDriftBanner />
+
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-muted-foreground mt-1">

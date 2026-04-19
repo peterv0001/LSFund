@@ -1,6 +1,7 @@
 # Leadershield Network - Agent Portal
 
 ## Overview
+Leadershield Network is a full-stack network marketing (MLM) platform for Merchant Cash Advance (MCA) lending and recurring subscription products (Merchant Growth Platform). It enables agents to sign up, log deals, manage subscriptions, and earn multi-tiered commissions based on GBR waterfall and subscription decay. The platform includes an agent portal, an admin portal, and a public marketing website for recruitment.
 
 Leadershield Network is a full-stack network marketing (MLM) platform for Merchant Cash Advance (MCA) lending and Merchant Growth Platform (subscription products). Its primary purpose is to enable agents to manage their sales, track commissions, and recruit new agents. The platform features an agent portal, an admin portal, and a public marketing website for recruitment.
 
@@ -19,7 +20,6 @@ Leadershield Network is a full-stack network marketing (MLM) platform for Mercha
 - **Fonts:** Montserrat (headings) and Open Sans (body)
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
@@ -68,6 +68,7 @@ Preferred communication style: Simple, everyday language.
 - `payouts`: Payout batch management.
 - `leads`: Lead management and distribution.
 - `course_modules`/`course_progress`: Training system.
+- `notifications`, `announcements`, `resources`, `admin_export_templates`.
 
 ### Commission Engine
 - Implements GBR waterfall, MAC sponsor overrides, subscription commission decay, MCA pairing enhancement, binary bonuses, and platform fee waivers.
@@ -86,5 +87,7 @@ Preferred communication style: Simple, everyday language.
 - **date-fns:** Date utility library.
 - **Radix UI:** Core accessible UI primitives.
 - **Tailwind CSS:** Utility-first styling framework.
+- **Lucide React:** Icon library.
 - **Vite & esbuild:** Frontend and backend bundling.
 - **TypeScript:** Language for full-stack type safety.
+- **Vitest:** Testing framework.
