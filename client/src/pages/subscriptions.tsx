@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp, AlertTriangle, Activity, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
+import { Loader2, Plus, RefreshCw, TrendingDown, Info, MoreVertical, Pause, Play, XCircle, History, ChevronDown, ChevronUp, AlertTriangle, Activity, ChevronLeft, ChevronRight, CreditCard, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInMonths } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -514,13 +514,35 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
 
 // === Update Card Dialog ===
 
+type CardUpdateResult =
+  | { success: true }
+  | { success: false; message: string };
+
+function translateDeclineCode(code: string | null): string {
+  const map: Record<string, string> = {
+    insufficient_funds: "Your card has insufficient funds. Please use a different card.",
+    card_declined: "Your card was declined. Please try a different card.",
+    expired_card: "Your card is expired. Please use a card with a valid expiry date.",
+    incorrect_cvc: "The security code (CVC) was incorrect. Please double-check and try again.",
+    incorrect_number: "The card number is incorrect. Please check and try again.",
+    processing_error: "A processing error occurred. Please try again in a moment.",
+    do_not_honor: "Your bank declined the payment. Please contact your bank or use a different card.",
+    lost_card: "This card has been reported lost. Please use a different card.",
+    stolen_card: "This card has been reported stolen. Please use a different card.",
+    fraudulent: "This transaction was flagged as fraudulent by your bank. Please contact your bank.",
+    generic_decline: "Your card was declined. Please contact your bank or use a different card.",
+  };
+  if (!code) return "Your card was declined. Please try a different card.";
+  return map[code] ?? "Your card was declined. Please try a different card or contact your bank.";
+}
+
 function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () => void }) {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const stripe = useStripe();
   const elements = useElements();
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
+  const [submitResult, setSubmitResult] = useState<CardUpdateResult | null>(null);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -542,15 +564,23 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
         const body = await res.json();
         throw new Error(body.message || "Failed to update card");
       }
-      return res.json();
+      return res.json() as Promise<Subscription & { declineCode: string | null }>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
-      toast({ title: "Card updated successfully", description: "Payment has been retried with your new card." });
-      onClose();
+    onSuccess: (data) => {
+      if (data.billingStatus === "active") {
+        queryClient.setQueryData<Subscription[]>(["/api/subscriptions"], (old) =>
+          old?.map((s) => s.id === subId ? { ...s, ...data } : s) ?? old
+        );
+        queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+        setSubmitResult({ success: true });
+        setTimeout(() => onClose(), 1800);
+      } else {
+        const message = translateDeclineCode(data.declineCode);
+        setSubmitResult({ success: false, message });
+      }
     },
     onError: (err: Error) => {
-      toast({ title: err.message || "Failed to update card", variant: "destructive" });
+      setSubmitResult({ success: false, message: err.message || "Failed to update card. Please try again." });
     },
   });
 
@@ -563,11 +593,30 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
     );
   }
 
+  if (submitResult?.success) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3 text-center" data-testid="update-card-success">
+        <CheckCircle2 className="w-10 h-10 text-green-500" />
+        <p className="font-semibold text-foreground">Payment successful!</p>
+        <p className="text-sm text-muted-foreground">Your card has been updated and the outstanding payment was collected. Commissions will resume shortly.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Enter a new card to attach to this merchant subscription and retry the outstanding payment.
       </p>
+      {submitResult && !submitResult.success && (
+        <div
+          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2.5"
+          data-testid="update-card-error-message"
+        >
+          <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+          <p className="text-sm text-destructive">{submitResult.message}</p>
+        </div>
+      )}
       <div>
         <label className="text-sm font-medium leading-none mb-1.5 block">New Card Details</label>
         <div
@@ -597,12 +646,12 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
           Cancel
         </Button>
         <Button
-          onClick={() => mutation.mutate()}
+          onClick={() => { setSubmitResult(null); mutation.mutate(); }}
           disabled={mutation.isPending || !cardComplete}
           data-testid="button-submit-update-card"
         >
           {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          Update Card & Retry
+          {submitResult && !submitResult.success ? "Try Again" : "Update Card & Retry"}
         </Button>
       </div>
     </div>

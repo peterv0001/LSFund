@@ -1834,6 +1834,7 @@ export async function registerRoutes(
 
       // Pay the latest open invoice if one exists
       let newBillingStatus: 'active' | 'past_due' | 'failed' | undefined;
+      let declineCode: string | null = null;
       try {
         const invoices = await stripe.invoices.list({
           subscription: sub.stripeSubscriptionId,
@@ -1850,6 +1851,10 @@ export async function registerRoutes(
         // Invoice pay failure — card still attached, status remains past_due/failed
         const invoiceMsg = invoiceErr instanceof Error ? invoiceErr.message : String(invoiceErr);
         console.warn('[PaymentRetry] Invoice payment failed after card update:', invoiceMsg);
+        // Extract Stripe decline_code if present
+        if (invoiceErr && typeof invoiceErr === 'object' && 'decline_code' in invoiceErr) {
+          declineCode = (invoiceErr as { decline_code?: string }).decline_code ?? null;
+        }
         newBillingStatus = 'failed';
       }
 
@@ -1872,7 +1877,7 @@ export async function registerRoutes(
         userAgent: req.headers['user-agent'] ?? null,
       }).catch((err) => console.error('[ActivityLog] Failed to log payment method update:', err));
 
-      res.json(updated);
+      res.json({ ...updated, declineCode });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to update payment method';
       console.error('[PaymentMethod] Update failed:', err);
