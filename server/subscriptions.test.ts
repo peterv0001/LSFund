@@ -1066,6 +1066,56 @@ describe("agent subscription status route – activity logging on reactivate", (
 });
 
 // =========================================================
+// PATCH /api/subscriptions/:id/status – cross-agent access guard
+// Verifies that an agent cannot change another agent's subscription.
+// =========================================================
+
+const AGENT_B_EMAIL_PREFIX = `agent-b-test-${Date.now()}`;
+const AGENT_B_PASSWORD = "AgentBTestPass1!";
+let agentBId: number;
+
+beforeAll(async () => {
+  const [agent] = await db
+    .insert(schema.agents)
+    .values({
+      email: `${AGENT_B_EMAIL_PREFIX}@example.com`,
+      password: await hashPasswordForTest(AGENT_B_PASSWORD),
+      firstName: "AgentB",
+      lastName: "CrossTest",
+      currentRank: "agent",
+      highestRank: "agent",
+    })
+    .returning();
+  agentBId = agent.id;
+}, 30000);
+
+afterAll(async () => {
+  await db.delete(schema.agents).where(eq(schema.agents.id, agentBId));
+});
+
+describe("agent subscription status route – cross-agent access guard", () => {
+  it("returns 404 when agent B tries to update a subscription owned by agent A", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+
+    try {
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      await request(testApp)
+        .patch(`/api/subscriptions/${subOwnedByAgentA.id}/status`)
+        .set("Cookie", agentBCookie)
+        .send({ status: "paused" })
+        .expect(404);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+    }
+  });
+});
+
+// =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
 
