@@ -63,19 +63,45 @@ export async function expireOverdueSubscriptions(): Promise<void> {
     console.log(`[Scheduler] Found ${due.length} subscription(s) to auto-expire`);
 
     for (const sub of due) {
+      // Isolate the status transition so a failure logs an admin alert
+      // and the subscription is retried on the next scheduler tick.
       try {
         await storage.updateSubscriptionStatus(sub.id, 'expired');
+      } catch (err) {
+        console.error(`[Scheduler] Failed to auto-expire subscription #${sub.id}:`, err);
 
-        const agent = await storage.getAgent(sub.agentId);
-        if (!agent) continue;
+        storage.logActivity({
+          actorId: 0,
+          actorType: 'system',
+          action: 'error',
+          entityType: 'subscription',
+          entityId: sub.id,
+          description: `Auto-expiry failed for subscription #${sub.id} (merchant: "${sub.merchantName}", tier: ${sub.tier}) — will retry on next scheduler run`,
+          details: {
+            merchantName: sub.merchantName,
+            tier: sub.tier,
+            endDate: sub.endDate,
+            currentStatus: sub.status,
+            error: err instanceof Error ? err.message : String(err),
+          },
+          ipAddress: null,
+          userAgent: null,
+        }).catch((logErr) => console.error(`[Scheduler] Failed to log auto-expiry failure for subscription #${sub.id}:`, logErr));
 
-        const effectiveDate = new Date().toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        });
-        const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        continue;
+      }
 
+      // Status transition succeeded; side effects are fire-and-forget.
+      const agent = await storage.getAgent(sub.agentId).catch(() => null);
+
+      const effectiveDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+      if (agent) {
         storage.createNotification({
           agentId: sub.agentId,
           type: 'system',
@@ -83,38 +109,33 @@ export async function expireOverdueSubscriptions(): Promise<void> {
           message: `Your ${tierLabel} subscription for ${sub.merchantName} has expired as of ${effectiveDate}. Commission accrual has stopped.`,
         }).catch((err) => console.error('[Scheduler] Failed to create expiry notification:', err));
 
-        const emailData = {
+        emailService.sendSubscriptionExpiredEmail(agent.email, {
           firstName: agent.firstName,
           merchantName: sub.merchantName,
           tier: tierLabel,
           effectiveDate,
-        };
-
-        emailService.sendSubscriptionExpiredEmail(agent.email, emailData)
-          .catch((err) => console.error('[Scheduler] Failed to send subscription expired email:', err));
-
-        storage.logActivity({
-          actorId: 0,
-          actorType: 'system',
-          action: 'update',
-          entityType: 'subscription',
-          entityId: sub.id,
-          description: `System auto-expired subscription #${sub.id} for merchant "${sub.merchantName}" (tier: ${sub.tier}) — end date passed`,
-          details: {
-            previousStatus: sub.status,
-            newStatus: 'expired',
-            merchantName: sub.merchantName,
-            tier: sub.tier,
-            endDate: sub.endDate,
-          },
-          ipAddress: null,
-          userAgent: null,
-        }).catch((err) => console.error('[Scheduler] Failed to log auto-expiry activity:', err));
-
-        console.log(`[Scheduler] Auto-expired subscription #${sub.id} for merchant "${sub.merchantName}"`);
-      } catch (err) {
-        console.error(`[Scheduler] Failed to auto-expire subscription #${sub.id}:`, err);
+        }).catch((err) => console.error('[Scheduler] Failed to send subscription expired email:', err));
       }
+
+      storage.logActivity({
+        actorId: 0,
+        actorType: 'system',
+        action: 'update',
+        entityType: 'subscription',
+        entityId: sub.id,
+        description: `System auto-expired subscription #${sub.id} for merchant "${sub.merchantName}" (tier: ${sub.tier}) — end date passed`,
+        details: {
+          previousStatus: sub.status,
+          newStatus: 'expired',
+          merchantName: sub.merchantName,
+          tier: sub.tier,
+          endDate: sub.endDate,
+        },
+        ipAddress: null,
+        userAgent: null,
+      }).catch((err) => console.error('[Scheduler] Failed to log auto-expiry activity:', err));
+
+      console.log(`[Scheduler] Auto-expired subscription #${sub.id} for merchant "${sub.merchantName}"`);
     }
   } catch (err) {
     console.error('[Scheduler] Expiry check failed:', err);

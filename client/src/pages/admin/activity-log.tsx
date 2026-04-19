@@ -92,6 +92,7 @@ const ACTION_OPTIONS = [
   { value: "pause", label: "Pause" },
   { value: "cancel", label: "Cancel" },
   { value: "void", label: "Void" },
+  { value: "error", label: "Error" },
   { value: "release", label: "Release" },
   { value: "clawback", label: "Clawback" },
   { value: "migration", label: "Migration (all)" },
@@ -138,6 +139,7 @@ const ACTION_COLORS: Record<string, string> = {
   reactivate: "bg-green-100 text-green-700",
   run_migration: "bg-green-100 text-green-700",
   revert_migration: "bg-orange-100 text-orange-700",
+  error: "bg-rose-100 text-rose-700",
 };
 
 function formatAction(action: string): string {
