@@ -517,6 +517,7 @@ const ACTION_STYLES: Record<string, { color: string; dot: string }> = {
   pause: { color: "text-yellow-700", dot: "bg-yellow-500" },
   cancel: { color: "text-red-700", dot: "bg-red-500" },
   reactivate: { color: "text-blue-700", dot: "bg-blue-500" },
+  expire: { color: "text-orange-700", dot: "bg-orange-500" },
 };
 
 function getActionStyle(action: string) {
