@@ -105,15 +105,21 @@ test.describe("Notification confirmation dialog", () => {
     await page.getByTestId("dialog-confirm-disable").click();
     await expect(toggle).toHaveAttribute("aria-checked", "false");
 
-    const saveResponse = page.waitForResponse(
-      (res) => res.url().includes("/api/agents/notification-preferences") && res.request().method() === "PATCH"
-    );
     await page.getByTestId("button-save-notification-prefs").click();
-    await saveResponse;
+
+    await expect(page.getByText("Notification preferences saved")).toBeVisible({ timeout: 5000 });
 
     await page.goto("/settings");
     await page.getByTestId("tab-notifications").click();
     await expect(page.getByTestId("toggle-email-on-paused")).toBeVisible({ timeout: 6000 });
     await expect(page.getByTestId("toggle-email-on-paused")).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("success toast appears after saving preferences", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    await page.getByTestId("button-save-notification-prefs").click();
+
+    await expect(page.getByText("Notification preferences saved")).toBeVisible({ timeout: 5000 });
   });
 });
