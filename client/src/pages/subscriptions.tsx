@@ -197,7 +197,6 @@ function StripeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [publishableKey]);
 
-  if (!stripe) return <>{children}</>;
   return <Elements stripe={stripe}>{children}</Elements>;
 }
 
