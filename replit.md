@@ -6,27 +6,25 @@ Leadershield Network is a full-stack network marketing (MLM) platform for Mercha
 **Brand:** Leadershield Network
 **Domain:** leadershield.com
 **Color Palette:** Deep navy (#002147) and platinum (#E5E4E2)
-**Fonts:** Montserrat (headings) and Open Sans (body)
-**Logo:** `/client/public/logo.png`
+**Fonts:** Montserrat (headings/display), Cinzel (display), and Manrope/Open Sans (body)
+**Logo:** ShieldCheck icon (lucide-react) with gold gradient
 
 **Core Capabilities:**
-- Agent recruitment via referral links and binary tree placement.
-- Tracking of funded MCA deals and merchant subscriptions.
-- Multi-tiered commission system based on GBR waterfall for MCA and a decay structure for subscriptions.
-- Holdback/clawback mechanisms for risk management.
+- Binary tree agent hierarchy management and recruitment via referral links.
+- GBR (Gross Brokerage Revenue) waterfall for MCA commissions.
+- Merchant Growth Platform subscription commission engine with decay.
+- Holdback (70/30) and clawback system for risk management.
 - Fulfillment agent tiering and rank advancement (Agent → Builder → Leader → Director → Partner).
 - Platform fee management with production-based waivers.
 - Lead distribution system with AI follow-up.
-- Quarterly Performance Accelerators and renewal commissions.
-- Binary tree agent hierarchy management.
-- Fulfillment agent tiering.
-- Rank advancement system (Agent → Builder → Leader → Director → Partner).
+- Quarterly performance accelerators and renewal commissions.
 
-**Branding:**
-- **Domain:** leadershield.com
-- **Color Palette:** Deep navy (#002147) and platinum (#E5E4E2)
-- **Fonts:** Montserrat (headings/display), Cinzel (display), and Manrope/Open Sans (body)
-- **Logo:** ShieldCheck icon (lucide-react) with gold gradient
+**Products:**
+- **Merchant Growth Platform (Subscription Tiers):**
+    - Tier 1: Merchant Essentials ($199/mo) - Financial reporting, forecasting, AI expense categorization, credit monitoring.
+    - Tier 2: Growth Accelerator ($429/mo) - Google Business optimization, automated reviews, marketing automation, CRM, AI chatbot.
+    - Tier 3: Elite AI Revenue System ($749/mo) - AI lead generation, appointment automation, conversion funnels, ad intelligence.
+- **Merchant Cash Advance (MCA):** Traditional capital access with enhanced commissions when bundled with subscriptions.
 
 The platform's core business logic includes binary tree placement for agent hierarchy, a GBR waterfall for MCA commissions, a subscription commission engine with decay, holdback/clawback systems, fulfillment agent tiering, and a rank advancement system. It also features platform fee management, a lead distribution system, quarterly performance accelerators, and renewal commissions.
 
@@ -41,41 +39,33 @@ Preferred communication style: Simple, everyday language.
 - **Framework:** React 18 with TypeScript, built with Vite
 - **Routing:** Wouter
 - **State Management:** TanStack React Query
-- UI Components: shadcn/ui (Radix UI primitives)
-- Styling: Tailwind CSS with custom design tokens (Deep navy #002147, Platinum #E5E4E2)
-- Fonts: Montserrat (display/headings), Cinzel (display), Manrope/Open Sans (body)
-- Logo: ShieldCheck icon (lucide-react) with gold gradient
+- **UI Components:** shadcn/ui (Radix UI primitives) with Tailwind CSS, leveraging the "New York" style for a polished, professional look.
+- **Styling:** Tailwind CSS with custom design tokens (Deep navy #002147, Platinum #E5E4E2, gold gradient)
+- **Fonts:** Montserrat (display/headings), Cinzel (display), and Manrope/Open Sans (body)
+- **Icons:** Lucide React (ShieldCheck icon for logo)
 
 **Key Design Decisions:**
 - Component library uses New York style shadcn/ui for a polished, professional look.
 - Path aliases (`@/` for client/src, `@shared/` for shared code) for organization.
 - Protected routes enforce authentication.
-- Public landing page features immersive dark hero with animated elements (Framer Motion), social proof, "How It Works" section, two revenue streams, Merchant Growth Platform tiers, income scenarios, compensation plan details, testimonials, platform tools, 30-day roadmap, compliance information (FTC-compliant), FAQs, and a final CTA.
-- Comprehensive legal and compliance pages for Income Disclosure, Terms of Service, Privacy Policy, and Refund Policy.
-- Authentication page includes immersive design with dark gradient panel, login/registration forms, sponsor search, placement preference, and a forgot password flow.
-- Training page (Leadershield Academy) offers a 6-module video course with progress tracking, sales playbooks, and a "Your First 30 Days" checklist.
+- **Public Marketing Landing Page:** Immersive dark hero with animated elements (Framer Motion), social proof, "How It Works" section, two revenue streams (MCA & Platform), Merchant Growth Platform tiers, income lifestyle scenarios, compensation plan details, testimonials, platform tools, 30-day roadmap, compliance information (FTC-compliant), FAQs, and a final CTA.
+- **Legal/Compliance Pages:** Dedicated pages for Income Disclosure, Terms of Service, Privacy Policy, and Refund Policy.
+- **Authentication Pages:** Features a dark gradient left panel and right panel for login/register forms with gold gradient CTAs, sponsor search, and placement preference. Includes legal consent checkbox and a forgot/reset password flow.
+- **Training Page (Leadershield Academy):** 6-module video course with progress tracking, sales playbooks, product-specific sales guidance, and a "Your First 30 Days" checklist.
 - Uses Framer Motion for animations, `AnimatedSection` for scroll-triggered effects, `CountUp` for animated statistics, and `FAQItem` for accordions.
 
 #### Backend Architecture
-**Key Features:**
-- **Public Marketing Landing Page:** Immersive dark hero, social proof, "How It Works" section, two revenue streams (MCA & Platform), subscription tiers, income scenarios, compensation plan, testimonials, platform tools, 30-day roadmap, compliance, FAQ, final CTA, and FTC-compliant legal disclaimers.
-- **Legal/Compliance Pages:** Income Disclosure Statement, Terms of Service, Privacy Policy, Refund Policy.
-- **Auth Page:** Login/register forms, sponsor search, placement preference, legal consent, forgot password flow. Features a dark gradient left panel with branding.
-- **Training Page (Leadershield Academy):** 6-module video course with progress tracking, sales playbook, product selling points, and a 30-day checklist.
-
-### Backend Architecture
 - **Runtime:** Node.js with Express 5
 - **Language:** TypeScript (ESM modules)
 - **API Design:** RESTful endpoints with Zod schema validation
-- **Authentication:** Passport.js with local strategy, session-based via PostgreSQL. Password hashing uses native `scrypt`.
-- **Commission Engine:** Implements GBR waterfall allocation (MAC/TFC/PICF/RSR) with 70/30 holdback, MAC sponsor overrides with compression, subscription commission decay, MCA pairing enhancement, binary bonus calculations with rank-based caps, and platform fee waiver calculations.
+- **Authentication:** Passport.js with local strategy, session-based via PostgreSQL using `connect-pg-simple`. Password hashing uses native `scrypt`.
+- **Commission Engine:** Implemented in `server/routes.ts`, implementing GBR waterfall allocation (MAC/TFC/PICF/RSR) with 70/30 holdback, MAC sponsor overrides with compression, subscription commission decay, MCA pairing enhancement, binary bonus calculations with rank-based caps, and platform fee waiver calculations.
 
 **Key Backend Design Decisions:**
 - Session storage uses `connect-pg-simple` for PostgreSQL-backed sessions.
 - API routes defined in `shared/routes.ts` with type safety via Zod schemas.
 - The build process bundles server dependencies for optimized performance and reduced cold start times.
 - Password hashing uses Node's native `scrypt`.
-- Commission Engine: Implements GBR waterfall (MAC/TFC/PICF/RSR), MAC sponsor overrides with compression, subscription commission decay, MCA pairing enhancement, binary bonuses, and platform fee waivers.
 
 #### Data Storage
 - **Database:** PostgreSQL with Drizzle ORM
@@ -104,9 +94,9 @@ Preferred communication style: Simple, everyday language.
 - **Platform Fee:** $99/month, with reductions and waivers based on agent revenue.
 ## External Dependencies
 
-- **Stripe:** Payment processing for merchant subscriptions. Utilizes `stripe` npm package, `stripe-replit-sync` for webhook event mirroring (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`), and `@stripe/stripe-js` / `@stripe/react-stripe-js` for frontend elements.
-- **PostgreSQL:** Primary database.
-- **Drizzle ORM:** Type-safe database interactions.
+- **Stripe Billing:** Payment processing for merchant subscriptions. Utilizes `stripe` npm package, `stripe-replit-sync` for webhook event mirroring (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`), and `@stripe/stripe-js` / `@stripe/react-stripe-js` for frontend elements. Environment variables: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_TIER_1`, `STRIPE_PRICE_TIER_2`, `STRIPE_PRICE_TIER_3`.
+- **PostgreSQL:** Primary database, connected via `DATABASE_URL`.
+- **Drizzle ORM:** Type-safe database queries and schema management.
 - **Passport.js:** Authentication middleware.
 - **express-session & connect-pg-simple:** Session management and storage via PostgreSQL.
 - **TanStack React Query:** Frontend server state management.
@@ -114,9 +104,7 @@ Preferred communication style: Simple, everyday language.
 - **Framer Motion:** UI animations.
 - **Recharts:** Data visualization.
 - **date-fns:** Date utility library.
-- **Radix UI:** Core accessible UI primitives.
-- **Tailwind CSS:** Utility-first styling framework.
-- **Lucide React:** Icon library.
+- **Radix UI, Tailwind CSS, class-variance-authority, Lucide React:** UI framework, styling, and icons.
 - **Vite & esbuild:** Frontend and backend bundling.
 - **TypeScript:** Language for full-stack type safety.
 - **Vitest:** Testing framework.
