@@ -769,6 +769,86 @@ describe("GET /api/subscriptions/history – activity entries after subscription
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
     }
   });
+
+  it("shows a pause entry with actorType 'agent' in the history after the agent self-service pauses their subscription", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "Agent Self-Service Pause Merchant",
+        tier: "tier_1",
+        monthlyAmount: "199.00",
+        status: "active",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    try {
+      await request(testApp)
+        .patch(`/api/subscriptions/${sub.id}/status`)
+        .set("Cookie", historyAgentCookie)
+        .send({ status: "paused" })
+        .expect(200);
+
+      const entry = await pollForActivityLogEntry(sub.id, "pause");
+      expect(entry).toBeDefined();
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number; actorType: string }) =>
+          l.action === "pause" && l.entityId === sub.id
+      );
+      expect(match).toBeDefined();
+      expect(match.actorType).toBe("agent");
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("shows a cancel entry with actorType 'agent' in the history after the agent self-service cancels their subscription", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "Agent Self-Service Cancel Merchant",
+        tier: "tier_1",
+        monthlyAmount: "199.00",
+        status: "active",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    try {
+      await request(testApp)
+        .patch(`/api/subscriptions/${sub.id}/status`)
+        .set("Cookie", historyAgentCookie)
+        .send({ status: "cancelled" })
+        .expect(200);
+
+      const entry = await pollForActivityLogEntry(sub.id, "cancel");
+      expect(entry).toBeDefined();
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number; actorType: string }) =>
+          l.action === "cancel" && l.entityId === sub.id
+      );
+      expect(match).toBeDefined();
+      expect(match.actorType).toBe("agent");
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
 });
 
 describe("GET /api/subscriptions/history – merchant name label", () => {
