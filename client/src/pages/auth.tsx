@@ -39,10 +39,10 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(10,22,40,0.6)_70%)]" />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-16">
+          <Link href="/" data-testid="link-logo-auth" className="flex items-center gap-3 mb-16 hover:opacity-80 transition-opacity w-fit">
             <Shield className="w-5 h-5 text-white shrink-0" />
             <span className="font-display font-bold text-white text-xl tracking-wide">Leader Shield Network</span>
-          </div>
+          </Link>
 
           <h2 className="text-5xl font-display font-bold text-white leading-tight mb-6">
             Build Your
@@ -95,9 +95,11 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md space-y-8">
           {/* Mobile branding */}
-          <div className="lg:hidden flex items-center justify-center gap-2 mb-4">
-            <Shield className="w-5 h-5 text-primary shrink-0" />
-            <span className="font-display font-bold text-primary text-xl tracking-wide">Leader Shield Network</span>
+          <div className="lg:hidden flex items-center justify-center mb-4">
+            <Link href="/" data-testid="link-logo-auth-mobile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <Shield className="w-5 h-5 text-primary shrink-0" />
+              <span className="font-display font-bold text-primary text-xl tracking-wide">Leader Shield Network</span>
+            </Link>
           </div>
 
           <div className="text-center lg:text-left">

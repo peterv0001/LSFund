@@ -70,12 +70,12 @@ export function Sidebar() {
       {/* Header / Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" data-testid="link-logo-home" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Shield className="w-4 h-4 text-white shrink-0" />
             <span className="font-display font-bold text-white text-base leading-tight tracking-wide">
               Leader Shield<br />Network
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             <NotificationBell />
             <button
@@ -203,10 +203,10 @@ export function Sidebar() {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2">
+        <Link href="/dashboard" data-testid="link-logo-mobile-header" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Shield className="w-4 h-4 text-white shrink-0" />
           <span className="font-display font-bold text-white text-sm tracking-wide">Leader Shield Network</span>
-        </div>
+        </Link>
 
         <NotificationBell />
       </header>

@@ -48,12 +48,12 @@ export function AdminSidebar() {
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
+          <Link href="/admin" data-testid="link-logo-admin" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Shield className="w-4 h-4 text-white shrink-0" />
             <span className="font-display font-bold text-white text-base leading-tight tracking-wide">
               Leader Shield Network
             </span>
-          </div>
+          </Link>
           <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-1 pl-0.5">Admin Portal</p>
         </div>
       </div>

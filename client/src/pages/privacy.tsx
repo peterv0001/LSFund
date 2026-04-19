@@ -14,10 +14,10 @@ export default function PrivacyPolicyPage() {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
-            <div className="flex items-center gap-2">
+            <Link href="/" data-testid="link-logo-privacy" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <Shield className="w-4 h-4 text-primary shrink-0" />
               <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Network</span>
-            </div>
+            </Link>
           </div>
           <Link href="/login">
             <Button variant="outline" size="sm" data-testid="button-login-privacy">Agent Login</Button>
