@@ -2091,6 +2091,20 @@ export async function registerRoutes(
             status: 'pending'
           });
           processed++;
+
+          const commissionTypeLabel = commType === 'subscription_residual' ? 'Subscription Residual' : 'Subscription Commission';
+          const agent = await storage.getAgent(sub.agentId);
+          if (agent) {
+            const commPrefs = (agent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+            if (commPrefs.emailOnCommissionEarned !== false) {
+              emailService.sendCommissionEarnedEmail(agent.email, {
+                firstName: agent.firstName,
+                commissionType: commissionTypeLabel,
+                amount: commissionAmount,
+                description: `From your subscription (period: ${periodDate})`,
+              }).catch(console.error);
+            }
+          }
         }
       }
       
