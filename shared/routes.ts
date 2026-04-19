@@ -878,6 +878,32 @@ export const api = {
       },
     },
 
+    // Webhook Status
+    webhookStatus: {
+      get: {
+        method: 'GET' as const,
+        path: '/api/admin/webhook-status',
+        responses: {
+          200: z.object({
+            secretStored: z.boolean(),
+            endpointId: z.string().nullable(),
+            endpointUrl: z.string().nullable(),
+            endpointActive: z.boolean().nullable(),
+          }),
+        },
+      },
+    },
+
+    testWebhook: {
+      post: {
+        method: 'POST' as const,
+        path: '/api/admin/test-webhook',
+        responses: {
+          200: z.object({ success: z.boolean(), message: z.string() }),
+        },
+      },
+    },
+
     // Subscription Management
     subscriptions: {
       list: {

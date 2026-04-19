@@ -2670,6 +2670,94 @@ export async function registerRoutes(
     }
   });
 
+  // Webhook Status
+  app.get(api.admin.webhookStatus.get.path, requireAdmin, async (req, res) => {
+    try {
+      const saved = await storage.getAllPlatformSettings();
+      const secretStored = !!saved.stripe_webhook_secret;
+      const endpointId = saved.stripe_webhook_endpoint_id as string | null ?? null;
+
+      if (!endpointId) {
+        return res.json({ secretStored, endpointId: null, endpointUrl: null, endpointActive: null });
+      }
+
+      try {
+        const stripe = await getUncachableStripeClient();
+        const ep = await stripe.webhookEndpoints.retrieve(endpointId);
+        return res.json({
+          secretStored,
+          endpointId,
+          endpointUrl: ep.url,
+          endpointActive: ep.status === 'enabled',
+        });
+      } catch {
+        return res.json({ secretStored, endpointId, endpointUrl: null, endpointActive: false });
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to retrieve webhook status" });
+    }
+  });
+
+  // Test Webhook — verifies endpoint is registered on Stripe AND that our own listener URL responds
+  app.post(api.admin.testWebhook.post.path, requireAdmin, async (req, res) => {
+    try {
+      const saved = await storage.getAllPlatformSettings();
+      const endpointId = saved.stripe_webhook_endpoint_id as string | null ?? null;
+      const secretStored = !!saved.stripe_webhook_secret;
+
+      if (!endpointId || !secretStored) {
+        return res.json({ success: false, message: "Webhook is not fully configured (missing secret or endpoint ID). Restart the app to reinitialize." });
+      }
+
+      const stripe = await getUncachableStripeClient();
+
+      let endpointUrl: string;
+      try {
+        const ep = await stripe.webhookEndpoints.retrieve(endpointId);
+        if (ep.status !== 'enabled') {
+          return res.json({ success: false, message: `Stripe has a record of the endpoint (${endpointId}) but its status is "${ep.status}", not enabled. Restart the app to reinitialize.` });
+        }
+        endpointUrl = ep.url;
+      } catch {
+        return res.json({ success: false, message: "The stored Stripe endpoint ID is no longer valid. Restart the app to reinitialize." });
+      }
+
+      // Perform a live connectivity check: send a POST with no payload to our own webhook URL.
+      // The handler will return 400 (missing signature), confirming the endpoint is up and accepting connections.
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const probe = await fetch(endpointUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        // 400 = listener is live and rejected the invalid signature — this is the expected response
+        // 404 means the path doesn't exist (misconfigured endpoint URL), 5xx means server error
+        if (probe.status === 400) {
+          return res.json({ success: true, message: `Webhook endpoint ${endpointId} is active on Stripe and the listener is reachable at ${endpointUrl}.` });
+        }
+        if (probe.status === 404) {
+          return res.json({ success: false, message: `Webhook listener path not found (HTTP 404) at ${endpointUrl}. The endpoint URL may be misconfigured.` });
+        }
+        if (probe.status >= 500) {
+          return res.json({ success: false, message: `Endpoint responded with a server error (HTTP ${probe.status}). Check your server logs.` });
+        }
+        // Any other response (200, 401, etc.) is unexpected but the URL is reachable
+        return res.json({ success: false, message: `Webhook listener responded with an unexpected status (HTTP ${probe.status}) at ${endpointUrl}. Expected HTTP 400 from signature validation.` });
+      } catch (fetchErr: any) {
+        if (fetchErr?.name === 'AbortError') {
+          return res.json({ success: false, message: `Connectivity check timed out — the endpoint URL (${endpointUrl}) did not respond within 5 seconds.` });
+        }
+        return res.json({ success: false, message: `Could not reach the webhook URL (${endpointUrl}): ${fetchErr?.message ?? 'network error'}.` });
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to test webhook" });
+    }
+  });
+
   // Admin Activity Log — accessible at both /api/admin/activity-log and /api/admin/activity
   async function activityLogHandler(req: Request, res: Response) {
     const page = Number(req.query.page) || 1;

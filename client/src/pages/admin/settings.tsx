@@ -11,7 +11,14 @@ import {
   Building,
   Zap,
   Bell,
+  Webhook,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,12 +40,36 @@ type PlatformSettings = {
   expiryWarningDays: number;
 };
 
+type WebhookStatus = {
+  secretStored: boolean;
+  endpointId: string | null;
+  endpointUrl: string | null;
+  endpointActive: boolean | null;
+};
+
 export default function AdminSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: settings, isLoading } = useQuery<PlatformSettings>({
     queryKey: [api.admin.settings.get.path],
+  });
+
+  const { data: webhookStatus, isLoading: webhookLoading, refetch: refetchWebhook } = useQuery<WebhookStatus>({
+    queryKey: [api.admin.webhookStatus.get.path],
+  });
+
+  const testWebhookMutation = useMutation({
+    mutationFn: () => apiRequest("POST", api.admin.testWebhook.post.path).then((r) => r.json() as Promise<{ success: boolean; message: string }>),
+    onSuccess: (result) => {
+      toast({
+        title: result.success ? "Webhook reachable" : "Webhook check failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+      refetchWebhook();
+    },
+    onError: () => toast({ title: "Failed to test webhook", variant: "destructive" }),
   });
 
   const [companyInfo, setCompanyInfo] = useState({ name: "", supportEmail: "" });
@@ -279,6 +310,111 @@ export default function AdminSettings() {
                       <p className="text-gray-500">Month 12+: 20%</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Stripe Webhook Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Webhook className="w-5 h-5 text-primary" />
+                    Stripe Webhook
+                  </CardTitle>
+                  <CardDescription>
+                    Status of the Stripe webhook endpoint used for billing events
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {webhookLoading ? (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Checking webhook status…</span>
+                    </div>
+                  ) : !webhookStatus ? (
+                    <p className="text-sm text-gray-500">Unable to load webhook status.</p>
+                  ) : (
+                    <>
+                      {(!webhookStatus.secretStored || !webhookStatus.endpointId || webhookStatus.endpointActive === false) && (
+                        <Alert variant="destructive" data-testid="alert-webhook-not-configured">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Webhook not configured</AlertTitle>
+                          <AlertDescription>
+                            {!webhookStatus.secretStored
+                              ? "No webhook secret is stored."
+                              : !webhookStatus.endpointId
+                                ? "No endpoint ID is on record."
+                                : "The Stripe endpoint is not active."}{" "}
+                            Restart the app to re-initialize the Stripe webhook endpoint.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-medium">Secret stored:</span>
+                          {webhookStatus.secretStored ? (
+                            <Badge data-testid="badge-secret-stored" className="bg-green-100 text-green-700 border-green-200">
+                              <CheckCircle className="w-3 h-3 mr-1" /> Yes
+                            </Badge>
+                          ) : (
+                            <Badge data-testid="badge-secret-missing" variant="destructive">
+                              <XCircle className="w-3 h-3 mr-1" /> No
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-medium">Endpoint status:</span>
+                          {webhookStatus.endpointActive === null ? (
+                            <Badge data-testid="badge-endpoint-unknown" variant="secondary">Unknown</Badge>
+                          ) : webhookStatus.endpointActive ? (
+                            <Badge data-testid="badge-endpoint-active" className="bg-green-100 text-green-700 border-green-200">
+                              <CheckCircle className="w-3 h-3 mr-1" /> Active
+                            </Badge>
+                          ) : (
+                            <Badge data-testid="badge-endpoint-inactive" variant="destructive">
+                              <XCircle className="w-3 h-3 mr-1" /> Inactive
+                            </Badge>
+                          )}
+                        </div>
+
+                        {webhookStatus.endpointId && (
+                          <div className="col-span-2 flex items-center gap-2">
+                            <span className="text-gray-500 font-medium">Endpoint ID:</span>
+                            <code data-testid="text-endpoint-id" className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">
+                              {webhookStatus.endpointId}
+                            </code>
+                          </div>
+                        )}
+
+                        {webhookStatus.endpointUrl && (
+                          <div className="col-span-2 flex items-center gap-2">
+                            <span className="text-gray-500 font-medium">Endpoint URL:</span>
+                            <span data-testid="text-endpoint-url" className="text-xs text-gray-600 break-all">
+                              {webhookStatus.endpointUrl}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-test-webhook"
+                          onClick={() => testWebhookMutation.mutate()}
+                          disabled={testWebhookMutation.isPending}
+                        >
+                          {testWebhookMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                          )}
+                          Test Webhook
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
