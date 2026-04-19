@@ -157,20 +157,33 @@ export class DatabaseStorage {
       .from(agents)
       .where(whereClause);
 
-    const sortBySubCount = filters?.sortBy === 'subscriptionCount';
     const sortDesc = filters?.sortOrder !== 'asc';
+    const sortField = filters?.sortBy;
 
     const subCountExpr = sql<number>`(SELECT COUNT(*) FROM subscriptions WHERE subscriptions.agent_id = agents.id)`;
 
-    const orderExpr = sortBySubCount
-      ? (sortDesc ? desc(subCountExpr) : asc(subCountExpr))
-      : (sortDesc ? desc(agents.createdAt) : asc(agents.createdAt));
+    const rankOrderExpr = sql<number>`CASE agents.current_rank WHEN 'agent' THEN 1 WHEN 'builder' THEN 2 WHEN 'leader' THEN 3 WHEN 'director' THEN 4 WHEN 'partner' THEN 5 ELSE 0 END`;
+
+    let orderByArgs: SQL<unknown>[];
+    if (sortField === 'subscriptionCount') {
+      orderByArgs = [sortDesc ? desc(subCountExpr) : asc(subCountExpr)];
+    } else if (sortField === 'name') {
+      orderByArgs = sortDesc
+        ? [desc(agents.firstName), desc(agents.lastName)]
+        : [asc(agents.firstName), asc(agents.lastName)];
+    } else if (sortField === 'rank') {
+      orderByArgs = [sortDesc ? desc(rankOrderExpr) : asc(rankOrderExpr)];
+    } else if (sortField === 'createdAt') {
+      orderByArgs = [sortDesc ? desc(agents.createdAt) : asc(agents.createdAt)];
+    } else {
+      orderByArgs = [desc(agents.createdAt)];
+    }
 
     const results = await db
       .select()
       .from(agents)
       .where(whereClause)
-      .orderBy(orderExpr)
+      .orderBy(...orderByArgs)
       .limit(pageSize)
       .offset(offset);
 

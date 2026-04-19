@@ -89,14 +89,21 @@ export default function AdminAgents() {
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }, [setLocation]);
 
-  const handleSortBySubscriptionCount = () => {
-    if (sortBy === 'subscriptionCount') {
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
       setSortOrder(o => o === 'desc' ? 'asc' : 'desc');
     } else {
-      setSortBy('subscriptionCount');
-      setSortOrder('desc');
+      setSortBy(column);
+      setSortOrder(column === 'name' || column === 'rank' ? 'asc' : 'desc');
     }
     setPage(1);
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortBy !== column) return <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />;
+    return sortOrder === 'desc'
+      ? <ArrowDown className="w-3.5 h-3.5" />
+      : <ArrowUp className="w-3.5 h-3.5" />;
   };
 
   const { data, isLoading } = useQuery({
@@ -249,26 +256,49 @@ export default function AdminAgents() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/50">
-                <TableHead>Agent</TableHead>
+                <TableHead>
+                  <button
+                    data-testid="sort-name"
+                    onClick={() => handleSort('name')}
+                    className="inline-flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                  >
+                    Agent
+                    <SortIcon column="name" />
+                  </button>
+                </TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Rank</TableHead>
+                <TableHead>
+                  <button
+                    data-testid="sort-rank"
+                    onClick={() => handleSort('rank')}
+                    className="inline-flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                  >
+                    Rank
+                    <SortIcon column="rank" />
+                  </button>
+                </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>
                   <button
                     data-testid="sort-subscriptions"
-                    onClick={handleSortBySubscriptionCount}
+                    onClick={() => handleSort('subscriptionCount')}
                     title="Active / Total subscriptions"
                     className="inline-flex items-center gap-1 font-medium hover:text-foreground transition-colors"
                   >
                     Subscriptions
-                    {sortBy === 'subscriptionCount' ? (
-                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
-                    )}
+                    <SortIcon column="subscriptionCount" />
                   </button>
                 </TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead>
+                  <button
+                    data-testid="sort-joined"
+                    onClick={() => handleSort('createdAt')}
+                    className="inline-flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                  >
+                    Joined
+                    <SortIcon column="createdAt" />
+                  </button>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
