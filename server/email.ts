@@ -539,6 +539,68 @@ const templates = {
     `,
   }),
 
+  subscriptionExpiringWarning: (data: { firstName: string; merchantName: string; tier: string; expiryDate: string; daysUntilExpiry: number; dashboardUrl: string }) => ({
+    subject: `⚠️ Subscription Expiring Soon: ${data.merchantName}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #d97706 0%, #92400e 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Subscription Expiring Soon</h1>
+    </div>
+
+    <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
+      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        This is a heads-up that one of your subscriptions is expiring in <strong>${data.daysUntilExpiry} days</strong>. Here are the details:
+      </p>
+
+      <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 24px; margin: 20px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Merchant</span>
+          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Tier</span>
+          <strong style="color: #1e3a5f;">${data.tier}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #fcd34d;">
+          <span style="color: #718096;">Expiry Date</span>
+          <strong style="color: #d97706;">${data.expiryDate}</strong>
+        </div>
+      </div>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 20px 0;">
+        Once this subscription expires, commission accrual for <strong>${data.merchantName}</strong> will stop automatically. If you'd like to extend or renew this subscription, please reach out to your admin before the expiry date.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          View Your Subscriptions →
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 14px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        If you have questions about this subscription, please contact your admin or support team.
+      </p>
+    </div>
+
+    <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
+      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
   teamSignup: (data: { firstName: string; newMemberName: string; dashboardUrl: string }) => ({
     subject: `🙌 New Team Member: ${data.newMemberName} joined your team!`,
     html: `
@@ -806,6 +868,31 @@ export const emailService = {
       console.log(`[Email] Commission earned email sent to ${to}`);
     } catch (error) {
       console.error('[Email] Failed to send commission earned email:', error);
+    }
+  },
+
+  async sendSubscriptionExpiringWarningEmail(to: string, data: { firstName: string; merchantName: string; tier: string; expiryDate: string; daysUntilExpiry: number }) {
+    if (!process.env.RESEND_API_KEY) {
+      console.log('[Email] Skipping subscription expiry warning email - RESEND_API_KEY not set');
+      return;
+    }
+
+    try {
+      const template = templates.subscriptionExpiringWarning({
+        ...data,
+        dashboardUrl: `${APP_URL}/subscriptions`,
+      });
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+
+      console.log(`[Email] Subscription expiry warning email sent to ${to}`);
+    } catch (error) {
+      console.error('[Email] Failed to send subscription expiry warning email:', error);
     }
   },
 

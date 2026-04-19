@@ -324,6 +324,21 @@ export const migrations: Migration[] = [
       console.log("[migrations] Restored billing_status column default");
     },
   },
+  {
+    name: "014_add_subscription_expiry_warning_sent_at",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS expiry_warning_sent_at TIMESTAMP
+      `);
+      console.log("[migrations] Added expiry_warning_sent_at column to subscriptions");
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE subscriptions DROP COLUMN IF EXISTS expiry_warning_sent_at
+      `);
+      console.log("[migrations] Dropped expiry_warning_sent_at column from subscriptions");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

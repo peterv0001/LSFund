@@ -1627,20 +1627,28 @@ export class DatabaseStorage {
       ));
   }
 
-  async getSubscriptionsApproachingExpiry(daysAhead: number): Promise<Subscription[]> {
+  async getSubscriptionsDueForWarning(): Promise<Subscription[]> {
     const now = new Date();
-    const windowEnd = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
-    const windowStart = new Date(windowEnd.getTime() - 60 * 60 * 1000); // 1-hour window
+    const warningWindowStart = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+    const warningWindowEnd = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);
     return await db.select().from(subscriptions)
       .where(and(
-        gte(subscriptions.endDate, windowStart),
-        lte(subscriptions.endDate, windowEnd),
+        gte(subscriptions.endDate, warningWindowStart),
+        lte(subscriptions.endDate, warningWindowEnd),
         or(
           eq(subscriptions.status, 'active'),
           eq(subscriptions.status, 'paused')
-        )
+        ),
+        isNull(subscriptions.expiryWarningSentAt)
       ));
   }
+
+  async markSubscriptionWarningSent(id: number): Promise<void> {
+    await db.update(subscriptions)
+      .set({ expiryWarningSentAt: new Date(), updatedAt: new Date() })
+      .where(eq(subscriptions.id, id));
+  }
+
 
   async getActiveSubscriptionRevenue(agentId: number): Promise<number> {
     const subs = await db.select().from(subscriptions)

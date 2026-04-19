@@ -401,6 +401,7 @@ export const subscriptions = pgTable("subscriptions", {
   cardBrand: text("card_brand"),
   lastChargedAt: timestamp("last_charged_at"),
   nextBillingDate: timestamp("next_billing_date"),
+  expiryWarningSentAt: timestamp("expiry_warning_sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
