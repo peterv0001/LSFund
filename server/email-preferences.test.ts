@@ -269,6 +269,54 @@ describe("agent self-service route – email preference: emailOnCancelled", () =
   });
 });
 
+describe("agent self-service route – email preference: emailOnReactivated", () => {
+  it("does NOT send a reactivated email when emailOnReactivated is false", async () => {
+    const agent = await createAgent("react-off", {
+      emailOnPaused: true,
+      emailOnCancelled: true,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "paused");
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "active" })
+      .expect(200);
+
+    await shortDelay();
+    expect(emailService.sendSubscriptionReactivatedEmail).not.toHaveBeenCalled();
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("DOES send a reactivated email when emailOnReactivated is true", async () => {
+    const agent = await createAgent("react-on", {
+      emailOnPaused: true,
+      emailOnCancelled: true,
+      emailOnReactivated: true,
+    });
+    const sub = await createSubscription(agent.id, "paused");
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "active" })
+      .expect(200);
+
+    await shortDelay();
+    expect(emailService.sendSubscriptionReactivatedEmail).toHaveBeenCalledOnce();
+    expect(emailService.sendSubscriptionReactivatedEmail).toHaveBeenCalledWith(
+      agent.email,
+      expect.objectContaining({ merchantName: "Test Merchant" })
+    );
+
+    await cleanupAgent(agent.id);
+  });
+});
+
 describe("agent self-service route – null/missing emailPreferences", () => {
   it("sends a paused email by default when preferences are an empty object (all prefs enabled)", async () => {
     // Pass an empty object {} to simulate preferences with no explicit flags.
