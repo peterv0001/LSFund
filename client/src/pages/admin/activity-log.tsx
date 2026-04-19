@@ -181,28 +181,44 @@ export default function AdminActivityLog() {
   const initial = parseFiltersFromSearch(window.location.search);
   // searchInput is what the user types — updates immediately for responsive input
   const [searchInput, setSearchInput] = useState(initial.filters.search);
-  // filters holds applied values used by the query; search only updates after 300ms debounce
+  // dateInputs hold what the user types for From/To — applied after 300ms debounce
+  const [startDateInput, setStartDateInput] = useState(initial.filters.startDate);
+  const [endDateInput, setEndDateInput] = useState(initial.filters.endDate);
+  // filters holds applied values used by the query; debounced fields update after 300ms
   const [filters, setFilters] = useState<Filters>(initial.filters);
   const [page, setPage] = useState(initial.page);
 
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
 
-  // Track current searchInput in a ref so the popstate handler (stable closure) can read it
+  // Track current input values in refs so the popstate handler (stable closure) can read them
   const searchInputRef = useRef(searchInput);
   searchInputRef.current = searchInput;
+  const startDateInputRef = useRef(startDateInput);
+  startDateInputRef.current = startDateInput;
+  const endDateInputRef = useRef(endDateInput);
+  endDateInputRef.current = endDateInput;
 
-  // Only skip the debounce when a programmatic change actually alters searchInput
+  // Only skip the debounce when a programmatic change actually alters the input
   const skipNextSearchDebounce = useRef(false);
+  const skipNextStartDateDebounce = useRef(false);
+  const skipNextEndDateDebounce = useRef(false);
 
   useEffect(() => {
     const onPopState = () => {
       const parsed = parseFiltersFromSearch(window.location.search);
-      // Only flag a skip when the search value will actually change (preventing a stuck flag)
       if (parsed.filters.search !== searchInputRef.current) {
         skipNextSearchDebounce.current = true;
       }
+      if (parsed.filters.startDate !== startDateInputRef.current) {
+        skipNextStartDateDebounce.current = true;
+      }
+      if (parsed.filters.endDate !== endDateInputRef.current) {
+        skipNextEndDateDebounce.current = true;
+      }
       setSearchInput(parsed.filters.search);
+      setStartDateInput(parsed.filters.startDate);
+      setEndDateInput(parsed.filters.endDate);
       setFilters(parsed.filters);
       setPage(parsed.page);
     };
@@ -233,6 +249,42 @@ export default function AdminActivityLog() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  const isFirstStartDateRender = useRef(true);
+  useEffect(() => {
+    if (isFirstStartDateRender.current) {
+      isFirstStartDateRender.current = false;
+      return;
+    }
+    if (skipNextStartDateDebounce.current) {
+      skipNextStartDateDebounce.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const newFilters = { ...filtersRef.current, startDate: startDateInput };
+      setFilters(newFilters);
+      pushUrl(newFilters, 1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [startDateInput]);
+
+  const isFirstEndDateRender = useRef(true);
+  useEffect(() => {
+    if (isFirstEndDateRender.current) {
+      isFirstEndDateRender.current = false;
+      return;
+    }
+    if (skipNextEndDateDebounce.current) {
+      skipNextEndDateDebounce.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const newFilters = { ...filtersRef.current, endDate: endDateInput };
+      setFilters(newFilters);
+      pushUrl(newFilters, 1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [endDateInput]);
 
   function applyImmediate(newFilters: Filters) {
     setFilters(newFilters);
@@ -268,11 +320,18 @@ export default function AdminActivityLog() {
 
   function clearFilters() {
     const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" };
-    // Only flag a skip when search will actually change — avoids a stuck flag when already empty
     if (searchInput !== "") {
       skipNextSearchDebounce.current = true;
     }
+    if (startDateInput !== "") {
+      skipNextStartDateDebounce.current = true;
+    }
+    if (endDateInput !== "") {
+      skipNextEndDateDebounce.current = true;
+    }
     setSearchInput("");
+    setStartDateInput("");
+    setEndDateInput("");
     setFilters(blank);
     pushUrl(blank, 1);
   }
@@ -282,7 +341,7 @@ export default function AdminActivityLog() {
   }
 
   // Show Clear button if user has typed anything OR if any applied filter is active
-  const hasActiveFilters = searchInput || filters.startDate || filters.endDate || filters.entityType || filters.action || filters.actorType;
+  const hasActiveFilters = searchInput || startDateInput || endDateInput || filters.entityType || filters.action || filters.actorType;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -382,8 +441,8 @@ export default function AdminActivityLog() {
                     id="log-start-date"
                     data-testid="input-log-start-date"
                     type="date"
-                    value={filters.startDate}
-                    onChange={(e) => applyImmediate({ ...filters, startDate: e.target.value })}
+                    value={startDateInput}
+                    onChange={(e) => setStartDateInput(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
@@ -392,8 +451,8 @@ export default function AdminActivityLog() {
                     id="log-end-date"
                     data-testid="input-log-end-date"
                     type="date"
-                    value={filters.endDate}
-                    onChange={(e) => applyImmediate({ ...filters, endDate: e.target.value })}
+                    value={endDateInput}
+                    onChange={(e) => setEndDateInput(e.target.value)}
                   />
                 </div>
                 {hasActiveFilters && (
