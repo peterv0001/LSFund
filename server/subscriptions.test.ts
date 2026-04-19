@@ -1204,6 +1204,107 @@ describe("agent subscription status route – cross-agent access guard", () => {
 });
 
 // =========================================================
+// GET /api/subscriptions – cross-agent read isolation
+// Verifies that agent B cannot enumerate agent A's subscriptions
+// via the GET /api/subscriptions endpoint.
+// =========================================================
+
+describe("GET /api/subscriptions – cross-agent read isolation", () => {
+  it("does not return agent A's subscription IDs when logged in as agent B", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+
+    try {
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      const res = await request(testApp)
+        .get("/api/subscriptions")
+        .set("Cookie", agentBCookie)
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      const returnedIds = (res.body as Array<{ id: number }>).map((s) => s.id);
+      expect(returnedIds).not.toContain(subOwnedByAgentA.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+    }
+  });
+
+  it("returns only agent B's own subscriptions and none belonging to agent A", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+    const subOwnedByAgentB = await createTestSubscription(agentBId, "active");
+
+    try {
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      const res = await request(testApp)
+        .get("/api/subscriptions")
+        .set("Cookie", agentBCookie)
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      const returnedIds = (res.body as Array<{ id: number }>).map((s) => s.id);
+      expect(returnedIds).toContain(subOwnedByAgentB.id);
+      expect(returnedIds).not.toContain(subOwnedByAgentA.id);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentB.id));
+    }
+  });
+});
+
+// =========================================================
+// GET /api/subscriptions/history – cross-agent read isolation
+// Verifies that agent B cannot see agent A's activity log
+// entries via the GET /api/subscriptions/history endpoint.
+// =========================================================
+
+describe("GET /api/subscriptions/history – cross-agent read isolation", () => {
+  it("does not return activity log entries for agent A's subscriptions when logged in as agent B", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+
+    try {
+      await storage.logActivity({
+        actorId: agentRouteAgentId,
+        actorType: "agent",
+        action: "pause",
+        entityType: "subscription",
+        entityId: subOwnedByAgentA.id,
+        description: "Cross-agent history isolation test entry",
+      });
+
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", agentBCookie)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("logs");
+      expect(Array.isArray(res.body.logs)).toBe(true);
+      const returnedEntityIds = (res.body.logs as Array<{ entityId: number }>).map(
+        (l) => l.entityId
+      );
+      expect(returnedEntityIds).not.toContain(subOwnedByAgentA.id);
+    } finally {
+      await cleanupActivityLog(subOwnedByAgentA.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+    }
+  });
+});
+
+// =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
 
