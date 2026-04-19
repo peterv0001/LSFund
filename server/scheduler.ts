@@ -1,7 +1,9 @@
 import { storage } from "./storage";
 import { emailService } from "./email";
 
-const EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+export const EXPIRY_CHECK_INTERVAL_MS = process.env.EXPIRY_CHECK_INTERVAL_MS
+  ? parseInt(process.env.EXPIRY_CHECK_INTERVAL_MS, 10)
+  : 60 * 60 * 1000; // default: 1 hour
 
 async function warnUpcomingExpirations(): Promise<void> {
   try {
@@ -126,5 +128,5 @@ export function startScheduler(): void {
     warnUpcomingExpirations();
     expireOverdueSubscriptions();
   }, EXPIRY_CHECK_INTERVAL_MS);
-  console.log('[Scheduler] Subscription expiry scheduler started (interval: 1 hour)');
+  console.log(`[Scheduler] Subscription expiry scheduler started (interval: ${EXPIRY_CHECK_INTERVAL_MS}ms)`);
 }

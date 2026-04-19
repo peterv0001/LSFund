@@ -18,7 +18,7 @@ vi.mock("./email.js", () => ({
 
 import { storage } from "./storage.js";
 import { emailService } from "./email.js";
-import { expireOverdueSubscriptions } from "./scheduler.js";
+import { expireOverdueSubscriptions, EXPIRY_CHECK_INTERVAL_MS } from "./scheduler.js";
 
 const mockStorage = storage as {
   getSubscriptionsDueForExpiry: ReturnType<typeof vi.fn>;
@@ -203,6 +203,33 @@ describe("expireOverdueSubscriptions – agent not found", () => {
     expect(mockStorage.updateSubscriptionStatus).toHaveBeenCalledWith(sub.id, "expired");
     expect(mockStorage.createNotification).not.toHaveBeenCalled();
     expect(mockEmailService.sendSubscriptionExpiredEmail).not.toHaveBeenCalled();
+  });
+});
+
+// =========================================================
+// EXPIRY_CHECK_INTERVAL_MS — configurable via env var
+// =========================================================
+
+describe("EXPIRY_CHECK_INTERVAL_MS – default value", () => {
+  it("defaults to 3 600 000 ms (1 hour) when EXPIRY_CHECK_INTERVAL_MS env var is not set", async () => {
+    const saved = process.env.EXPIRY_CHECK_INTERVAL_MS;
+    delete process.env.EXPIRY_CHECK_INTERVAL_MS;
+    vi.resetModules();
+    const { EXPIRY_CHECK_INTERVAL_MS: interval } = await import("./scheduler.js");
+    expect(interval).toBe(3_600_000);
+    if (saved !== undefined) {
+      process.env.EXPIRY_CHECK_INTERVAL_MS = saved;
+    }
+    vi.resetModules();
+  });
+
+  it("uses the env var value when EXPIRY_CHECK_INTERVAL_MS is set", async () => {
+    process.env.EXPIRY_CHECK_INTERVAL_MS = "30000";
+    vi.resetModules();
+    const { EXPIRY_CHECK_INTERVAL_MS: interval } = await import("./scheduler.js");
+    expect(interval).toBe(30_000);
+    delete process.env.EXPIRY_CHECK_INTERVAL_MS;
+    vi.resetModules();
   });
 });
 
