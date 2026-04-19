@@ -347,59 +347,78 @@ export default function AdminMigrations() {
                                 <p className="text-xs text-gray-400 mt-0.5">Not yet applied</p>
                               )}
                             </div>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="ml-4 text-green-700 border-green-200 hover:bg-green-50 hover:text-green-800"
-                                  disabled={applyMutation.isPending}
-                                  data-testid={`button-apply-${m.name}`}
-                                >
-                                  <Play className="w-3.5 h-3.5 mr-1.5" />
-                                  Apply
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Apply migration?</AlertDialogTitle>
-                                  <AlertDialogDescription asChild>
-                                    <div className="space-y-3">
-                                      <p>
-                                        This will run the forward migration for <span className="font-mono font-semibold">{m.name}</span>. This action modifies the database schema.
-                                      </p>
-                                      {!m.hasDown && (
-                                        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800" data-testid={`warning-no-rollback-${m.name}`}>
-                                          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
-                                          <p className="text-sm font-medium">
-                                            This migration has no rollback. Once applied, it cannot be automatically reverted.
-                                          </p>
-                                        </div>
-                                      )}
-                                      {isBlocked && (
-                                        <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800" data-testid={`warning-blocked-dialog-${m.name}`}>
-                                          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
-                                          <span>
-                                            <strong>Warning:</strong> The following earlier migration{blockers.length > 1 ? "s have" : " has"} not been applied:{" "}
-                                            <span className="font-mono font-semibold">{blockers.join(", ")}</span>. Applying out of order may leave the database in an inconsistent state.
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel data-testid="button-cancel-apply">Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className="bg-green-700 hover:bg-green-800 focus:ring-green-700"
-                                    onClick={() => applyMutation.mutate(m.name)}
-                                    data-testid="button-confirm-apply"
+                            {isBlocked ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="ml-4" data-testid={`button-apply-blocked-${m.name}`}>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled
+                                      className="pointer-events-none opacity-50 text-green-700 border-green-200"
+                                      data-testid={`button-apply-${m.name}`}
+                                    >
+                                      <Play className="w-3.5 h-3.5 mr-1.5" />
+                                      Apply
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-xs">
+                                  <div className="flex items-start gap-1.5 text-xs">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
+                                    <span>
+                                      Apply {blockers.length > 1 ? "these earlier migrations" : "this earlier migration"} first:{" "}
+                                      <span className="font-mono font-semibold">{blockers.join(", ")}</span>
+                                    </span>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="ml-4 text-green-700 border-green-200 hover:bg-green-50 hover:text-green-800"
+                                    disabled={applyMutation.isPending}
+                                    data-testid={`button-apply-${m.name}`}
                                   >
-                                    Apply migration
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                                    <Play className="w-3.5 h-3.5 mr-1.5" />
+                                    Apply
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Apply migration?</AlertDialogTitle>
+                                    <AlertDialogDescription asChild>
+                                      <div className="space-y-3">
+                                        <p>
+                                          This will run the forward migration for <span className="font-mono font-semibold">{m.name}</span>. This action modifies the database schema.
+                                        </p>
+                                        {!m.hasDown && (
+                                          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800" data-testid={`warning-no-rollback-${m.name}`}>
+                                            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                                            <p className="text-sm font-medium">
+                                              This migration has no rollback. Once applied, it cannot be automatically reverted.
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel data-testid="button-cancel-apply">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-green-700 hover:bg-green-800 focus:ring-green-700"
+                                      onClick={() => applyMutation.mutate(m.name)}
+                                      data-testid="button-confirm-apply"
+                                    >
+                                      Apply migration
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </li>
                         );
                       })}
