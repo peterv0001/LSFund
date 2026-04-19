@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["server/**/*.test.ts"],
+    include: ["server/**/*.test.ts", "client/src/lib/**/*.test.ts"],
     testTimeout: 30000,
     globalSetup: ["server/vitest.setup.ts"],
     fileParallelism: false,

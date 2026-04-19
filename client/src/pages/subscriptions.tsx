@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { loadStripe, type Stripe as StripeType } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { getActionStyle, ACTION_STYLES } from "@/lib/action-styles";
 
 // === Types ===
 
@@ -624,21 +625,6 @@ function UpdateCardDialog({ subId, open, onOpenChange }: { subId: number; open: 
       </DialogContent>
     </Dialog>
   );
-}
-
-// === Action Icon/Color Helpers ===
-
-const ACTION_STYLES: Record<string, { color: string; dot: string; label: string }> = {
-  create: { color: "text-green-700", dot: "bg-green-500", label: "Created" },
-  pause: { color: "text-yellow-700", dot: "bg-yellow-500", label: "Paused" },
-  cancel: { color: "text-red-700", dot: "bg-red-500", label: "Cancelled" },
-  reactivate: { color: "text-blue-700", dot: "bg-blue-500", label: "Reactivated" },
-  expire: { color: "text-orange-700", dot: "bg-orange-500", label: "Expired" },
-};
-
-function getActionStyle(action: string) {
-  const key = Object.keys(ACTION_STYLES).find((k) => action.toLowerCase().includes(k));
-  return key ? ACTION_STYLES[key] : { color: "text-gray-600", dot: "bg-gray-400" };
 }
 
 // === Subscription History Timeline ===
