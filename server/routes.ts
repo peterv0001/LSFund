@@ -414,69 +414,9 @@ export async function registerRoutes(
   });
 
   // ==================== AGENT ROUTES ====================
-
-  app.get(api.agents.get.path, requireAuth, async (req, res) => {
-    const agent = await storage.getAgent(Number(req.params.id));
-    if (!agent) return res.status(404).json({ message: "Agent not found" });
-    res.json(agent);
-  });
-
-  app.get(api.agents.team.path, requireAuth, async (req, res) => {
-    // @ts-ignore
-    if (req.user!.id !== Number(req.params.id) && !req.user!.isAdmin) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-    
-    const team = await storage.getTeamStructure(Number(req.params.id));
-    res.json(team);
-  });
-
-  app.get(api.agents.upline.path, requireAuth, async (req, res) => {
-    const upline = await storage.getUpline(Number(req.params.id));
-    res.json(upline);
-  });
-
-  app.patch(api.agents.updateProfile.path, requireAuth, async (req, res) => {
-    try {
-      const input = api.agents.updateProfile.input.parse(req.body);
-      // @ts-ignore
-      const updated = await storage.updateAgent(req.user!.id, input);
-      res.json(updated);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Failed to update profile" });
-    }
-  });
-
-  app.patch(api.agents.updatePayoutMethod.path, requireAuth, async (req, res) => {
-    try {
-      const input = api.agents.updatePayoutMethod.input.parse(req.body);
-      // @ts-ignore
-      const updated = await storage.updateAgent(req.user!.id, input);
-      res.json(updated);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Failed to update payout method" });
-    }
-  });
-
-  app.patch(api.agents.updateNotificationPreferences.path, requireAuth, async (req, res) => {
-    try {
-      const prefs = emailPreferencesSchema.parse(req.body);
-      // @ts-ignore
-      const updated = await storage.updateAgent(req.user!.id, { emailPreferences: prefs });
-      res.json(updated);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Failed to update notification preferences" });
-    }
-  });
+  // Static GET routes must be registered before the dynamic GET /api/agents/:id
+  // route, otherwise Express matches e.g. /api/agents/dashboard with id="dashboard"
+  // and Number("dashboard") === NaN crashes the DB query.
 
   app.get(api.agents.dashboard.path, requireAuth, async (req, res) => {
     // @ts-ignore
@@ -610,6 +550,70 @@ export async function registerRoutes(
         createdAt: r.createdAt.toISOString(),
       })),
     });
+  });
+
+  // Dynamic routes after all static /api/agents/* routes
+  app.get(api.agents.get.path, requireAuth, async (req, res) => {
+    const agent = await storage.getAgent(Number(req.params.id));
+    if (!agent) return res.status(404).json({ message: "Agent not found" });
+    res.json(agent);
+  });
+
+  app.get(api.agents.team.path, requireAuth, async (req, res) => {
+    // @ts-ignore
+    if (req.user!.id !== Number(req.params.id) && !req.user!.isAdmin) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    const team = await storage.getTeamStructure(Number(req.params.id));
+    res.json(team);
+  });
+
+  app.get(api.agents.upline.path, requireAuth, async (req, res) => {
+    const upline = await storage.getUpline(Number(req.params.id));
+    res.json(upline);
+  });
+
+  app.patch(api.agents.updateProfile.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.agents.updateProfile.input.parse(req.body);
+      // @ts-ignore
+      const updated = await storage.updateAgent(req.user!.id, input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.patch(api.agents.updatePayoutMethod.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.agents.updatePayoutMethod.input.parse(req.body);
+      // @ts-ignore
+      const updated = await storage.updateAgent(req.user!.id, input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update payout method" });
+    }
+  });
+
+  app.patch(api.agents.updateNotificationPreferences.path, requireAuth, async (req, res) => {
+    try {
+      const prefs = emailPreferencesSchema.parse(req.body);
+      // @ts-ignore
+      const updated = await storage.updateAgent(req.user!.id, { emailPreferences: prefs });
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update notification preferences" });
+    }
   });
 
   // ==================== DEAL ROUTES ====================
