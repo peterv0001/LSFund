@@ -762,6 +762,8 @@ export const emailPreferencesSchema = z.object({
   emailOnTeamSignup: z.boolean().default(true),
   emailOnCommissionEarned: z.boolean().default(true),
   emailOnExpiryWarning: z.boolean().default(true),
+  emailOnPaymentRetrySuccess: z.boolean().default(true),
+  emailOnPaymentRetryFailed: z.boolean().default(true),
 });
 
 export type EmailPreferences = z.infer<typeof emailPreferencesSchema>;

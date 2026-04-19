@@ -1877,6 +1877,39 @@ export async function registerRoutes(
         userAgent: req.headers['user-agent'] ?? null,
       }).catch((err) => console.error('[ActivityLog] Failed to log payment method update:', err));
 
+      // Send notification and email if a payment was attempted
+      if (newBillingStatus === 'active' || newBillingStatus === 'failed') {
+        const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const isSuccess = newBillingStatus === 'active';
+
+        const notifTitle = isSuccess
+          ? `Payment Successful: ${sub.merchantName}`
+          : `Payment Failed: ${sub.merchantName}`;
+        const notifMessage = isSuccess
+          ? `Your outstanding payment for ${sub.merchantName} (${tierLabel}) has been processed successfully. Your subscription is now active.`
+          : `The payment retry for ${sub.merchantName} (${tierLabel}) has failed. Please update your payment method and try again.`;
+
+        storage.createNotification({
+          agentId,
+          type: 'system',
+          title: notifTitle,
+          message: notifMessage,
+        }).catch((err) => console.error('[Notification] Failed to create payment retry notification:', err));
+
+        storage.getAgent(agentId).then((agent) => {
+          if (!agent) return;
+          const prefs = (agent.emailPreferences as { emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+          const emailData = { firstName: agent.firstName, merchantName: sub.merchantName, tier: tierLabel };
+          if (isSuccess && prefs.emailOnPaymentRetrySuccess !== false) {
+            emailService.sendPaymentRetrySuccessEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send payment retry success email:', err));
+          } else if (!isSuccess && prefs.emailOnPaymentRetryFailed !== false) {
+            emailService.sendPaymentRetryFailedEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send payment retry failed email:', err));
+          }
+        }).catch((err) => console.error('[Email] Failed to fetch agent for payment retry email:', err));
+      }
+
       res.json({ ...updated, declineCode });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to update payment method';
@@ -2003,15 +2036,14 @@ export async function registerRoutes(
       }
 
       let newBillingStatus: 'active' | 'past_due' | 'failed';
+      let invoiceFailureMsg: string | null = null;
       try {
         const paid = await stripe.invoices.pay(invoices.data[0].id);
         newBillingStatus = paid.status === 'paid' ? 'active' : 'past_due';
       } catch (invoiceErr: unknown) {
-        const invoiceMsg = invoiceErr instanceof Error ? invoiceErr.message : 'Payment failed';
-        console.warn('[AdminRetry] Invoice payment failed:', invoiceMsg);
+        invoiceFailureMsg = invoiceErr instanceof Error ? invoiceErr.message : 'Payment failed';
+        console.warn('[AdminRetry] Invoice payment failed:', invoiceFailureMsg);
         newBillingStatus = 'failed';
-        const updated = await storage.updateSubscriptionBilling(subId, { billingStatus: newBillingStatus });
-        return res.status(402).json({ message: invoiceMsg, subscription: updated });
       }
 
       const updated = await storage.updateSubscriptionBilling(subId, { billingStatus: newBillingStatus });
@@ -2027,6 +2059,40 @@ export async function registerRoutes(
         ipAddress: req.ip ?? null,
         userAgent: req.headers['user-agent'] ?? null,
       }).catch((err) => console.error('[ActivityLog] Failed to log admin payment retry:', err));
+
+      // Notify the agent about the payment retry result
+      const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      const isSuccess = newBillingStatus === 'active';
+      const notifTitle = isSuccess
+        ? `Payment Successful: ${sub.merchantName}`
+        : `Payment Failed: ${sub.merchantName}`;
+      const notifMessage = isSuccess
+        ? `Your outstanding payment for ${sub.merchantName} (${tierLabel}) has been processed successfully. Your subscription is now active.`
+        : `The payment retry for ${sub.merchantName} (${tierLabel}) has failed. Please update your payment method and try again.`;
+
+      storage.createNotification({
+        agentId: sub.agentId,
+        type: 'system',
+        title: notifTitle,
+        message: notifMessage,
+      }).catch((err) => console.error('[Notification] Failed to create admin payment retry notification:', err));
+
+      storage.getAgent(sub.agentId).then((agent) => {
+        if (!agent) return;
+        const prefs = (agent.emailPreferences as { emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+        const emailData = { firstName: agent.firstName, merchantName: sub.merchantName, tier: tierLabel };
+        if (isSuccess && prefs.emailOnPaymentRetrySuccess !== false) {
+          emailService.sendPaymentRetrySuccessEmail(agent.email, emailData)
+            .catch((err) => console.error('[Email] Failed to send payment retry success email:', err));
+        } else if (!isSuccess && prefs.emailOnPaymentRetryFailed !== false) {
+          emailService.sendPaymentRetryFailedEmail(agent.email, emailData)
+            .catch((err) => console.error('[Email] Failed to send payment retry failed email:', err));
+        }
+      }).catch((err) => console.error('[Email] Failed to fetch agent for admin payment retry email:', err));
+
+      if (invoiceFailureMsg) {
+        return res.status(402).json({ message: invoiceFailureMsg, subscription: updated });
+      }
 
       res.json(updated);
     } catch (err: unknown) {

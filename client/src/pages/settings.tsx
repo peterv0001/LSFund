@@ -72,7 +72,7 @@ export default function SettingsPage() {
   });
 
   // Notification preferences state
-  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnExpiryWarning?: boolean } | null) ?? {};
+  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnExpiryWarning?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
   const [notifPrefs, setNotifPrefs] = useState({
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
@@ -81,6 +81,8 @@ export default function SettingsPage() {
     emailOnTeamSignup: defaultPrefs.emailOnTeamSignup !== false,
     emailOnCommissionEarned: defaultPrefs.emailOnCommissionEarned !== false,
     emailOnExpiryWarning: defaultPrefs.emailOnExpiryWarning !== false,
+    emailOnPaymentRetrySuccess: defaultPrefs.emailOnPaymentRetrySuccess !== false,
+    emailOnPaymentRetryFailed: defaultPrefs.emailOnPaymentRetryFailed !== false,
   });
 
   type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated';
@@ -556,6 +558,34 @@ export default function SettingsPage() {
                       data-testid="toggle-email-on-expiry-warning"
                       checked={notifPrefs.emailOnExpiryWarning}
                       onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnExpiryWarning: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Payment Retry Successful</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when an outstanding payment for one of your subscriptions is successfully processed.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-payment-retry-success"
+                      checked={notifPrefs.emailOnPaymentRetrySuccess}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetrySuccess: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Payment Retry Failed</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when a payment retry for one of your subscriptions fails.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-payment-retry-failed"
+                      checked={notifPrefs.emailOnPaymentRetryFailed}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetryFailed: checked }))}
                     />
                   </div>
                 </div>
