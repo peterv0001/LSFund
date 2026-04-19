@@ -1001,11 +1001,30 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         <span className="font-medium text-gray-600">Decay: {(decay * 100).toFixed(0)}%</span>
       </div>
 
-      {sub.endDate && sub.status !== "cancelled" && sub.status !== "expired" && (
-        <p className="mt-1 text-xs text-orange-600 font-medium" data-testid={`text-expires-on-${sub.id}`}>
-          Scheduled to expire on {format(new Date(sub.endDate), "MMM d, yyyy")}
-        </p>
-      )}
+      {sub.endDate && sub.status !== "cancelled" && sub.status !== "expired" && (() => {
+        const endDate = new Date(sub.endDate);
+        const now = new Date();
+        const endOfDayInSevenDays = new Date(now);
+        endOfDayInSevenDays.setDate(endOfDayInSevenDays.getDate() + 7);
+        endOfDayInSevenDays.setHours(23, 59, 59, 999);
+        const isExpiringSoon = endDate >= now && endDate <= endOfDayInSevenDays;
+        return isExpiringSoon ? (
+          <div
+            className="flex items-start gap-2 mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800"
+            data-testid={`banner-expiring-soon-${sub.id}`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-500 mt-0.5" />
+            <span>
+              <strong>Expiring soon:</strong> this subscription expires on{" "}
+              {format(endDate, "MMM d, yyyy")}. Contact your admin to extend or renew it.
+            </span>
+          </div>
+        ) : (
+          <p className="mt-1 text-xs text-orange-600 font-medium" data-testid={`text-expires-on-${sub.id}`}>
+            Scheduled to expire on {format(endDate, "MMM d, yyyy")}
+          </p>
+        );
+      })()}
 
       {sub.status === "paused" && sub.pausedAt && (
         <p className="mt-1 text-xs text-yellow-600 font-medium" data-testid={`text-paused-since-${sub.id}`}>

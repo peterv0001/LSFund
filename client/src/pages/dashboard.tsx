@@ -46,11 +46,21 @@ export default function Dashboard() {
     },
   });
 
-  const { data: subscriptions = [] } = useQuery<{ id: number; status: string }[]>({
+  const { data: subscriptions = [] } = useQuery<{ id: number; status: string; endDate: string | null }[]>({
     queryKey: ["/api/subscriptions"],
   });
 
   const expiredSubscriptionCount = subscriptions.filter((s) => s.status === "expired").length;
+
+  const now = new Date();
+  const endOfDayInSevenDays = new Date(now);
+  endOfDayInSevenDays.setDate(endOfDayInSevenDays.getDate() + 7);
+  endOfDayInSevenDays.setHours(23, 59, 59, 999);
+  const expiringSoonSubscriptions = subscriptions.filter((s) => {
+    if (s.status === "cancelled" || s.status === "expired" || !s.endDate) return false;
+    const end = new Date(s.endDate);
+    return end >= now && end <= endOfDayInSevenDays;
+  });
 
   const copyReferralLink = () => {
     const link = referralData?.referralUrl || `${window.location.origin}/join/${user?.referralCode || user?.id}`;
@@ -97,6 +107,26 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {expiringSoonSubscriptions.length > 0 && (
+          <div
+            className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4"
+            data-testid="banner-expiring-soon-subscriptions-dashboard"
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-800">
+              <span className="font-semibold">
+                {expiringSoonSubscriptions.length === 1
+                  ? "1 subscription is expiring within 7 days"
+                  : `${expiringSoonSubscriptions.length} subscriptions are expiring within 7 days`}
+              </span>{" "}
+              — contact your admin if you'd like to extend or renew.{" "}
+              <Link href="/subscriptions" className="underline font-medium" data-testid="link-view-expiring-soon-subscriptions">
+                View subscriptions
+              </Link>
+            </p>
+          </div>
+        )}
 
         {expiredSubscriptionCount > 0 && (
           <div
