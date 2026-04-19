@@ -113,6 +113,9 @@ async function cleanupAgent(agentId: number) {
     .delete(schema.commissions)
     .where(eq(schema.commissions.agentId, agentId));
   await db
+    .delete(schema.notifications)
+    .where(eq(schema.notifications.agentId, agentId));
+  await db
     .delete(schema.subscriptions)
     .where(eq(schema.subscriptions.agentId, agentId));
   await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
@@ -238,6 +241,95 @@ describe("calculate-commissions – subscription_residual commission type", () =
         commissionType: "Subscription Residual",
       })
     );
+
+    await cleanupAgent(agent.id);
+  });
+});
+
+// ── In-app notification tests ─────────────────────────────────────────────────
+
+describe("calculate-commissions – in-app notification for subscription_commission", () => {
+  it("creates a commission_earned in-app notification with correct title and message", async () => {
+    const agent = await createAgent("notif-comm", { emailOnCommissionEarned: true });
+    const sub = await createActiveSubscription(agent.id);
+
+    const res = await request(testApp)
+      .post("/api/admin/subscriptions/calculate-commissions")
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    expect(res.body.processed).toBeGreaterThanOrEqual(1);
+
+    const notifs = await db
+      .select()
+      .from(schema.notifications)
+      .where(eq(schema.notifications.agentId, agent.id));
+
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].type).toBe("commission_earned");
+    expect(notifs[0].title).toBe("Subscription Commission Earned!");
+    expect(notifs[0].message).toContain("Subscription Commission");
+    expect(notifs[0].message).toContain(sub.merchantName);
+    expect(notifs[0].isRead).toBe(false);
+
+    await cleanupAgent(agent.id);
+  });
+});
+
+describe("calculate-commissions – in-app notification for subscription_residual", () => {
+  it("creates a commission_earned notification with 'Subscription Residual' for subs older than 12 months", async () => {
+    const thirteenMonthsAgo = new Date();
+    thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
+
+    const agent = await createAgent("notif-residual", { emailOnCommissionEarned: true });
+    const sub = await createActiveSubscription(agent.id, thirteenMonthsAgo);
+
+    await request(testApp)
+      .post("/api/admin/subscriptions/calculate-commissions")
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    const notifs = await db
+      .select()
+      .from(schema.notifications)
+      .where(eq(schema.notifications.agentId, agent.id));
+
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].type).toBe("commission_earned");
+    expect(notifs[0].title).toBe("Subscription Residual Earned!");
+    expect(notifs[0].message).toContain("Subscription Residual");
+    expect(notifs[0].message).toContain(sub.merchantName);
+    expect(notifs[0].isRead).toBe(false);
+
+    await cleanupAgent(agent.id);
+  });
+});
+
+describe("calculate-commissions – notification created even when email is opted out", () => {
+  it("creates an in-app notification regardless of emailOnCommissionEarned preference", async () => {
+    const agent = await createAgent("notif-no-email", { emailOnCommissionEarned: false });
+    await createActiveSubscription(agent.id);
+
+    const res = await request(testApp)
+      .post("/api/admin/subscriptions/calculate-commissions")
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    expect(res.body.processed).toBeGreaterThanOrEqual(1);
+
+    const notifs = await db
+      .select()
+      .from(schema.notifications)
+      .where(eq(schema.notifications.agentId, agent.id));
+
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].type).toBe("commission_earned");
+
+    await shortDelay();
+
+    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+    const calledForThisAgent = calls.some((args: unknown[]) => args[0] === agent.email);
+    expect(calledForThisAgent).toBe(false);
 
     await cleanupAgent(agent.id);
   });

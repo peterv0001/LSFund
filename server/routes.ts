@@ -2273,6 +2273,14 @@ export async function registerRoutes(
           const commissionTypeLabel = commType === 'subscription_residual' ? 'Subscription Residual' : 'Subscription Commission';
           const agent = await storage.getAgent(sub.agentId);
           if (agent) {
+            await storage.createNotification({
+              agentId: sub.agentId,
+              type: 'commission_earned',
+              title: `${commissionTypeLabel} Earned!`,
+              message: `You earned a $${commissionAmount.toFixed(2)} ${commissionTypeLabel} from ${sub.merchantName} (period: ${periodDate}).`,
+              isRead: false,
+              emailSent: false,
+            });
             const commPrefs = (agent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
             if (commPrefs.emailOnCommissionEarned !== false) {
               emailService.sendCommissionEarnedEmail(agent.email, {
