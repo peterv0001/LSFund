@@ -29,6 +29,9 @@ Leadershield Network is a full-stack network marketing (MLM) platform for Mercha
 - **Color Palette:** Deep navy (#002147) and platinum (#E5E4E2)
 - **Fonts:** Montserrat (headings/display), Cinzel (display), and Manrope/Open Sans (body)
 - **Logo:** ShieldCheck icon (lucide-react) with gold gradient
+
+The platform's core business logic includes binary tree placement for agent hierarchy, a GBR waterfall for MCA commissions, a subscription commission engine with decay, holdback/clawback systems, fulfillment agent tiering, and a rank advancement system. It also features platform fee management, a lead distribution system, quarterly performance accelerators, and renewal commissions.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
@@ -53,6 +56,7 @@ Preferred communication style: Simple, everyday language.
 - Comprehensive legal and compliance pages for Income Disclosure, Terms of Service, Privacy Policy, and Refund Policy.
 - Authentication page includes immersive design with dark gradient panel, login/registration forms, sponsor search, placement preference, and a forgot password flow.
 - Training page (Leadershield Academy) offers a 6-module video course with progress tracking, sales playbooks, and a "Your First 30 Days" checklist.
+- Uses Framer Motion for animations, `AnimatedSection` for scroll-triggered effects, `CountUp` for animated statistics, and `FAQItem` for accordions.
 
 #### Backend Architecture
 **Key Features:**
@@ -72,6 +76,7 @@ Preferred communication style: Simple, everyday language.
 - API routes defined in `shared/routes.ts` with type safety via Zod schemas.
 - The build process bundles server dependencies for optimized performance and reduced cold start times.
 - Password hashing uses Node's native `scrypt`.
+- Commission Engine: Implements GBR waterfall (MAC/TFC/PICF/RSR), MAC sponsor overrides with compression, subscription commission decay, MCA pairing enhancement, binary bonuses, and platform fee waivers.
 
 #### Data Storage
 - **Database:** PostgreSQL with Drizzle ORM
@@ -89,6 +94,9 @@ Preferred communication style: Simple, everyday language.
 - `lead_requests`: Agent lead requests.
 - `course_modules`/`course_progress`: Training system.
 - `notifications`, `announcements`, `resources`, `admin_export_templates`.
+
+#### Testing
+- **Framework:** Vitest for server-side testing, verifying migration robustness and idempotent behavior.
 
 ### Commission Engine & Business Logic
 - **Commission Engine:** Implements GBR waterfall (MAC/TFC/PICF/RSR), MAC sponsor overrides with compression, subscription commission decay, MCA pairing enhancement, binary bonuses, platform fee waivers, and fulfillment tier rate determination.

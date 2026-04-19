@@ -107,7 +107,7 @@ export async function seedDatabase() {
 
   // 1. Root Agent (Partner + Admin)
   const root = await storage.createAgent({
-    email: "admin@leadershield.com",
+    email: "admin@psl.capital",
     password,
     firstName: "Admin",
     lastName: "User",
