@@ -35,13 +35,18 @@ async function warnUpcomingExpirations(): Promise<void> {
           message: `Your ${tierLabel} subscription for ${sub.merchantName} expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''} on ${expiryDate}. Commission accrual will stop at that time.`,
         }).catch((err) => console.error('[Scheduler] Failed to create expiry warning notification:', err));
 
-        emailService.sendSubscriptionExpiringWarningEmail(agent.email, {
-          firstName: agent.firstName,
-          merchantName: sub.merchantName,
-          tier: tierLabel,
-          expiryDate,
-          daysUntilExpiry,
-        }).catch((err) => console.error('[Scheduler] Failed to send subscription expiry warning email:', err));
+        const prefs = (agent.emailPreferences ?? {}) as Record<string, boolean>;
+        const sendWarningEmail = prefs.emailOnExpiryWarning !== false;
+
+        if (sendWarningEmail) {
+          emailService.sendSubscriptionExpiringWarningEmail(agent.email, {
+            firstName: agent.firstName,
+            merchantName: sub.merchantName,
+            tier: tierLabel,
+            expiryDate,
+            daysUntilExpiry,
+          }).catch((err) => console.error('[Scheduler] Failed to send subscription expiry warning email:', err));
+        }
 
         await storage.markSubscriptionWarningSent(sub.id);
 

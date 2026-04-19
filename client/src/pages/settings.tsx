@@ -72,7 +72,7 @@ export default function SettingsPage() {
   });
 
   // Notification preferences state
-  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean } | null) ?? {};
+  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnExpiryWarning?: boolean } | null) ?? {};
   const [notifPrefs, setNotifPrefs] = useState({
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
@@ -80,6 +80,7 @@ export default function SettingsPage() {
     emailOnDealFunded: defaultPrefs.emailOnDealFunded !== false,
     emailOnTeamSignup: defaultPrefs.emailOnTeamSignup !== false,
     emailOnCommissionEarned: defaultPrefs.emailOnCommissionEarned !== false,
+    emailOnExpiryWarning: defaultPrefs.emailOnExpiryWarning !== false,
   });
 
   type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated';
@@ -541,6 +542,20 @@ export default function SettingsPage() {
                       data-testid="toggle-email-on-commission-earned"
                       checked={notifPrefs.emailOnCommissionEarned}
                       onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnCommissionEarned: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Subscription Expiry Warning</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when a subscription is approaching its expiry date.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-expiry-warning"
+                      checked={notifPrefs.emailOnExpiryWarning}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnExpiryWarning: checked }))}
                     />
                   </div>
                 </div>
