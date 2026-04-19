@@ -219,6 +219,7 @@ export default function AdminAgents() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
+              data-testid="input-agent-search"
               placeholder="Search by name or email..." 
               className="pl-9"
               value={search}
