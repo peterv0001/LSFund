@@ -202,7 +202,7 @@ export const commissions = pgTable("commissions", {
   // Prevent duplicate subscription commissions for the same agent+subscription+period+type.
   // Partial index (WHERE subscription_id IS NOT NULL) leaves non-subscription commission
   // types (deal-based, bonuses, etc.) unrestricted.
-  subPeriodUniqueIdx: uniqueIndex("commissions_sub_period_unique")
+  subPeriodUniqueIdx: uniqueIndex("commissions_subscription_period_type_idx")
     .on(table.agentId, table.subscriptionId, table.periodDate, table.type)
     .where(sql`${table.subscriptionId} IS NOT NULL`),
 }));
