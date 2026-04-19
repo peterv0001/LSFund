@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearch, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -1182,6 +1182,25 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
     setLocation(qs ? `?${qs}` : window.location.pathname, { replace: true });
   };
 
+  const [searchInput, setSearchInput] = useState(actSearch);
+  const isMounted = useRef(false);
+
+  useEffect(() => {
+    setSearchInput(actSearch);
+  }, [actSearch]);
+
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    if (searchInput === actSearch) return;
+    const timer = setTimeout(() => {
+      updateUrl({ actSearch: searchInput, actPage: "1" });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, search, actSearch]);
+
   const buildUrl = () => {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (subscriptionId !== "all") params.set("subscriptionId", subscriptionId);
@@ -1220,8 +1239,8 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
         <Input
           className="h-8 text-sm w-52"
           placeholder="Search activity..."
-          value={actSearch}
-          onChange={(e) => updateUrl({ actSearch: e.target.value, actPage: "1" })}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           data-testid="input-activity-search"
         />
       </div>
