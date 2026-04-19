@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearch, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1079,10 +1080,32 @@ const ACTION_OPTIONS = [
 ];
 
 function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] }) {
-  const [page, setPage] = useState(1);
-  const [subscriptionId, setSubscriptionId] = useState<string>("all");
-  const [action, setAction] = useState<string>("all");
+  const search = useSearch();
+  const [, setLocation] = useLocation();
   const pageSize = 20;
+
+  const searchParams = new URLSearchParams(search);
+  const page = Math.max(1, parseInt(searchParams.get("actPage") ?? "1", 10) || 1);
+  const subscriptionId = searchParams.get("actSub") ?? "all";
+  const action = searchParams.get("actAction") ?? "all";
+
+  const updateUrl = (updates: { actPage?: string; actSub?: string; actAction?: string }) => {
+    const next = new URLSearchParams(search);
+    if (updates.actPage !== undefined) {
+      if (updates.actPage === "1") next.delete("actPage");
+      else next.set("actPage", updates.actPage);
+    }
+    if (updates.actSub !== undefined) {
+      if (updates.actSub === "all") next.delete("actSub");
+      else next.set("actSub", updates.actSub);
+    }
+    if (updates.actAction !== undefined) {
+      if (updates.actAction === "all") next.delete("actAction");
+      else next.set("actAction", updates.actAction);
+    }
+    const qs = next.toString();
+    setLocation(qs ? `?${qs}` : window.location.pathname, { replace: true });
+  };
 
   const buildUrl = () => {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
@@ -1105,13 +1128,11 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
   const totalPages = Math.ceil(total / pageSize);
 
   const handleSubscriptionChange = (value: string) => {
-    setSubscriptionId(value);
-    setPage(1);
+    updateUrl({ actSub: value, actPage: "1" });
   };
 
   const handleActionChange = (value: string) => {
-    setAction(value);
-    setPage(1);
+    updateUrl({ actAction: value, actPage: "1" });
   };
 
   const filtersActive = subscriptionId !== "all" || action !== "all";
@@ -1156,7 +1177,7 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
             variant="ghost"
             size="sm"
             className="h-8 text-xs text-muted-foreground"
-            onClick={() => { setSubscriptionId("all"); setAction("all"); setPage(1); }}
+            onClick={() => updateUrl({ actSub: "all", actAction: "all", actPage: "1" })}
             data-testid="button-clear-activity-filters"
           >
             Clear filters
@@ -1260,7 +1281,7 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
               size="icon"
               className="h-7 w-7"
               disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => updateUrl({ actPage: String(page - 1) })}
               data-testid="button-activity-prev"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -1270,7 +1291,7 @@ function AllActivityTimeline({ subscriptions }: { subscriptions: Subscription[] 
               size="icon"
               className="h-7 w-7"
               disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => updateUrl({ actPage: String(page + 1) })}
               data-testid="button-activity-next"
             >
               <ChevronRight className="w-3.5 h-3.5" />
