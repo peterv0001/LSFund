@@ -165,6 +165,30 @@ export const migrations: Migration[] = [
   {
     name: "007_rename_subscription_email_preferences_to_email_preferences",
     async run(client) {
+      // Check current column state before acting — production DB may have the
+      // column already renamed (subscription_email_preferences never existed) or
+      // may have subscription_email_preferences still needing the rename.
+      const { rows } = await client.query<{ column_name: string }>(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'agents'
+          AND column_name IN ('subscription_email_preferences', 'email_preferences')
+      `);
+      const names = rows.map((r) => r.column_name);
+      if (names.includes('email_preferences') && !names.includes('subscription_email_preferences')) {
+        console.log("[migrations] email_preferences column already exists — skipping rename");
+        return;
+      }
+      if (!names.includes('subscription_email_preferences')) {
+        // Neither column exists — add email_preferences directly
+        await client.query(`
+          ALTER TABLE agents
+          ADD COLUMN IF NOT EXISTS email_preferences jsonb
+          NOT NULL DEFAULT '{"emailOnPaused": true, "emailOnCancelled": true, "emailOnReactivated": true}'::jsonb
+        `);
+        console.log("[migrations] Added email_preferences column (subscription_email_preferences was absent)");
+        return;
+      }
       await client.query(`
         ALTER TABLE agents
         RENAME COLUMN subscription_email_preferences TO email_preferences
@@ -337,38 +361,6 @@ export const migrations: Migration[] = [
         ALTER TABLE subscriptions DROP COLUMN IF EXISTS expiry_warning_sent_at
       `);
       console.log("[migrations] Dropped expiry_warning_sent_at column from subscriptions");
-    },
-  },
-  {
-    name: "004_add_cancelled_and_paused_by_columns",
-    async run(client) {
-      await client.query(`
-        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_at timestamp
-      `);
-      await client.query(`
-        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_by_id integer
-      `);
-      await client.query(`
-        ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_by_id integer
-      `);
-      console.log("[migrations] Added cancelled_at, cancelled_by_id, paused_by_id columns to subscriptions table");
-    },
-  },
-  {
-    name: "005_add_subscription_email_preferences",
-    async run(client) {
-      await client.query(`
-        ALTER TABLE agents
-        ADD COLUMN IF NOT EXISTS subscription_email_preferences jsonb
-        NOT NULL DEFAULT '{"emailOnPaused": true, "emailOnCancelled": true, "emailOnReactivated": true}'::jsonb
-      `);
-      console.log("[migrations] Added subscription_email_preferences column to agents table");
-    },
-    async down(client) {
-      await client.query(`
-        ALTER TABLE agents DROP COLUMN IF EXISTS subscription_email_preferences
-      `);
-      console.log("[migrations] Dropped subscription_email_preferences column from agents table");
     },
   },
 ];

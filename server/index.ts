@@ -119,7 +119,8 @@ async function initStripe() {
             console.log('[Stripe] Webhook endpoint already configured');
             return;
           }
-          console.warn(`[Stripe] Stored endpoint URL (${ep.url}) doesn't match expected (${webhookUrl}) — recreating`);
+          console.warn(`[Stripe] Stored endpoint URL (${ep.url}) doesn't match expected (${webhookUrl}) — deleting old endpoint and recreating`);
+          await stripe.webhookEndpoints.del(endpointId);
         } catch {
           console.warn('[Stripe] Stored endpoint no longer valid, recreating...');
         }
