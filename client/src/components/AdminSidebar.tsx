@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { BrandMark } from "@/components/BrandMark";
 import { 
   LayoutDashboard, 
   Users, 
@@ -18,7 +19,6 @@ import {
   RefreshCw,
   Lock,
   Database,
-  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -48,10 +48,11 @@ export function AdminSidebar() {
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex flex-col gap-1">
-          <Link href="/admin" data-testid="link-logo-admin" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Shield className="w-4 h-4 text-white shrink-0" />
-            <span className="font-display font-bold text-white text-base leading-tight tracking-wide">
-              Leader Shield Network
+          <Link href="/admin" data-testid="link-logo-admin" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+            <BrandMark size="sm" />
+            <span className="leading-tight">
+              <span className="block font-display font-bold text-white text-sm tracking-wide">LEADERSHIELD</span>
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.18em] text-white/50">Funding Network</span>
             </span>
           </Link>
           <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-1 pl-0.5">Admin Portal</p>

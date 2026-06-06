@@ -79,7 +79,7 @@ export default function AdminSettings() {
   useEffect(() => {
     if (settings) {
       setCompanyInfo({
-        name: settings.companyInfo?.name ?? "Leadershield Network",
+        name: settings.companyInfo?.name ?? "Leadershield Funding Network",
         supportEmail: settings.companyInfo?.supportEmail ?? "support@leadershield.com",
       });
       setRankReqs(settings.rankRequirements ?? {

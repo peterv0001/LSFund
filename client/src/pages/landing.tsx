@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BrandMark } from "@/components/BrandMark";
 import {
   Shield,
   DollarSign,
@@ -14,16 +15,10 @@ import {
   Star,
   ChevronRight,
   ChevronDown,
-  Clock,
   Repeat,
   Target,
   Bot,
   MessageSquare,
-  Search,
-  LineChart,
-  CreditCard,
-  Globe,
-  Lock,
   FileCheck,
   Scale,
   Calendar,
@@ -34,13 +29,19 @@ import {
   GraduationCap,
   Headphones,
   Quote,
-  ArrowUpRight,
   Sparkles,
   Trophy,
   Heart,
-  MapPin,
-  Phone,
-  Mail,
+  Lock,
+  Banknote,
+  Gauge,
+  CalendarClock,
+  Wallet,
+  FileText,
+  Building2,
+  Handshake,
+  Search,
+  Settings2,
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 
@@ -86,17 +87,23 @@ function CountUp({ end, suffix = "", prefix = "", duration = 2000 }: { end: numb
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const slug = question.slice(0, 20).replace(/\s/g, '-').toLowerCase();
+  const panelId = `faq-panel-${slug}`;
   return (
     <div className="border-b border-border last:border-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
         className="w-full flex items-center justify-between py-5 text-left group"
-        data-testid={`faq-${question.slice(0, 20).replace(/\s/g, '-').toLowerCase()}`}
+        data-testid={`faq-${slug}`}
       >
         <span className="text-base font-semibold text-foreground pr-4 group-hover:text-primary transition-colors">{question}</span>
         <ChevronDown className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       <motion.div
+        id={panelId}
+        role="region"
         initial={false}
         animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
         transition={{ duration: 0.3 }}
@@ -122,21 +129,29 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/95 backdrop-blur-xl shadow-sm border-b border-border' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" data-testid="link-logo-landing" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Shield className="w-5 h-5 text-primary shrink-0" />
-            <span className="font-display font-bold text-primary text-lg tracking-wide">Leader Shield Network</span>
+          <Link href="/" data-testid="link-logo-landing" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <BrandMark size="sm" />
+            <span className="leading-tight">
+              <span className={`block font-display font-bold text-base tracking-wide ${scrolled ? 'text-primary' : 'text-white'}`}>LEADERSHIELD</span>
+              <span className={`block text-[10px] font-semibold uppercase tracking-[0.2em] ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Funding Network</span>
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="#opportunity" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Opportunity</a>
-            <a href="#platform" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Platform</a>
-            <a href="#compensation" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Earnings</a>
-            <a href="#faq" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">FAQ</a>
+            {[
+              { href: "#funding", label: "Funding" },
+              { href: "#opportunity", label: "Opportunity" },
+              { href: "#platform", label: "Platform" },
+              { href: "#compensation", label: "Earnings" },
+              { href: "#faq", label: "FAQ" },
+            ].map((l) => (
+              <a key={l.href} href={l.href} className={`text-sm font-medium transition-colors ${scrolled ? 'text-muted-foreground hover:text-primary' : 'text-white/70 hover:text-white'}`}>{l.label}</a>
+            ))}
           </div>
 
           <div className="flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost" size="sm" data-testid="button-login">Agent Login</Button>
+              <Button variant="ghost" size="sm" className={scrolled ? '' : 'text-white hover:bg-white/10 hover:text-white'} data-testid="button-login">Agent Login</Button>
             </Link>
             <Link href="/signup">
               <Button size="sm" className="bg-white text-primary font-semibold hover:bg-white/90 shadow-md" data-testid="button-join">
@@ -164,38 +179,38 @@ export default function LandingPage() {
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8">
-                <Sparkles className="w-4 h-4 text-white/60" />
-                <span className="text-sm font-medium text-white/80">The $200B+ Opportunity is Here</span>
+                <Sparkles className="w-4 h-4 text-[#EBCB6D]" />
+                <span className="text-sm font-medium text-white/80">Unsecured working capital, fast</span>
               </div>
 
-              <h1 className="text-5xl lg:text-7xl font-display font-bold text-white leading-[1.1] mb-8">
-                Build Your
+              <h1 className="text-5xl lg:text-7xl font-display font-bold text-white leading-[1.08] mb-8">
+                Capital when your
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">
-                  Financial Legacy
+                  business needs it most.
                 </span>
               </h1>
 
               <p className="text-xl text-white/60 mb-10 max-w-lg leading-relaxed">
-                Two revenue streams. No ceiling on your income. Leadershield Network gives you the platform, the products, and the training to build generational wealth.
+                Leadershield Funding Network helps business owners access fast, flexible merchant cash advance funding — and rewards the agents who connect them with capital.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
                 <Link href="/signup">
-                  <Button size="lg" className="h-16 px-10 text-lg font-bold bg-white text-primary font-bold shadow-2xl hover:bg-white/90 transition-all hover:scale-105" data-testid="button-get-started">
-                    Start Your Journey
+                  <Button size="lg" className="h-16 px-10 text-lg font-bold bg-white text-primary shadow-2xl hover:bg-white/90 transition-all hover:scale-105" data-testid="button-get-started">
+                    Join the Network
                     <ArrowRight className="w-6 h-6 ml-3" />
                   </Button>
                 </Link>
-                <a href="#opportunity">
+                <a href="#funding">
                   <Button size="lg" variant="outline" className="h-16 px-10 text-lg font-semibold border-white/20 text-white hover:bg-white/10 hover:text-white">
                     <Play className="w-5 h-5 mr-2" />
-                    See How It Works
+                    Explore Funding
                   </Button>
                 </a>
               </div>
 
-              <p className="text-xs text-white/30">*Individual results vary. Income depends on effort, market conditions, and other factors.</p>
+              <p className="text-xs text-white/30">*Merchant cash advance funding is not a traditional APR-based loan. Terms subject to underwriting review. Individual agent results vary.</p>
             </motion.div>
 
             <motion.div
@@ -209,54 +224,40 @@ export default function LandingPage() {
                 <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 space-y-6">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-white/60 text-sm font-medium uppercase tracking-wider">Live Earning Potential</span>
+                    <span className="text-white/60 text-sm font-medium uppercase tracking-wider">The Funding Profile</span>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                          <DollarSign className="w-5 h-5 text-emerald-400" />
+                    {[
+                      { icon: Banknote, color: "emerald", label: "Funding Range", value: "$2K–$2M" },
+                      { icon: Gauge, color: "blue", label: "Funding Speed", value: "As fast as 1 day" },
+                      { icon: Building2, color: "platinum", label: "Time in Business", value: "6+ months" },
+                      { icon: Wallet, color: "purple", label: "Monthly Revenue", value: "$10K+" },
+                    ].map((row, i) => {
+                      const map: Record<string, { bg: string; text: string }> = {
+                        emerald: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
+                        blue: { bg: "bg-blue-500/20", text: "text-blue-400" },
+                        platinum: { bg: "bg-white/10", text: "text-[#E5E4E2]" },
+                        purple: { bg: "bg-purple-500/20", text: "text-purple-400" },
+                      };
+                      const c = map[row.color];
+                      return (
+                        <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center`}>
+                              <row.icon className={`w-5 h-5 ${c.text}`} />
+                            </div>
+                            <span className="text-white/70">{row.label}</span>
+                          </div>
+                          <span className={`text-base font-bold ${c.text}`}>{row.value}</span>
                         </div>
-                        <span className="text-white/70">MCA Commission</span>
-                      </div>
-                      <span className="text-xl font-bold text-emerald-400">22% GBR</span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                          <Repeat className="w-5 h-5 text-blue-400" />
-                        </div>
-                        <span className="text-white/70">Platform Residuals</span>
-                      </div>
-                      <span className="text-xl font-bold text-blue-400">50-70%</span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-white/8 rounded-2xl border border-white/15">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                          <Zap className="w-5 h-5 text-[#E5E4E2]" />
-                        </div>
-                        <span className="text-white/80">Pairing Bonus</span>
-                      </div>
-                      <span className="text-xl font-bold text-[#E5E4E2]">+5%</span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                          <TrendingUp className="w-5 h-5 text-purple-400" />
-                        </div>
-                        <span className="text-white/70">Quarterly Accelerator</span>
-                      </div>
-                      <span className="text-xl font-bold text-purple-400">Up to +3%</span>
-                    </div>
+                      );
+                    })}
                   </div>
 
                   <Link href="/signup">
                     <Button className="w-full h-14 bg-white text-primary font-bold text-lg hover:bg-white/90 shadow-xl mt-4">
-                      Claim Your Spot
+                      Start a Funding Review
                     </Button>
                   </Link>
                 </div>
@@ -268,22 +269,20 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
       </section>
 
-      {/* Social Proof Stats Bar */}
+      {/* Funding Profile Stats Bar */}
       <section className="py-16 px-6 bg-background border-b border-border">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { value: 200, suffix: "B+", prefix: "$", label: "Industry Size", icon: BarChart3 },
-              { value: 30, suffix: "M+", label: "US Small Businesses", icon: Users },
-              { value: 70, suffix: "%", label: "Max Commission Pool", icon: TrendingUp },
-              { value: 48, suffix: "hr", label: "Average Funding Time", icon: Clock },
+              { value: "$2K–$2M", label: "Funding Range", icon: Banknote },
+              { value: "1 Day", label: "Possible Funding Speed", icon: Gauge },
+              { value: "6+ Mos.", label: "Time in Business Profile", icon: Building2 },
+              { value: "$10K+", label: "Monthly Gross Revenue", icon: Wallet },
             ].map((stat, i) => (
               <AnimatedSection key={i} delay={i * 0.1}>
-                <div className="flex flex-col items-center" data-testid={`social-stat-${i}`}>
+                <div className="flex flex-col items-center" data-testid={`funding-stat-${i}`}>
                   <stat.icon className="w-6 h-6 text-primary mb-3" />
-                  <p className="text-4xl font-bold text-primary mb-1">
-                    <CountUp end={stat.value} prefix={stat.prefix || ""} suffix={stat.suffix} />
-                  </p>
+                  <p className="text-3xl lg:text-4xl font-bold text-primary mb-1">{stat.value}</p>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
                 </div>
               </AnimatedSection>
@@ -292,8 +291,214 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* MCA Funding Program */}
+      <section id="funding" className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <AnimatedSection>
+            <div className="text-center mb-16">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-sm font-medium text-primary mb-6">
+                <Banknote className="w-4 h-4" />
+                The Funding Program
+              </span>
+              <h2 className="text-4xl lg:text-5xl font-display font-bold text-primary mb-6">
+                Capital Designed Around<br />Business Momentum.
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Funding is structured as a merchant cash advance with a fixed factor rate — not a traditional APR-based loan. Every file is reviewed individually based on revenue, time in business, credit profile, cash flow, and existing obligations. Minimal paperwork, funding available as quickly as one business day.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          {/* Program Highlights */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {[
+              { icon: Banknote, title: "Funding Amounts", desc: "$2,000 to $2,000,000, with an average funded deal around $75,000." },
+              { icon: Gauge, title: "Factor Rate Range", desc: "15% to 49%, based on business performance and underwriting review." },
+              { icon: CalendarClock, title: "Repayment Terms", desc: "30 days to 24 months, with daily, weekly, bi-weekly, or monthly options." },
+              { icon: Repeat, title: "Repayment Methods", desc: "ACH debits or credit card processing holdbacks, depending on structure." },
+              { icon: Wallet, title: "Use of Funds", desc: "Inventory, payroll, marketing, expansion, consolidation, or operating cash flow." },
+              { icon: TrendingUp, title: "Renewal Potential", desc: "Once a business repays about 50% of its balance, it may become eligible for additional funding." },
+            ].map((item, i) => (
+              <AnimatedSection key={i} delay={i * 0.08}>
+                <Card className="border-border/50 shadow-sm hover:shadow-lg transition-all h-full group" data-testid={`funding-highlight-${i}`}>
+                  <CardContent className="p-7">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                      <item.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="font-bold text-primary mb-2">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              </AnimatedSection>
+            ))}
+          </div>
+
+          {/* Who This Fits / What To Prepare */}
+          <div className="grid md:grid-cols-2 gap-8">
+            <AnimatedSection delay={0.1}>
+              <Card className="border-border/50 shadow-sm h-full" data-testid="card-who-fits">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                      <Handshake className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-primary">Who This Fits</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      "Businesses generating at least $10,000 per month in gross revenue.",
+                      "Operators with at least six months in business who need fast access to capital.",
+                      "Owners who prefer limited paperwork or may not qualify for bank financing.",
+                      "Companies seeking to consolidate existing advances and improve cash flow.",
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground leading-relaxed">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.2}>
+              <Card className="border-border/50 shadow-sm h-full" data-testid="card-what-prepare">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-11 h-11 rounded-2xl bg-blue-100 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-primary">What To Prepare</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      "Completed one-page data form or application.",
+                      "Three to six months of business bank statements.",
+                      "Driver's license and a voided business check.",
+                      "Additional items may include ownership proof, financials, tax returns, P&L, balance sheet, or A/R reports.",
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground leading-relaxed">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </AnimatedSection>
+          </div>
+        </div>
+      </section>
+
+      {/* Streamlined Path From Intake To Funding */}
+      <section className="py-24 px-6 bg-gradient-to-br from-[#0A1628] via-[#0f1f3a] to-[#0A1628] text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/4 rounded-full blur-[100px]" />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <AnimatedSection>
+            <div className="text-center mb-16">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80 mb-6">
+                <Gauge className="w-4 h-4" />
+                Intake to Funding
+              </span>
+              <h2 className="text-4xl lg:text-5xl font-display font-bold text-white mb-6">
+                A Streamlined Path From<br />Intake To Funding.
+              </h2>
+              <p className="text-lg text-white/50 max-w-2xl mx-auto">
+                Fast funding. Minimal paperwork. Flexible options. Full-service execution.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          <div className="grid md:grid-cols-4 gap-6">
+            {[
+              { step: "1", title: "Identify the need", desc: "Clarify new capital, consolidation, or both.", icon: Target },
+              { step: "2", title: "Review the file", desc: "Evaluate revenue, credit, obligations, and cash flow.", icon: Search },
+              { step: "3", title: "Structure options", desc: "Match the business with flexible funding terms.", icon: Settings2 },
+              { step: "4", title: "Fund quickly", desc: "Move from approval to capital delivery.", icon: Banknote },
+            ].map((item, i) => (
+              <AnimatedSection key={i} delay={i * 0.12}>
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-7 h-full hover:bg-white/8 transition-all" data-testid={`intake-step-${i + 1}`}>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                      <item.icon className="w-6 h-6 text-[#EBCB6D]" />
+                    </div>
+                    <span className="text-5xl font-display font-bold text-white/10">{item.step}</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                  <p className="text-sm text-white/50 leading-relaxed">{item.desc}</p>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Affiliate / Referral Opportunity */}
+      <section className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <AnimatedSection>
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-sm font-medium text-primary mb-6">
+                <Handshake className="w-4 h-4" />
+                Affiliate Opportunity
+              </span>
+              <h2 className="text-4xl lg:text-5xl font-display font-bold text-primary mb-6">
+                Refer the opportunity.<br />We handle the execution.
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                Referral partners can monetize business funding opportunities without managing sales, underwriting, fulfillment, customer service, or the ongoing client relationship. Leadershield manages the process from intake through funding and future renewals.
+              </p>
+              <div className="space-y-3 mb-8">
+                {[
+                  "Affiliate compensation is 1% of factoring origination.",
+                  "On an average $75,000 funded deal, the example payout is approximately $750.",
+                  "No sales, underwriting, or service obligations — just the introduction.",
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">{item}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/signup">
+                <Button size="lg" className="h-14 px-8 text-base font-bold shadow-lg transition-all hover:scale-105" data-testid="button-affiliate-cta">
+                  Become a Referral Partner
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.2}>
+              <div className="relative">
+                <div className="absolute -inset-3 bg-gradient-to-br from-primary/10 to-transparent rounded-3xl blur-2xl" />
+                <Card className="relative border-border/50 shadow-xl overflow-hidden" data-testid="card-affiliate-example">
+                  <div className="bg-gradient-to-br from-[#0A1628] to-[#15294B] p-8 text-center">
+                    <p className="text-white/50 text-sm font-medium uppercase tracking-wider mb-3">Example Payout</p>
+                    <p className="text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#EBCB6D] to-[#B8862F]">1%</p>
+                    <p className="text-white/60 mt-2">of factoring origination</p>
+                  </div>
+                  <CardContent className="p-8">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="text-muted-foreground">Average funded deal</span>
+                        <span className="text-2xl font-bold text-primary">$75,000</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Example referral payout</span>
+                        <span className="text-2xl font-bold text-emerald-600">~$750</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-6">*Illustrative example. Actual compensation depends on funded amount and program terms.</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </AnimatedSection>
+          </div>
+        </div>
+      </section>
+
       {/* The Opportunity — Why Now */}
-      <section id="opportunity" className="py-24 px-6">
+      <section id="opportunity" className="py-24 px-6 bg-muted/30">
         <div className="max-w-7xl mx-auto">
           <AnimatedSection>
             <div className="text-center mb-16">
@@ -302,17 +507,16 @@ export default function LandingPage() {
                 The Opportunity
               </span>
               <h2 className="text-4xl lg:text-5xl font-display font-bold text-primary mb-6">
-                The MCA Industry is Booming.<br />Most Agents Are Leaving Money on the Table.
+                Beyond Referrals: Build a<br />Full Agent Business.
               </h2>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                Traditional MCA agents earn once and start over. Leadershield agents earn immediate MCA commissions
-                AND build recurring subscription revenue that compounds every month. Two engines. One unstoppable career.
+                Refer for 1% — or go further. Full agents earn enhanced MCA commissions AND build recurring subscription revenue that compounds every month. Two engines. One unstoppable career.
               </p>
             </div>
           </AnimatedSection>
 
           {/* How It Works — 3 Steps */}
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <div className="grid md:grid-cols-3 gap-8">
             {[
               { step: "01", title: "Join & Learn", desc: "Complete our training academy, set up your agent portal, and get certified. We give you everything you need to hit the ground running.", icon: GraduationCap, color: "from-blue-500 to-blue-600" },
               { step: "02", title: "Sell & Earn", desc: "Present MCA funding and subscription products to merchants. Earn immediate MCA commissions plus monthly recurring platform revenue.", icon: DollarSign, color: "from-emerald-500 to-emerald-600" },
@@ -411,7 +615,7 @@ export default function LandingPage() {
           <AnimatedSection delay={0.3}>
             <div className="bg-white/8 border border-white/20 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6" data-testid="card-pairing-enhancement">
               <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 animate-pulse-glow">
-                <Zap className="w-8 h-8 text-[#E5E4E2]" />
+                <Zap className="w-8 h-8 text-[#EBCB6D]" />
               </div>
               <div className="text-center md:text-left">
                 <h3 className="text-xl font-bold text-white mb-1">The Power of Pairing: +5% Enhancement</h3>
@@ -479,7 +683,6 @@ export default function LandingPage() {
             ].map((item, i) => {
               const colorMap: Record<string, { bg: string; text: string; border: string; badge: string; iconBg: string }> = {
                 blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", badge: "bg-blue-100 text-blue-700", iconBg: "bg-blue-100" },
-                yellow: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-300", badge: "bg-blue-100 text-blue-700", iconBg: "bg-blue-100" },
                 purple: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200", badge: "bg-purple-100 text-purple-700", iconBg: "bg-purple-100" },
               };
               const c = colorMap[item.color];
@@ -623,7 +826,7 @@ export default function LandingPage() {
                     <item.icon className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white mb-1">{item.title}</h3>
-                  <p className="text-3xl font-bold text-primary mb-2">{item.rate}</p>
+                  <p className="text-3xl font-bold text-[#EBCB6D] mb-2">{item.rate}</p>
                   <p className="text-sm text-white/50">{item.desc}</p>
                 </div>
               </AnimatedSection>
@@ -664,7 +867,7 @@ export default function LandingPage() {
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <Award className="w-5 h-5 text-primary" />
+                    <Award className="w-5 h-5 text-[#EBCB6D]" />
                   </div>
                   Quarterly Accelerators
                 </h3>
@@ -677,7 +880,7 @@ export default function LandingPage() {
                   ].map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
                       <span className="text-white/70">{item.volume} quarterly volume</span>
-                      <span className="font-bold text-primary">{item.bonus}</span>
+                      <span className="font-bold text-[#EBCB6D]">{item.bonus}</span>
                     </div>
                   ))}
                 </div>
@@ -688,7 +891,7 @@ export default function LandingPage() {
           <AnimatedSection delay={0.5}>
             <div className="text-center mt-12">
               <Link href="/signup">
-                <Button size="lg" className="h-16 px-10 text-lg font-bold shadow-2xl transition-all hover:scale-105">
+                <Button size="lg" className="h-16 px-10 text-lg font-bold bg-white text-primary shadow-2xl hover:bg-white/90 transition-all hover:scale-105">
                   Start Earning Today
                   <ChevronRight className="w-6 h-6 ml-2" />
                 </Button>
@@ -722,7 +925,7 @@ export default function LandingPage() {
               <AnimatedSection key={i} delay={i * 0.15}>
                 <Card className="h-full border-border/50 shadow-sm hover:shadow-lg transition-all" data-testid={`testimonial-${i}`}>
                   <CardContent className="p-8">
-                    <Quote className="w-8 h-8 text-white/20 mb-4" />
+                    <Quote className="w-8 h-8 text-primary/15 mb-4" />
                     <p className="text-muted-foreground leading-relaxed mb-6 italic">"{item.quote}"</p>
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-bold text-lg">
@@ -924,20 +1127,24 @@ export default function LandingPage() {
             <Card className="border-border/50 shadow-sm">
               <CardContent className="p-6 md:p-8">
                 <FAQItem
+                  question="How does merchant cash advance funding work?"
+                  answer="Funding is structured as a merchant cash advance with a fixed factor rate (15%–49%), not a traditional APR-based loan. Amounts range from $2,000 to $2,000,000, with repayment over 30 days to 24 months via ACH or card processing holdbacks. Every file is reviewed individually based on revenue, time in business, credit, and cash flow."
+                />
+                <FAQItem
+                  question="How fast can a business get funded?"
+                  answer="With minimal paperwork — a one-page application, three to six months of bank statements, a driver's license, and a voided business check — funding can be available as quickly as one business day after underwriting review."
+                />
+                <FAQItem
+                  question="How does the 1% affiliate referral work?"
+                  answer="Referral partners simply introduce the opportunity. Affiliate compensation is 1% of factoring origination — on an average $75,000 funded deal, that's an example payout of approximately $750. Leadershield manages sales, underwriting, fulfillment, service, and the ongoing client relationship."
+                />
+                <FAQItem
                   question="What is the Merchant Growth Platform?"
-                  answer="The Merchant Growth Platform is a subscription-based service designed to help merchants improve their financial visibility, accelerate revenue, and automate their marketing. It's a recurring revenue product that provides a stable, long-term income stream for our agents."
+                  answer="The Merchant Growth Platform is a subscription-based service designed to help merchants improve their financial visibility, accelerate revenue, and automate their marketing. It's a recurring revenue product that provides a stable, long-term income stream for full agents."
                 />
                 <FAQItem
                   question="Do I need experience to get started?"
                   answer="No prior experience is required. Our comprehensive training academy covers everything from product knowledge and sales techniques to compliance guidelines. You'll have access to scripts, objection handlers, and ongoing support from our team."
-                />
-                <FAQItem
-                  question="How quickly can I start earning?"
-                  answer="Many agents close their first deal within the first 2-3 weeks. MCA commissions are paid at funding (70% immediately), and subscription commissions start the first month the merchant is active. Follow the 30-day roadmap and you could see your first payout within weeks."
-                />
-                <FAQItem
-                  question="What is the commission decay schedule?"
-                  answer="Subscription commissions start at the full pool rate (50-70% depending on tier) for months 1-3, then gradually decrease: 75% for months 4-6, 50% for months 7-9, and 25% for months 10-12. After month 12, you earn a lifetime 10% residual on each active account."
                 />
                 <FAQItem
                   question="Can I sell MCA and subscriptions to the same merchant?"
@@ -945,11 +1152,7 @@ export default function LandingPage() {
                 />
                 <FAQItem
                   question="Is there a fee to be a Leadershield agent?"
-                  answer="Yes, there's a $99 monthly platform fee that gives you access to our CRM, reporting, training, and support. This fee can be reduced (50% off at $3,000 revenue) or completely waived ($5,000+ revenue). Top producers get a $100 credit on top of the waiver."
-                />
-                <FAQItem
-                  question="How does team building work?"
-                  answer="As you grow, you can sponsor other agents to join Leadershield Network. You'll earn override commissions on their production (up to 8% as a Partner). Our binary tree structure and rank advancement system reward you for developing and mentoring successful agents."
+                  answer="Full agents pay a $99 monthly platform fee for access to the CRM, reporting, training, and support. This fee can be reduced (50% off at $3,000 revenue) or completely waived ($5,000+ revenue). Top producers get a $100 credit on top of the waiver. Referral-only affiliates have no platform fee."
                 />
               </CardContent>
             </Card>
@@ -965,15 +1168,15 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <AnimatedSection>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80 mb-8">
-              <Sparkles className="w-4 h-4" />
-              Your future starts here
+              <Sparkles className="w-4 h-4 text-[#EBCB6D]" />
+              Fast funding. Full-service execution.
             </div>
             <h2 className="text-4xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
-              Ready to Build Something<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">That Pays You for Life?</span>
+              Ready to Connect Businesses<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">With the Capital They Need?</span>
             </h2>
             <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto">
-              Join Leadershield Network. Build two revenue streams. Create financial freedom for you and your family. No experience needed — we'll train you every step of the way.
+              Join Leadershield Funding Network. Refer for 1%, or build a full agent business with two revenue streams. We'll handle the execution and train you every step of the way.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
@@ -994,24 +1197,28 @@ export default function LandingPage() {
           <h3 className="text-lg font-bold text-primary mb-4">Important Disclosures</h3>
           <div className="space-y-4 text-xs text-muted-foreground">
             <div>
-              <h4 className="font-semibold text-foreground mb-1">FTC Income Disclosure</h4>
-              <p>The income figures presented on this website are examples only and are not intended to represent or guarantee that anyone will achieve the same or similar results. Your individual results will vary and depend on many factors, including but not limited to your individual capacity, work ethic, business experience and knowledge, level of commitment, diligence in applying Leadershield Network's training and sales system, and market conditions. Leadershield Network does not guarantee any level of income or earnings to any agent.</p>
+              <h4 className="font-semibold text-foreground mb-1">Funding Terms Disclosure</h4>
+              <p>Merchant cash advance funding is not a traditional APR-based loan. Program terms, pricing, factor rates, documentation, funding availability, and eligibility are subject to underwriting review and may vary by business profile. Funding amounts, factor rates, repayment terms, and renewal eligibility described on this website are illustrative and not guaranteed.</p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">Income Disclaimer</h4>
+              <p>The income figures presented on this website are examples only and are not intended to represent or guarantee that anyone will achieve the same or similar results. Your individual results will vary and depend on many factors, including but not limited to your individual capacity, work ethic, business experience and knowledge, level of commitment, diligence in applying Leadershield Funding Network's training and sales system, and market conditions. Leadershield Funding Network does not guarantee any level of income or earnings to any agent.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Independent Contractor Status</h4>
-              <p>Leadershield Network agents are independent contractors, not employees. As an independent contractor, you are responsible for your own taxes, insurance, and business expenses. Leadershield Network does not provide employment benefits, and agents are not entitled to minimum wage protections or overtime compensation.</p>
+              <p>Leadershield Funding Network agents are independent contractors, not employees. As an independent contractor, you are responsible for your own taxes, insurance, and business expenses. Leadershield Funding Network does not provide employment benefits, and agents are not entitled to minimum wage protections or overtime compensation.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">No Guaranteed Income</h4>
-              <p>There is no guarantee that you will earn any income as a Leadershield Network agent. Success requires consistent effort, effective sales techniques, and the ability to build and maintain a productive team. Many participants in network marketing businesses earn little to no income. Past performance does not guarantee future results.</p>
+              <p>There is no guarantee that you will earn any income as a Leadershield Funding Network agent. Success requires consistent effort, effective sales techniques, and the ability to build and maintain a productive team. Many participants in network marketing businesses earn little to no income. Past performance does not guarantee future results.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Business Opportunity Disclosure</h4>
-              <p>This is a business opportunity, not a job offer. Before joining Leadershield Network, you should carefully review all materials and disclosures. Consult with a qualified financial or legal advisor if you have questions about the opportunity. Some states require additional disclosures for business opportunities.</p>
+              <p>This is a business opportunity, not a job offer. Before joining Leadershield Funding Network, you should carefully review all materials and disclosures. Consult with a qualified financial or legal advisor if you have questions about the opportunity. Some states require additional disclosures for business opportunities.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Commission Structure Disclosure</h4>
-              <p>Commission rates, residual percentages, and bonus structures described on this website are subject to the terms of the Leadershield Network Agent Agreement. Commission decay schedules, payout splits, and accelerator qualifications are detailed in the full compensation plan document provided during onboarding.</p>
+              <p>Commission rates, residual percentages, and bonus structures described on this website are subject to the terms of the Leadershield Funding Network Agent Agreement. Commission decay schedules, payout splits, and accelerator qualifications are detailed in the full compensation plan document provided during onboarding.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Testimonial Disclaimer</h4>
@@ -1019,15 +1226,15 @@ export default function LandingPage() {
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Anti-Pyramid Scheme Disclosure</h4>
-              <p>Leadershield Network commissions are earned exclusively from the sale of legitimate products and services to end-user merchants — not from recruitment fees or the enrollment of other agents. Agents are never required to purchase products or inventory to participate. Our compensation plan rewards product sales performance, not headcount. Leadershield Network complies with all applicable FTC guidelines regarding multi-level marketing and business opportunity practices.</p>
+              <p>Leadershield Funding Network commissions are earned exclusively from the sale of legitimate products and services to end-user merchants — not from recruitment fees or the enrollment of other agents. Agents are never required to purchase products or inventory to participate. Our compensation plan rewards product sales performance, not headcount. Leadershield Funding Network complies with all applicable FTC guidelines regarding multi-level marketing and business opportunity practices.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Material Connection Disclosure</h4>
-              <p>Some individuals featured on this website, including those providing testimonials, endorsements, or success stories, have a material connection to Leadershield Network. They may be current agents, affiliates, or compensated participants. Their experiences and results are their own and should not be considered typical. Any compensation or benefits received are disclosed in accordance with the FTC's Endorsement Guides (16 CFR Part 255).</p>
+              <p>Some individuals featured on this website, including those providing testimonials, endorsements, or success stories, have a material connection to Leadershield Funding Network. They may be current agents, affiliates, or compensated participants. Their experiences and results are their own and should not be considered typical. Any compensation or benefits received are disclosed in accordance with the FTC's Endorsement Guides (16 CFR Part 255).</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">State-Specific Business Opportunity Notice</h4>
-              <p>Certain states, including but not limited to California, Maryland, New York, and others, may require the registration or filing of business opportunity disclosures before an offer or sale can be made. Leadershield Network complies with all applicable state business opportunity laws. If you reside in a state with specific business opportunity registration requirements, additional disclosures may apply. Please contact compliance@leadershield.com for state-specific information before enrolling.</p>
+              <p>Certain states, including but not limited to California, Maryland, New York, and others, may require the registration or filing of business opportunity disclosures before an offer or sale can be made. Leadershield Funding Network complies with all applicable state business opportunity laws. If you reside in a state with specific business opportunity registration requirements, additional disclosures may apply. Please contact compliance@leadershield.com for state-specific information before enrolling.</p>
             </div>
             <div className="pt-4 border-t border-border">
               <p>For complete details, please review our <Link href="/income-disclosure"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-ids">Income Disclosure Statement</span></Link>, <Link href="/terms"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-terms">Terms of Service</span></Link>, <Link href="/privacy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-privacy">Privacy Policy</span></Link>, and <Link href="/refund-policy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-refund">Refund Policy</span></Link>.</p>
@@ -1041,22 +1248,25 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-5 gap-10 mb-12">
             <div className="md:col-span-2">
-              <Link href="/" data-testid="link-logo-footer" className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity w-fit">
-                <Shield className="w-5 h-5 text-white shrink-0" />
-                <span className="font-display font-bold text-white text-lg tracking-wide">Leader Shield Network</span>
+              <Link href="/" data-testid="link-logo-footer" className="flex items-center gap-3 mb-4 hover:opacity-90 transition-opacity w-fit">
+                <BrandMark size="sm" />
+                <span className="leading-tight">
+                  <span className="block font-display font-bold text-white text-base tracking-wide">LEADERSHIELD</span>
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/50">Funding Network</span>
+                </span>
               </Link>
               <p className="text-white/40 max-w-sm leading-relaxed">
-                Empowering agents. Transforming merchants. Building legacies. Two revenue streams, one powerful platform.
+                Fast funding. Minimal paperwork. Flexible options. Full-service execution. Unsecured working capital for business owners — and a network built to reward those who refer it.
               </p>
             </div>
             <div>
               <h4 className="font-bold text-white/80 mb-4">Quick Links</h4>
               <div className="space-y-2 text-sm">
+                <a href="#funding" className="block text-white/40 hover:text-white transition-colors">Funding</a>
                 <a href="#opportunity" className="block text-white/40 hover:text-white transition-colors">Opportunity</a>
                 <a href="#platform" className="block text-white/40 hover:text-white transition-colors">Platform</a>
                 <a href="#compensation" className="block text-white/40 hover:text-white transition-colors">Earnings</a>
                 <a href="#faq" className="block text-white/40 hover:text-white transition-colors">FAQ</a>
-                <a href="#disclaimers" className="block text-white/40 hover:text-white transition-colors">Disclosures</a>
               </div>
             </div>
             <div>
@@ -1078,7 +1288,7 @@ export default function LandingPage() {
           </div>
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-white/30">
-              &copy; 2026 Leadershield Network. All rights reserved.
+              &copy; 2026 Leadershield Funding Network. All rights reserved.
             </p>
             <div className="flex flex-wrap items-center justify-center md:justify-end gap-4 text-xs text-white/30">
               <Link href="/income-disclosure"><span className="hover:text-white transition-colors cursor-pointer" data-testid="footer-bottom-income-disclosure">Income Disclosure</span></Link>

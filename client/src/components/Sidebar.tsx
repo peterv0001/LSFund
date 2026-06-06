@@ -18,6 +18,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { BrandMark } from "@/components/BrandMark";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./NotificationBell";
 
@@ -70,10 +71,11 @@ export function Sidebar() {
       {/* Header / Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center justify-between">
-          <Link href="/dashboard" data-testid="link-logo-home" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Shield className="w-4 h-4 text-white shrink-0" />
-            <span className="font-display font-bold text-white text-base leading-tight tracking-wide">
-              Leader Shield<br />Network
+          <Link href="/dashboard" data-testid="link-logo-home" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+            <BrandMark size="sm" />
+            <span className="leading-tight">
+              <span className="block font-display font-bold text-white text-sm tracking-wide">LEADERSHIELD</span>
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.18em] text-white/50">Funding Network</span>
             </span>
           </Link>
           <div className="flex items-center gap-2">
@@ -203,9 +205,9 @@ export function Sidebar() {
           <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/dashboard" data-testid="link-logo-mobile-header" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <Shield className="w-4 h-4 text-white shrink-0" />
-          <span className="font-display font-bold text-white text-sm tracking-wide">Leader Shield Network</span>
+        <Link href="/dashboard" data-testid="link-logo-mobile-header" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <BrandMark size="sm" />
+          <span className="font-display font-bold text-white text-sm tracking-wide">LEADERSHIELD</span>
         </Link>
 
         <NotificationBell />
