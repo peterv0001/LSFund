@@ -1333,7 +1333,16 @@ export async function registerRoutes(
         isRead: false,
         emailSent: false,
       });
-      
+
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'approve',
+        entityType: 'deal',
+        entityId: dealId,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} approved deal #${dealId}`,
+      });
+
       res.json({ success: true });
     } catch (err) {
       console.error(err);
@@ -1393,8 +1402,17 @@ export async function registerRoutes(
 
   app.post(api.admin.commissions.void.path, requireAdmin, async (req, res) => {
     const { reason } = api.admin.commissions.void.input.parse(req.body);
+    const commissionId = Number(req.params.id);
     // @ts-ignore
-    await storage.voidCommission(Number(req.params.id), req.user!.id, reason);
+    await storage.voidCommission(commissionId, req.user!.id, reason);
+    await storage.logActivity({
+      actorId: req.user!.id,
+      actorType: 'admin',
+      action: 'void',
+      entityType: 'commission',
+      entityId: commissionId,
+      description: `Admin ${req.user!.firstName} ${req.user!.lastName} voided commission #${commissionId}: ${reason}`,
+    });
     res.json({ success: true });
   });
 
