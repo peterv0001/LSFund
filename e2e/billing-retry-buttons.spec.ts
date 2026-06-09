@@ -146,6 +146,35 @@ test.describe("Billing-failed subscriptions – agent 'Update Card' button", () 
     await expect(page.getByTestId("dialog-update-card")).toBeVisible({ timeout: 5000 });
   });
 
+  test("update-card dialog prompts for new payment details and can be dismissed", async ({ page }) => {
+    await loginAs(page, agentEmail, agentPassword);
+    await page.goto("/subscriptions");
+
+    const btn = page.getByTestId(`button-update-card-${subId}`);
+    await expect(btn).toBeVisible({ timeout: 10000 });
+    await btn.click();
+
+    const dialog = page.getByTestId("dialog-update-card");
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Heading prompting the user to update their payment method.
+    await expect(
+      dialog.getByRole("heading", { name: /update payment method/i })
+    ).toBeVisible();
+
+    // The dialog must prompt for new card details. Stripe Elements is loaded
+    // asynchronously, so the card-input wrapper appears once Stripe.js + the
+    // publishable key resolve. Assert the wrapper and its embedded Stripe
+    // iframe (the actual card-number/expiry/cvc input) are present.
+    const cardWrapper = page.getByTestId("update-card-element");
+    await expect(cardWrapper).toBeVisible({ timeout: 15000 });
+    await expect(cardWrapper.locator("iframe").first()).toBeVisible({ timeout: 15000 });
+
+    // Dismiss the dialog via the Cancel button and confirm it disappears.
+    await page.getByTestId("button-cancel-update-card").click();
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+  });
+
   test("PATCH /api/subscriptions/:id/payment-method endpoint is accessible for authenticated owner session", async ({ page }) => {
     await loginAs(page, agentEmail, agentPassword);
 
