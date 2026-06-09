@@ -4,7 +4,7 @@
 Leader Shield Funding is a full-stack network marketing (MLM) platform for Merchant Cash Advance (MCA) lending and recurring subscription products (Merchant Growth Platform). It enables agents to sign up via referrals, log deals, manage subscriptions, and earn multi-tiered commissions based on GBR waterfall and subscription decay. The platform includes an agent portal, an admin portal, and a public marketing website for recruitment.
 
 **Brand:** Leader Shield Funding
-**Domain:** leadershield.com
+**Domain:** leadershieldfunding.com
 **Color Palette:** Vault Ink (#0A1628) and Brass (#C9A24B) on Clean Paper (#F6F8FB); supporting Steel (#5C6B82) and Verified Green (#1C8A5B)
 **Fonts:** Archivo (headings/display), IBM Plex Sans (body), IBM Plex Mono (financial figures/eyebrows)
 **Logo:** Heraldic crest (shield + upward chevron) in ink with brass stroke; wordmark "Leader" (heavy/ink) + "Shield" (brass) + "Funding" (mono caps, wide tracking)

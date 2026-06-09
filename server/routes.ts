@@ -629,7 +629,7 @@ export async function registerRoutes(
       await storage.updateAgent(agent.id, { referralCode });
     }
     
-    const baseUrl = process.env.APP_URL || 'https://leadershield.com';
+    const baseUrl = process.env.APP_URL || 'https://leadershieldfunding.com';
     const referralUrl = `${baseUrl}/join/${referralCode}`;
     
     res.json({ referralCode, referralUrl });
@@ -2840,7 +2840,7 @@ export async function registerRoutes(
       binaryBonusCaps: saved.binaryBonusCaps ?? CONFIG.binaryBonus,
       companyInfo: saved.companyInfo ?? {
         name: "Leader Shield Funding",
-        supportEmail: "support@leadershield.com",
+        supportEmail: "support@leadershieldfunding.com",
       },
       expiryWarningDays: saved.expiryWarningDays ?? 7,
     });

@@ -131,7 +131,7 @@ export default function AuthPage() {
 
           <p className="text-xs text-muted-foreground text-center">
             Need help? Contact{" "}
-            <a href="mailto:support@leadershield.com" className="text-primary hover:underline">support@leadershield.com</a>
+            <a href="mailto:support@leadershieldfunding.com" className="text-primary hover:underline">support@leadershieldfunding.com</a>
           </p>
         </div>
       </div>
@@ -174,7 +174,7 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
         <Input
           id="username"
           type="email"
-          placeholder="agent@leadershield.com"
+          placeholder="agent@leadershieldfunding.com"
           className="h-12"
           {...form.register("username")}
         />

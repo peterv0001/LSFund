@@ -391,7 +391,7 @@ export default function PrivacyPolicyPage() {
                   <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                     <p className="font-semibold text-primary">Leader Shield Funding, LLC</p>
                     <p className="text-muted-foreground">Privacy Officer</p>
-                    <p className="text-muted-foreground">Email: privacy@leadershield.com</p>
+                    <p className="text-muted-foreground">Email: privacy@leadershieldfunding.com</p>
                     <p className="text-muted-foreground">Address: [Company Address]</p>
                     <p className="text-muted-foreground">Phone: [Company Phone Number]</p>
                   </div>

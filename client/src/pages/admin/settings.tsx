@@ -99,7 +99,7 @@ export default function AdminSettings() {
     if (settings) {
       setCompanyInfo({
         name: settings.companyInfo?.name ?? "Leader Shield Funding",
-        supportEmail: settings.companyInfo?.supportEmail ?? "support@leadershield.com",
+        supportEmail: settings.companyInfo?.supportEmail ?? "support@leadershieldfunding.com",
       });
       setRankReqs(settings.rankRequirements ?? {
         builder: { personalVolume: 10000, weakLegVolume: 5000 },

@@ -90,7 +90,7 @@ export default function ForgotPasswordPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="agent@leadershield.com"
+                    placeholder="agent@leadershieldfunding.com"
                     className="h-12"
                     data-testid="input-forgot-email"
                     {...form.register("email")}
