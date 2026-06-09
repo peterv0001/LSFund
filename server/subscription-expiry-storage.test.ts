@@ -257,3 +257,127 @@ describe("markSubscriptionWarningSent", () => {
     expect(secondDue.map((s) => s.id)).not.toContain(sub.id);
   });
 });
+
+// =========================================================
+// updateSubscriptionEndDate clears the expiry warning flag
+// =========================================================
+
+describe("updateSubscriptionEndDate", () => {
+  it("clears expiryWarningSentAt when the end date is pushed into the future (renewal)", async () => {
+    // Already warned for the old cycle, end date now in the past.
+    const sub = await createSub({
+      status: "active",
+      endDate: daysFromNow(-1),
+      expiryWarningSentAt: new Date(),
+    });
+
+    await storage.updateSubscriptionEndDate(sub.id, daysFromNow(30));
+
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, sub.id));
+    expect(row.expiryWarningSentAt).toBeNull();
+  });
+
+  it("makes a renewed subscription eligible for a fresh warning in the new cycle", async () => {
+    const sub = await createSub({
+      status: "active",
+      endDate: daysFromNow(-1),
+      expiryWarningSentAt: new Date(),
+    });
+
+    // Renew so the new end date falls inside the 7-day warning window.
+    await storage.updateSubscriptionEndDate(sub.id, daysFromNow(7));
+
+    const due = await storage.getSubscriptionsDueForWarning(7);
+    expect(due.map((s) => s.id)).toContain(sub.id);
+  });
+
+  it("does not clear the warning flag when the end date is set to the past", async () => {
+    const warnedAt = new Date();
+    const sub = await createSub({
+      status: "active",
+      endDate: daysFromNow(7),
+      expiryWarningSentAt: warnedAt,
+    });
+
+    await storage.updateSubscriptionEndDate(sub.id, daysFromNow(-2));
+
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, sub.id));
+    expect(row.expiryWarningSentAt).not.toBeNull();
+  });
+
+  it("does not clear the warning flag when the end date is cleared (null)", async () => {
+    const sub = await createSub({
+      status: "active",
+      endDate: daysFromNow(7),
+      expiryWarningSentAt: new Date(),
+    });
+
+    await storage.updateSubscriptionEndDate(sub.id, null);
+
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, sub.id));
+    expect(row.expiryWarningSentAt).not.toBeNull();
+  });
+});
+
+// =========================================================
+// updateSubscriptionStatus clears the expiry warning flag on reactivation
+// =========================================================
+
+describe("updateSubscriptionStatus reactivation", () => {
+  it("clears expiryWarningSentAt when a paused subscription is reactivated", async () => {
+    const sub = await createSub({
+      status: "paused",
+      endDate: daysFromNow(30),
+      expiryWarningSentAt: new Date(),
+    });
+
+    await storage.updateSubscriptionStatus(sub.id, "active");
+
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, sub.id));
+    expect(row.expiryWarningSentAt).toBeNull();
+  });
+
+  it("clears expiryWarningSentAt when a cancelled subscription is reactivated", async () => {
+    const sub = await createSub({
+      status: "cancelled",
+      endDate: daysFromNow(30),
+      expiryWarningSentAt: new Date(),
+    });
+
+    await storage.updateSubscriptionStatus(sub.id, "active");
+
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, sub.id));
+    expect(row.expiryWarningSentAt).toBeNull();
+  });
+
+  it("does not clear the warning flag when a subscription is paused or cancelled", async () => {
+    const warned = await createSub({
+      status: "active",
+      endDate: daysFromNow(7),
+      expiryWarningSentAt: new Date(),
+    });
+
+    await storage.updateSubscriptionStatus(warned.id, "paused");
+
+    const [row] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, warned.id));
+    expect(row.expiryWarningSentAt).not.toBeNull();
+  });
+});

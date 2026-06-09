@@ -1516,8 +1516,14 @@ export class DatabaseStorage {
   }
 
   async updateSubscriptionEndDate(id: number, endDate: Date | null): Promise<Subscription> {
+    const updates: any = { endDate, updatedAt: new Date() };
+    // When the subscription is renewed/extended (end date pushed into the future),
+    // clear the expiry warning flag so the agent gets a fresh warning for the new cycle.
+    if (endDate && endDate.getTime() > Date.now()) {
+      updates.expiryWarningSentAt = null;
+    }
     const [updated] = await db.update(subscriptions)
-      .set({ endDate, updatedAt: new Date() })
+      .set(updates)
       .where(eq(subscriptions.id, id))
       .returning();
     return updated;
@@ -1635,6 +1641,9 @@ export class DatabaseStorage {
       updates.pausedAt = null;
       updates.reactivatedAt = new Date();
       updates.reactivatedById = actorId ?? null;
+      // Reactivating (from cancelled/paused) starts a fresh expiry cycle, so clear the
+      // warning flag to allow a new expiry warning to be sent for the renewed end date.
+      updates.expiryWarningSentAt = null;
     }
     const [updated] = await db.update(subscriptions)
       .set(updates)
