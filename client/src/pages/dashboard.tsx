@@ -294,7 +294,7 @@ export default function Dashboard() {
                   onClick={() => {
                     if (navigator.share && referralData?.referralUrl) {
                       navigator.share({
-                        title: 'Join Leadershield Network',
+                        title: 'Join Leader Shield Funding',
                         text: 'Start earning with MCA deals and recurring subscription revenue!',
                         url: referralData.referralUrl,
                       });

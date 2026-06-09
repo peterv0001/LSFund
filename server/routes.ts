@@ -363,7 +363,7 @@ export async function registerRoutes(
       await storage.createNotification({
         agentId: agent.id,
         type: 'system',
-        title: 'Welcome to Leadershield Network!',
+        title: 'Welcome to Leader Shield Funding!',
         message: 'Your account has been created. Start by completing your profile and exploring the platform.',
         isRead: false,
         emailSent: false,
@@ -2835,7 +2835,7 @@ export async function registerRoutes(
       rankRequirements: saved.rankRequirements ?? CONFIG.rankRequirements,
       binaryBonusCaps: saved.binaryBonusCaps ?? CONFIG.binaryBonus,
       companyInfo: saved.companyInfo ?? {
-        name: "Leadershield Network",
+        name: "Leader Shield Funding",
         supportEmail: "support@leadershield.com",
       },
       expiryWarningDays: saved.expiryWarningDays ?? 7,

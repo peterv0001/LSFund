@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { BrandMark } from "@/components/BrandMark";
+import { BrandLockup } from "@/components/BrandMark";
 import { 
   LayoutDashboard, 
   Users, 
@@ -44,16 +44,12 @@ export function AdminSidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 flex flex-col z-50 shadow-2xl" style={{ backgroundColor: 'hsl(212 100% 14%)' }}>
+    <aside className="fixed left-0 top-0 bottom-0 w-64 flex flex-col z-50 shadow-2xl" style={{ backgroundColor: 'hsl(216 60% 10%)' }}>
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex flex-col gap-1">
-          <Link href="/admin" data-testid="link-logo-admin" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <BrandMark size="sm" />
-            <span className="leading-tight">
-              <span className="block font-display font-bold text-white text-sm tracking-wide">LEADERSHIELD</span>
-              <span className="block text-[9px] font-semibold uppercase tracking-[0.18em] text-white/50">Funding Network</span>
-            </span>
+          <Link href="/admin" data-testid="link-logo-admin" className="hover:opacity-90 transition-opacity">
+            <BrandLockup size="sm" onDark />
           </Link>
           <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-1 pl-0.5">Admin Portal</p>
         </div>

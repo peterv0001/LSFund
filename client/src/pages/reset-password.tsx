@@ -3,12 +3,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
-import { Shield, ArrowLeft, Loader2, CheckCircle2, AlertCircle, Lock } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { BrandLockup } from "@/components/BrandMark";
 
 const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
@@ -61,11 +62,8 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="w-full max-w-md space-y-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+          <div className="flex items-center justify-center mb-4">
+            <BrandLockup size="md" />
           </div>
           <div className="bg-card border border-border/50 shadow-xl shadow-black/5 rounded-2xl p-6 lg:p-8 text-center space-y-4" data-testid="reset-invalid-token">
             <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
@@ -77,7 +75,7 @@ export default function ResetPasswordPage() {
             </p>
             <div className="pt-4 space-y-2">
               <Link href="/forgot-password">
-                <Button className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500" data-testid="link-request-new-reset">
+                <Button className="w-full bg-gradient-to-r from-[#C9A24B] to-[#A07B22] text-[#0A1628] hover:from-[#E0C27E] hover:to-[#C9A24B]" data-testid="link-request-new-reset">
                   Request New Reset Link
                 </Button>
               </Link>
@@ -97,11 +95,8 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-md space-y-8">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-display font-bold text-xl text-primary">Leadershield</span>
+        <div className="flex items-center justify-center mb-4">
+          <BrandLockup size="md" />
         </div>
 
         <div className="bg-card border border-border/50 shadow-xl shadow-black/5 rounded-2xl p-6 lg:p-8">
@@ -116,7 +111,7 @@ export default function ResetPasswordPage() {
               </p>
               <div className="pt-4">
                 <Link href="/login">
-                  <Button className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20" data-testid="link-go-to-login">
+                  <Button className="w-full bg-gradient-to-r from-[#C9A24B] to-[#A07B22] text-[#0A1628] hover:from-[#E0C27E] hover:to-[#C9A24B] shadow-lg shadow-[#C9A24B]/20" data-testid="link-go-to-login">
                     Sign In Now
                   </Button>
                 </Link>
@@ -131,7 +126,7 @@ export default function ResetPasswordPage() {
               <p className="text-sm text-muted-foreground" data-testid="text-reset-error-message">{errorMessage}</p>
               <div className="pt-4 space-y-2">
                 <Link href="/forgot-password">
-                  <Button className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500" data-testid="link-try-again">
+                  <Button className="w-full bg-gradient-to-r from-[#C9A24B] to-[#A07B22] text-[#0A1628] hover:from-[#E0C27E] hover:to-[#C9A24B]" data-testid="link-try-again">
                     Request New Reset Link
                   </Button>
                 </Link>
@@ -190,7 +185,7 @@ export default function ResetPasswordPage() {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#0A1628] hover:from-yellow-400 hover:to-yellow-500 shadow-lg shadow-yellow-500/20"
+                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#C9A24B] to-[#A07B22] text-[#0A1628] hover:from-[#E0C27E] hover:to-[#C9A24B] shadow-lg shadow-[#C9A24B]/20"
                   disabled={isSubmitting}
                   data-testid="button-reset-password"
                 >

@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BrandMark } from "@/components/BrandMark";
+import { BrandLockup } from "@/components/BrandMark";
 import {
   Shield,
   DollarSign,
@@ -129,12 +129,8 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/95 backdrop-blur-xl shadow-sm border-b border-border' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" data-testid="link-logo-landing" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-            <BrandMark size="sm" />
-            <span className="leading-tight">
-              <span className={`block font-display font-bold text-base tracking-wide ${scrolled ? 'text-primary' : 'text-white'}`}>LEADERSHIELD</span>
-              <span className={`block text-[10px] font-semibold uppercase tracking-[0.2em] ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Funding Network</span>
-            </span>
+          <Link href="/" data-testid="link-logo-landing" className="hover:opacity-90 transition-opacity">
+            <BrandLockup size="md" onDark={!scrolled} />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -184,20 +180,20 @@ export default function LandingPage() {
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8">
-                <Sparkles className="w-4 h-4 text-[#EBCB6D]" />
+                <Sparkles className="w-4 h-4 text-[#C9A24B]" />
                 <span className="text-sm font-medium text-white/80">Unsecured working capital, fast</span>
               </div>
 
               <h1 className="text-5xl lg:text-7xl font-display font-bold text-white leading-[1.08] mb-8">
                 Capital when your
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E0C27E] to-white/70">
                   business needs it most.
                 </span>
               </h1>
 
               <p className="text-xl text-white/60 mb-10 max-w-lg leading-relaxed">
-                Leadershield Funding Network helps business owners access fast, flexible merchant cash advance funding — and rewards the agents who connect them with capital.
+                Leader Shield Funding helps business owners access fast, flexible merchant cash advance funding — and rewards the agents who connect them with capital.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
@@ -242,7 +238,7 @@ export default function LandingPage() {
                       const map: Record<string, { bg: string; text: string }> = {
                         emerald: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
                         blue: { bg: "bg-blue-500/20", text: "text-blue-400" },
-                        platinum: { bg: "bg-white/10", text: "text-[#E5E4E2]" },
+                        platinum: { bg: "bg-white/10", text: "text-[#E0C27E]" },
                         purple: { bg: "bg-purple-500/20", text: "text-purple-400" },
                       };
                       const c = map[row.color];
@@ -437,7 +433,7 @@ export default function LandingPage() {
                 <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-7 h-full hover:bg-white/8 transition-all" data-testid={`intake-step-${i + 1}`}>
                   <div className="flex items-center justify-between mb-5">
                     <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                      <item.icon className="w-6 h-6 text-[#EBCB6D]" />
+                      <item.icon className="w-6 h-6 text-[#C9A24B]" />
                     </div>
                     <span className="text-5xl font-display font-bold text-white/10">{item.step}</span>
                   </div>
@@ -463,7 +459,7 @@ export default function LandingPage() {
                 Refer the opportunity.<br />We handle the execution.
               </h2>
               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                Referral partners can monetize business funding opportunities without managing sales, underwriting, fulfillment, customer service, or the ongoing client relationship. Leadershield manages the process from intake through funding and future renewals.
+                Referral partners can monetize business funding opportunities without managing sales, underwriting, fulfillment, customer service, or the ongoing client relationship. Leader Shield manages the process from intake through funding and future renewals.
               </p>
               <div className="space-y-3 mb-8">
                 {[
@@ -491,7 +487,7 @@ export default function LandingPage() {
                 <Card className="relative border-border/50 shadow-xl overflow-hidden" data-testid="card-affiliate-example">
                   <div className="bg-gradient-to-br from-[#0A1628] to-[#15294B] p-8 text-center">
                     <p className="text-white/50 text-sm font-medium uppercase tracking-wider mb-3">Example Payout</p>
-                    <p className="text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#EBCB6D] to-[#B8862F]">1%</p>
+                    <p className="text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#C9A24B] to-[#A07B22]">1%</p>
                     <p className="text-white/60 mt-2">of factoring origination</p>
                   </div>
                   <CardContent className="p-8">
@@ -638,13 +634,13 @@ export default function LandingPage() {
           <AnimatedSection delay={0.3}>
             <div className="bg-white/8 border border-white/20 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6" data-testid="card-pairing-enhancement">
               <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 animate-pulse-glow">
-                <Zap className="w-8 h-8 text-[#EBCB6D]" />
+                <Zap className="w-8 h-8 text-[#C9A24B]" />
               </div>
               <div className="text-center md:text-left">
                 <h3 className="text-xl font-bold text-white mb-1">The Power of Pairing: +5% Enhancement</h3>
                 <p className="text-white/60">
                   Bundle an MCA with a subscription and earn an extra 5% commission on the subscription for the first 3 months.
-                  This is the compound advantage that sets Leadershield apart.
+                  This is the compound advantage that sets Leader Shield apart.
                 </p>
               </div>
             </div>
@@ -840,7 +836,7 @@ export default function LandingPage() {
             {[
               { icon: DollarSign, title: "MCA Commission", rate: "22% GBR", desc: "Earn on every funded deal you refer", color: "from-emerald-400 to-emerald-500" },
               { icon: Repeat, title: "Platform Residuals", rate: "50-70%", desc: "Monthly recurring subscription commissions", color: "from-blue-400 to-blue-500" },
-              { icon: Zap, title: "Pairing Bonus", rate: "+5%", desc: "Enhancement when you bundle MCA + subscription", color: "from-[#E5E4E2] to-white/70" },
+              { icon: Zap, title: "Pairing Bonus", rate: "+5%", desc: "Enhancement when you bundle MCA + subscription", color: "from-[#E0C27E] to-white/70" },
               { icon: Users, title: "Team Overrides", rate: "Up to 8%", desc: "Earn on your team's production as a sponsor", color: "from-purple-400 to-purple-500" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.1}>
@@ -849,7 +845,7 @@ export default function LandingPage() {
                     <item.icon className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white mb-1">{item.title}</h3>
-                  <p className="text-3xl font-bold text-[#EBCB6D] mb-2">{item.rate}</p>
+                  <p className="text-3xl font-bold text-[#C9A24B] mb-2">{item.rate}</p>
                   <p className="text-sm text-white/50">{item.desc}</p>
                 </div>
               </AnimatedSection>
@@ -890,7 +886,7 @@ export default function LandingPage() {
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <Award className="w-5 h-5 text-[#EBCB6D]" />
+                    <Award className="w-5 h-5 text-[#C9A24B]" />
                   </div>
                   Quarterly Accelerators
                 </h3>
@@ -903,7 +899,7 @@ export default function LandingPage() {
                   ].map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
                       <span className="text-white/70">{item.volume} quarterly volume</span>
-                      <span className="font-bold text-[#EBCB6D]">{item.bonus}</span>
+                      <span className="font-bold text-[#C9A24B]">{item.bonus}</span>
                     </div>
                   ))}
                 </div>
@@ -942,7 +938,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { name: "Marcus T.", role: "Full-Time Producer", location: "Atlanta, GA", quote: "I was doing traditional MCA for 3 years. When I added the subscription platform, my monthly income went from unpredictable to a steady climb. The residuals changed everything.", months: "14 months" },
-              { name: "Sarah K.", role: "Team Builder", location: "Phoenix, AZ", quote: "I started part-time while working my corporate job. Within 6 months, my Leadershield income surpassed my salary. The training academy gave me everything I needed to succeed.", months: "11 months" },
+              { name: "Sarah K.", role: "Team Builder", location: "Phoenix, AZ", quote: "I started part-time while working my corporate job. Within 6 months, my Leader Shield income surpassed my salary. The training academy gave me everything I needed to succeed.", months: "11 months" },
               { name: "David R.", role: "Agency Partner", location: "Miami, FL", quote: "Building a team was the multiplier. My personal production earns well, but the overrides from my team of 8 agents have created the financial freedom I always wanted.", months: "18 months" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.15}>
@@ -957,7 +953,7 @@ export default function LandingPage() {
                       <div>
                         <p className="font-bold text-primary">{item.name}</p>
                         <p className="text-sm text-muted-foreground">{item.role} - {item.location}</p>
-                        <p className="text-xs text-muted-foreground">{item.months} with Leadershield</p>
+                        <p className="text-xs text-muted-foreground">{item.months} with Leader Shield</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1159,7 +1155,7 @@ export default function LandingPage() {
                 />
                 <FAQItem
                   question="How does the 1% affiliate referral work?"
-                  answer="Referral partners simply introduce the opportunity. Affiliate compensation is 1% of factoring origination — on an average $75,000 funded deal, that's an example payout of approximately $750. Leadershield manages sales, underwriting, fulfillment, service, and the ongoing client relationship."
+                  answer="Referral partners simply introduce the opportunity. Affiliate compensation is 1% of factoring origination — on an average $75,000 funded deal, that's an example payout of approximately $750. Leader Shield manages sales, underwriting, fulfillment, service, and the ongoing client relationship."
                 />
                 <FAQItem
                   question="What is the Merchant Growth Platform?"
@@ -1174,7 +1170,7 @@ export default function LandingPage() {
                   answer="Absolutely, and we encourage it. When you pair a new subscription with a funded MCA, you earn a 5% commission enhancement on the subscription for the first three months. This pairing strategy maximizes your upfront earnings."
                 />
                 <FAQItem
-                  question="Is there a fee to be a Leadershield agent?"
+                  question="Is there a fee to be a Leader Shield agent?"
                   answer="Full agents pay a $99 monthly platform fee for access to the CRM, reporting, training, and support. This fee can be reduced (50% off at $3,000 revenue) or completely waived ($5,000+ revenue). Top producers get a $100 credit on top of the waiver. Referral-only affiliates have no platform fee."
                 />
               </CardContent>
@@ -1191,15 +1187,15 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <AnimatedSection>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-medium text-white/80 mb-8">
-              <Sparkles className="w-4 h-4 text-[#EBCB6D]" />
+              <Sparkles className="w-4 h-4 text-[#C9A24B]" />
               Fast funding. Full-service execution.
             </div>
             <h2 className="text-4xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
               Ready to Connect Businesses<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">With the Capital They Need?</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E0C27E] to-white/70">With the Capital They Need?</span>
             </h2>
             <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto">
-              Join Leadershield Funding Network. Refer for 1%, or build a full agent business with two revenue streams. We'll handle the execution and train you every step of the way.
+              Join Leader Shield Funding. Refer for 1%, or build a full agent business with two revenue streams. We'll handle the execution and train you every step of the way.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
@@ -1225,23 +1221,23 @@ export default function LandingPage() {
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Income Disclaimer</h4>
-              <p>The income figures presented on this website are examples only and are not intended to represent or guarantee that anyone will achieve the same or similar results. Your individual results will vary and depend on many factors, including but not limited to your individual capacity, work ethic, business experience and knowledge, level of commitment, diligence in applying Leadershield Funding Network's training and sales system, and market conditions. Leadershield Funding Network does not guarantee any level of income or earnings to any agent.</p>
+              <p>The income figures presented on this website are examples only and are not intended to represent or guarantee that anyone will achieve the same or similar results. Your individual results will vary and depend on many factors, including but not limited to your individual capacity, work ethic, business experience and knowledge, level of commitment, diligence in applying Leader Shield Funding's training and sales system, and market conditions. Leader Shield Funding does not guarantee any level of income or earnings to any agent.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Independent Contractor Status</h4>
-              <p>Leadershield Funding Network agents are independent contractors, not employees. As an independent contractor, you are responsible for your own taxes, insurance, and business expenses. Leadershield Funding Network does not provide employment benefits, and agents are not entitled to minimum wage protections or overtime compensation.</p>
+              <p>Leader Shield Funding agents are independent contractors, not employees. As an independent contractor, you are responsible for your own taxes, insurance, and business expenses. Leader Shield Funding does not provide employment benefits, and agents are not entitled to minimum wage protections or overtime compensation.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">No Guaranteed Income</h4>
-              <p>There is no guarantee that you will earn any income as a Leadershield Funding Network agent. Success requires consistent effort, effective sales techniques, and the ability to build and maintain a productive team. Many participants in network marketing businesses earn little to no income. Past performance does not guarantee future results.</p>
+              <p>There is no guarantee that you will earn any income as a Leader Shield Funding agent. Success requires consistent effort, effective sales techniques, and the ability to build and maintain a productive team. Many participants in network marketing businesses earn little to no income. Past performance does not guarantee future results.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Business Opportunity Disclosure</h4>
-              <p>This is a business opportunity, not a job offer. Before joining Leadershield Funding Network, you should carefully review all materials and disclosures. Consult with a qualified financial or legal advisor if you have questions about the opportunity. Some states require additional disclosures for business opportunities.</p>
+              <p>This is a business opportunity, not a job offer. Before joining Leader Shield Funding, you should carefully review all materials and disclosures. Consult with a qualified financial or legal advisor if you have questions about the opportunity. Some states require additional disclosures for business opportunities.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Commission Structure Disclosure</h4>
-              <p>Commission rates, residual percentages, and bonus structures described on this website are subject to the terms of the Leadershield Funding Network Agent Agreement. Commission decay schedules, payout splits, and accelerator qualifications are detailed in the full compensation plan document provided during onboarding.</p>
+              <p>Commission rates, residual percentages, and bonus structures described on this website are subject to the terms of the Leader Shield Funding Agent Agreement. Commission decay schedules, payout splits, and accelerator qualifications are detailed in the full compensation plan document provided during onboarding.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Testimonial Disclaimer</h4>
@@ -1249,15 +1245,15 @@ export default function LandingPage() {
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Anti-Pyramid Scheme Disclosure</h4>
-              <p>Leadershield Funding Network commissions are earned exclusively from the sale of legitimate products and services to end-user merchants — not from recruitment fees or the enrollment of other agents. Agents are never required to purchase products or inventory to participate. Our compensation plan rewards product sales performance, not headcount. Leadershield Funding Network complies with all applicable FTC guidelines regarding multi-level marketing and business opportunity practices.</p>
+              <p>Leader Shield Funding commissions are earned exclusively from the sale of legitimate products and services to end-user merchants — not from recruitment fees or the enrollment of other agents. Agents are never required to purchase products or inventory to participate. Our compensation plan rewards product sales performance, not headcount. Leader Shield Funding complies with all applicable FTC guidelines regarding multi-level marketing and business opportunity practices.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Material Connection Disclosure</h4>
-              <p>Some individuals featured on this website, including those providing testimonials, endorsements, or success stories, have a material connection to Leadershield Funding Network. They may be current agents, affiliates, or compensated participants. Their experiences and results are their own and should not be considered typical. Any compensation or benefits received are disclosed in accordance with the FTC's Endorsement Guides (16 CFR Part 255).</p>
+              <p>Some individuals featured on this website, including those providing testimonials, endorsements, or success stories, have a material connection to Leader Shield Funding. They may be current agents, affiliates, or compensated participants. Their experiences and results are their own and should not be considered typical. Any compensation or benefits received are disclosed in accordance with the FTC's Endorsement Guides (16 CFR Part 255).</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">State-Specific Business Opportunity Notice</h4>
-              <p>Certain states, including but not limited to California, Maryland, New York, and others, may require the registration or filing of business opportunity disclosures before an offer or sale can be made. Leadershield Funding Network complies with all applicable state business opportunity laws. If you reside in a state with specific business opportunity registration requirements, additional disclosures may apply. Please contact compliance@leadershield.com for state-specific information before enrolling.</p>
+              <p>Certain states, including but not limited to California, Maryland, New York, and others, may require the registration or filing of business opportunity disclosures before an offer or sale can be made. Leader Shield Funding complies with all applicable state business opportunity laws. If you reside in a state with specific business opportunity registration requirements, additional disclosures may apply. Please contact compliance@leadershield.com for state-specific information before enrolling.</p>
             </div>
             <div className="pt-4 border-t border-border">
               <p>For complete details, please review our <Link href="/income-disclosure"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-ids">Income Disclosure Statement</span></Link>, <Link href="/terms"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-terms">Terms of Service</span></Link>, <Link href="/privacy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-privacy">Privacy Policy</span></Link>, and <Link href="/refund-policy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-refund">Refund Policy</span></Link>.</p>
@@ -1271,12 +1267,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-5 gap-10 mb-12">
             <div className="md:col-span-2">
-              <Link href="/" data-testid="link-logo-footer" className="flex items-center gap-3 mb-4 hover:opacity-90 transition-opacity w-fit">
-                <BrandMark size="sm" />
-                <span className="leading-tight">
-                  <span className="block font-display font-bold text-white text-base tracking-wide">LEADERSHIELD</span>
-                  <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/50">Funding Network</span>
-                </span>
+              <Link href="/" data-testid="link-logo-footer" className="mb-4 hover:opacity-90 transition-opacity w-fit block">
+                <BrandLockup size="md" onDark />
               </Link>
               <p className="text-white/40 max-w-sm leading-relaxed">
                 Fast funding. Minimal paperwork. Flexible options. Full-service execution. Unsecured working capital for business owners — and a network built to reward those who refer it.
@@ -1311,7 +1303,7 @@ export default function LandingPage() {
           </div>
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-white/30">
-              &copy; 2026 Leadershield Funding Network. All rights reserved.
+              &copy; 2026 Leader Shield Funding. All rights reserved.
             </p>
             <div className="flex flex-wrap items-center justify-center md:justify-end gap-4 text-xs text-white/30">
               <Link href="/income-disclosure"><span className="hover:text-white transition-colors cursor-pointer" data-testid="footer-bottom-income-disclosure">Income Disclosure</span></Link>

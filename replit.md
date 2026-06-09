@@ -1,13 +1,13 @@
-# Leadershield Network - Agent Portal
+# Leader Shield Funding - Agent Portal
 
 ## Overview
-Leadershield Network is a full-stack network marketing (MLM) platform for Merchant Cash Advance (MCA) lending and recurring subscription products (Merchant Growth Platform). It enables agents to sign up via referrals, log deals, manage subscriptions, and earn multi-tiered commissions based on GBR waterfall and subscription decay. The platform includes an agent portal, an admin portal, and a public marketing website for recruitment.
+Leader Shield Funding is a full-stack network marketing (MLM) platform for Merchant Cash Advance (MCA) lending and recurring subscription products (Merchant Growth Platform). It enables agents to sign up via referrals, log deals, manage subscriptions, and earn multi-tiered commissions based on GBR waterfall and subscription decay. The platform includes an agent portal, an admin portal, and a public marketing website for recruitment.
 
-**Brand:** Leadershield Network
+**Brand:** Leader Shield Funding
 **Domain:** leadershield.com
-**Color Palette:** Deep navy (#002147) and platinum (#E5E4E2)
-**Fonts:** Montserrat (headings/display), Cinzel (display), and Manrope/Open Sans (body)
-**Logo:** ShieldCheck icon (lucide-react) with gold gradient
+**Color Palette:** Vault Ink (#0A1628) and Brass (#C9A24B) on Clean Paper (#F6F8FB); supporting Steel (#5C6B82) and Verified Green (#1C8A5B)
+**Fonts:** Archivo (headings/display), IBM Plex Sans (body), IBM Plex Mono (financial figures/eyebrows)
+**Logo:** Heraldic crest (shield + upward chevron) in ink with brass stroke; wordmark "Leader" (heavy/ink) + "Shield" (brass) + "Funding" (mono caps, wide tracking)
 
 **Core Capabilities:**
 - Binary tree agent hierarchy management and recruitment via referral links.
@@ -40,9 +40,9 @@ Preferred communication style: Simple, everyday language.
 - **Routing:** Wouter
 - **State Management:** TanStack React Query
 - **UI Components:** shadcn/ui (Radix UI primitives) with Tailwind CSS, leveraging the "New York" style for a polished, professional look.
-- **Styling:** Tailwind CSS with custom design tokens (Deep navy #002147, Platinum #E5E4E2, gold gradient)
-- **Fonts:** Montserrat (display/headings), Cinzel (display), and Manrope/Open Sans (body)
-- **Icons:** Lucide React (ShieldCheck icon for logo)
+- **Styling:** Tailwind CSS with custom design tokens (Vault Ink #0A1628, Brass #C9A24B, Clean Paper #F6F8FB, Steel #5C6B82, Verified Green #1C8A5B)
+- **Fonts:** Archivo (display/headings), IBM Plex Sans (body), IBM Plex Mono (financial figures/eyebrows)
+- **Icons:** Lucide React; brand crest is a custom inline SVG (shield + chevron) in `BrandMark`/`BrandLockup`
 
 **Key Design Decisions:**
 - Component library uses New York style shadcn/ui for a polished, professional look.
@@ -50,8 +50,8 @@ Preferred communication style: Simple, everyday language.
 - Protected routes enforce authentication.
 - **Public Marketing Landing Page:** Immersive dark hero with animated elements (Framer Motion), social proof, "How It Works" section, two revenue streams (MCA & Platform), Merchant Growth Platform tiers, income lifestyle scenarios, compensation plan details, testimonials, platform tools, 30-day roadmap, compliance information (FTC-compliant), FAQs, and a final CTA.
 - **Legal/Compliance Pages:** Dedicated pages for Income Disclosure, Terms of Service, Privacy Policy, and Refund Policy.
-- **Authentication Pages:** Features a dark gradient left panel and right panel for login/register forms with gold gradient CTAs, sponsor search, and placement preference. Includes legal consent checkbox and a forgot/reset password flow.
-- **Training Page (Leadershield Academy):** 6-module video course with progress tracking, sales playbooks, product-specific sales guidance, and a "Your First 30 Days" checklist.
+- **Authentication Pages:** Features a dark gradient left panel and right panel for login/register forms with brass gradient CTAs, sponsor search, and placement preference. Includes legal consent checkbox and a forgot/reset password flow.
+- **Training Page (Leader Shield Academy):** 6-module video course with progress tracking, sales playbooks, product-specific sales guidance, and a "Your First 30 Days" checklist.
 - Uses Framer Motion for animations, `AnimatedSection` for scroll-triggered effects, `CountUp` for animated statistics, and `FAQItem` for accordions.
 
 #### Backend Architecture

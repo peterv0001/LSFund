@@ -16,7 +16,7 @@ export default function PrivacyPolicyPage() {
             </Link>
             <Link href="/" data-testid="link-logo-privacy" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <Shield className="w-4 h-4 text-primary shrink-0" />
-              <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Network</span>
+              <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Funding</span>
             </Link>
           </div>
           <Link href="/login">
@@ -41,7 +41,7 @@ export default function PrivacyPolicyPage() {
                 <div>
                   <h2 className="text-xl font-bold text-primary mb-3">Introduction</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Leadershield Network, LLC ("Leadershield," "we," "us," or "our") is committed to protecting
+                    Leader Shield Funding, LLC ("Leader Shield," "we," "us," or "our") is committed to protecting
                     your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your
                     information when you visit our website, use our platform, or engage with our services as an
                     independent agent, merchant customer, or website visitor. Please read this policy carefully.
@@ -155,7 +155,7 @@ export default function PrivacyPolicyPage() {
                     <li><strong>Payment Processors:</strong> Financial information is shared with our secure payment processing partners (e.g., Stripe, ACH providers) to process commission payments</li>
                     <li><strong>Service Providers:</strong> We may share information with vendors who perform services on our behalf, such as email delivery, cloud hosting, analytics, and customer support tools</li>
                     <li><strong>Upline Agents:</strong> Limited performance data (deal counts, subscription sales, team activity) may be visible to your upline agents and team leaders within the platform hierarchy</li>
-                    <li><strong>Legal Requirements:</strong> We may disclose information when required by law, subpoena, court order, or governmental regulation, or to protect the rights, property, or safety of Leadershield, our agents, or the public</li>
+                    <li><strong>Legal Requirements:</strong> We may disclose information when required by law, subpoena, court order, or governmental regulation, or to protect the rights, property, or safety of Leader Shield, our agents, or the public</li>
                     <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction</li>
                   </ul>
                 </div>
@@ -176,7 +176,7 @@ export default function PrivacyPolicyPage() {
                     provide our services. Specifically:
                   </p>
                   <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-2">
-                    <li><strong>Active Accounts:</strong> Data is retained for the duration of your active agent or merchant relationship with Leadershield</li>
+                    <li><strong>Active Accounts:</strong> Data is retained for the duration of your active agent or merchant relationship with Leader Shield</li>
                     <li><strong>Closed Accounts:</strong> Following account closure or termination, we retain records for a minimum of seven (7) years to comply with tax reporting, regulatory, and legal obligations</li>
                     <li><strong>Financial Records:</strong> Commission records, 1099 data, and transaction histories are retained for at least seven (7) years in accordance with IRS requirements</li>
                     <li><strong>Usage Data:</strong> Anonymized usage and analytics data may be retained indefinitely for business analysis purposes</li>
@@ -389,7 +389,7 @@ export default function PrivacyPolicyPage() {
                     practices, please contact us at:
                   </p>
                   <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                    <p className="font-semibold text-primary">Leadershield Network, LLC</p>
+                    <p className="font-semibold text-primary">Leader Shield Funding, LLC</p>
                     <p className="text-muted-foreground">Privacy Officer</p>
                     <p className="text-muted-foreground">Email: privacy@leadershield.com</p>
                     <p className="text-muted-foreground">Address: [Company Address]</p>

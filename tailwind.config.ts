@@ -6,9 +6,10 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        xl: "2rem", /* 32px */
+        lg: "1.5rem", /* 24px */
+        md: "1rem", /* 16px */
+        sm: ".625rem", /* 10px */
       },
       colors: {
         // Flat / base colors (regular buttons)
@@ -86,6 +87,8 @@ export default {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
+        display: ["var(--font-display)"],
+        body: ["var(--font-body)"],
       },
       keyframes: {
         "accordion-down": {

@@ -3,12 +3,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
-import { ArrowLeft, Loader2, Mail, CheckCircle2, Shield } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { BrandLockup } from "@/components/BrandMark";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -47,9 +48,8 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-md space-y-8">
         <div className="flex items-center justify-center mb-4">
-          <Link href="/" data-testid="link-logo-forgot-password" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Shield className="w-5 h-5 text-primary shrink-0" />
-            <span className="font-display font-bold text-primary text-xl tracking-wide">Leader Shield Network</span>
+          <Link href="/" data-testid="link-logo-forgot-password" className="hover:opacity-80 transition-opacity">
+            <BrandLockup size="md" />
           </Link>
         </div>
 

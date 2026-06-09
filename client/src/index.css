@@ -1,98 +1,112 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-display: 'Montserrat', sans-serif;
-  --font-body: 'Open Sans', sans-serif;
+  --font-display: 'Archivo', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-serif: 'Archivo', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 
-  /* Leadershield Network — Deep Navy (#002147) & Platinum (#E5E4E2) */
-  --background: 210 20% 98%;
-  --foreground: 212 60% 12%;
+  /* Leader Shield Funding — Vault Ink (#0A1628) & Brass (#C9A24B) on Clean Paper (#F6F8FB) */
+  --background: 216 38% 97%;        /* #F6F8FB Paper */
+  --foreground: 216 60% 10%;        /* #0A1628 Ink */
 
-  --primary: 212 100% 14%;         /* #002147 Deep Navy */
-  --primary-foreground: 0 0% 98%;
+  --primary: 216 60% 10%;           /* #0A1628 Ink */
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 40 6% 89%;          /* #E5E4E2 Platinum */
-  --secondary-foreground: 212 100% 14%;
+  --secondary: 213 41% 95%;         /* #ECF1F7 Paper-2 */
+  --secondary-foreground: 216 60% 10%;
 
-  --muted: 210 18% 95%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 213 41% 95%;             /* #ECF1F7 */
+  --muted-foreground: 216 17% 44%;  /* #5C6B82 Steel */
 
-  --accent: 212 45% 30%;           /* Mid-navy accent */
-  --accent-foreground: 0 0% 98%;
+  --accent: 213 41% 95%;            /* subtle paper tint for hover surfaces */
+  --accent-foreground: 216 60% 10%;
 
   --card: 0 0% 100%;
-  --card-foreground: 212 60% 12%;
-  --card-border: 212 20% 91%;
+  --card-foreground: 216 60% 10%;
+  --card-border: 216 35% 92%;       /* #E2E8F1 Line */
 
   --popover: 0 0% 100%;
-  --popover-foreground: 212 60% 12%;
-  --popover-border: 212 20% 91%;
+  --popover-foreground: 216 60% 10%;
+  --popover-border: 216 35% 92%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 212 18% 91%;
-  --input: 212 18% 91%;
-  --ring: 212 100% 14%;
+  --border: 216 35% 92%;            /* #E2E8F1 Line */
+  --input: 216 35% 92%;
+  --ring: 41 54% 54%;               /* #C9A24B Brass */
 
-  --radius: 0.5rem;
+  --radius: 1rem;                   /* md 16px */
 
-  /* Sidebar */
-  --sidebar: 212 100% 14%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 212 70% 20%;
-  --sidebar-ring: 40 6% 89%;
-  --sidebar-primary: 40 6% 89%;
-  --sidebar-primary-foreground: 212 100% 14%;
-  --sidebar-accent: 212 60% 22%;
-  --sidebar-accent-foreground: 0 0% 98%;
+  /* Sidebar — Ink with brass accents */
+  --sidebar: 216 60% 10%;           /* #0A1628 Ink */
+  --sidebar-foreground: 210 20% 96%;
+  --sidebar-border: 215 51% 23%;    /* #1C3557 Ink-3 */
+  --sidebar-ring: 41 54% 54%;       /* Brass */
+  --sidebar-primary: 41 54% 54%;    /* Brass */
+  --sidebar-primary-foreground: 216 60% 10%;
+  --sidebar-accent: 213 54% 17%;    /* #142943 Ink-2 */
+  --sidebar-accent-foreground: 210 20% 96%;
 
   /* Charts */
-  --chart-1: 212 100% 14%;
-  --chart-2: 212 55% 38%;
-  --chart-3: 40 6% 65%;
-  --chart-4: 142 60% 40%;
+  --chart-1: 216 60% 10%;           /* Ink */
+  --chart-2: 41 54% 54%;            /* Brass */
+  --chart-3: 216 17% 44%;           /* Steel */
+  --chart-4: 154 66% 33%;           /* Verified Green */
   --chart-5: 0 72% 55%;
 }
 
 .dark {
-  --background: 212 50% 10%;
+  --background: 216 60% 10%;        /* #0A1628 Ink */
   --foreground: 210 20% 96%;
 
-  --primary: 40 6% 89%;
-  --primary-foreground: 212 100% 14%;
+  --primary: 41 54% 54%;            /* Brass CTA on ink */
+  --primary-foreground: 216 60% 10%;
 
-  --secondary: 212 60% 22%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 213 54% 17%;         /* #142943 Ink-2 */
+  --secondary-foreground: 210 20% 96%;
 
-  --muted: 212 40% 17%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 213 54% 17%;             /* #142943 */
+  --muted-foreground: 217 17% 57%;  /* #7E8CA3 Steel-2 */
 
-  --accent: 212 45% 28%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 215 51% 23%;            /* #1C3557 Ink-3 */
+  --accent-foreground: 210 20% 96%;
 
-  --card: 212 50% 12%;
+  --card: 213 54% 17%;              /* #142943 Slate */
   --card-foreground: 210 20% 96%;
-  --card-border: 212 40% 18%;
+  --card-border: 215 51% 23%;       /* #1C3557 */
 
-  --popover: 212 50% 12%;
+  --popover: 213 54% 17%;
   --popover-foreground: 210 20% 96%;
-  --popover-border: 212 40% 18%;
+  --popover-border: 215 51% 23%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 212 40% 18%;
-  --input: 212 40% 18%;
-  --ring: 40 6% 89%;
+  --border: 215 51% 23%;            /* #1C3557 */
+  --input: 215 51% 23%;
+  --ring: 41 54% 54%;               /* Brass */
 
-  --sidebar: 212 60% 10%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 212 40% 16%;
+  --sidebar: 215 72% 7%;            /* #05101F Abyss */
+  --sidebar-foreground: 210 20% 96%;
+  --sidebar-border: 215 51% 23%;
+  --sidebar-ring: 41 54% 54%;
+  --sidebar-primary: 41 54% 54%;
+  --sidebar-primary-foreground: 216 60% 10%;
+  --sidebar-accent: 213 54% 17%;
+  --sidebar-accent-foreground: 210 20% 96%;
+
+  --chart-1: 42 61% 69%;            /* Brass-2 */
+  --chart-2: 41 54% 54%;            /* Brass */
+  --chart-3: 217 17% 57%;           /* Steel-2 */
+  --chart-4: 155 53% 43%;           /* Green-2 */
+  --chart-5: 0 72% 55%;
 }
 
 @layer base {
@@ -111,19 +125,25 @@
 
 @layer utilities {
   .text-platinum {
-    color: hsl(40 6% 89%);
+    color: hsl(41 54% 54%);
   }
   .bg-platinum {
-    background-color: hsl(40 6% 89%);
+    background-color: hsl(41 54% 54%);
   }
   .border-platinum {
-    border-color: hsl(40 6% 89%);
+    border-color: hsl(41 54% 54%);
   }
   .text-navy {
-    color: hsl(212 100% 14%);
+    color: hsl(216 60% 10%);
   }
   .bg-navy {
-    background-color: hsl(212 100% 14%);
+    background-color: hsl(216 60% 10%);
+  }
+  .text-brass {
+    color: hsl(41 54% 54%);
+  }
+  .bg-brass {
+    background-color: hsl(41 54% 54%);
   }
 
   .glass-panel {
@@ -135,7 +155,8 @@
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
+    @apply bg-clip-text text-transparent bg-gradient-to-r;
+    background-image: linear-gradient(to right, hsl(41 54% 54%), hsl(42 61% 69%));
   }
 
   .animate-float {
@@ -166,8 +187,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(0, 33, 71, 0.2); }
-  50% { box-shadow: 0 0 40px rgba(0, 33, 71, 0.4); }
+  0%, 100% { box-shadow: 0 0 20px rgba(201, 162, 75, 0.25); }
+  50% { box-shadow: 0 0 40px rgba(201, 162, 75, 0.5); }
 }
 
 @keyframes gradient-shift {

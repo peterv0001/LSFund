@@ -6,7 +6,7 @@ import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown, Star, Zap, DollarSign, Repeat, Users } from "lucide-react";
-import { BrandMark } from "@/components/BrandMark";
+import { BrandLockup } from "@/components/BrandMark";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -41,18 +41,14 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(10,22,40,0.6)_70%)]" />
 
         <div className="relative z-10">
-          <Link href="/" data-testid="link-logo-auth" className="flex items-center gap-3 mb-16 hover:opacity-90 transition-opacity w-fit">
-            <BrandMark size="sm" />
-            <span className="leading-tight">
-              <span className="block font-display font-bold text-white text-lg tracking-wide">LEADERSHIELD</span>
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/50">Funding Network</span>
-            </span>
+          <Link href="/" data-testid="link-logo-auth" className="mb-16 hover:opacity-90 transition-opacity w-fit block">
+            <BrandLockup size="md" onDark />
           </Link>
 
           <h2 className="text-5xl font-display font-bold text-white leading-tight mb-6">
             Build Your
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E5E4E2] to-white/70">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E0C27E] to-white/70">
               Financial Legacy
             </span>
           </h2>
@@ -64,7 +60,7 @@ export default function AuthPage() {
             {[
               { icon: DollarSign, text: "22% MCA commission on every funded deal", color: "text-emerald-400" },
               { icon: Repeat, text: "50-70% recurring subscription commissions", color: "text-blue-400" },
-              { icon: Zap, text: "+5% pairing enhancement bonus", color: "text-[#E5E4E2]" },
+              { icon: Zap, text: "+5% pairing enhancement bonus", color: "text-[#E0C27E]" },
               { icon: Users, text: "Override income from your team", color: "text-purple-400" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -101,9 +97,8 @@ export default function AuthPage() {
         <div className="w-full max-w-md space-y-8">
           {/* Mobile branding */}
           <div className="lg:hidden flex items-center justify-center mb-4">
-            <Link href="/" data-testid="link-logo-auth-mobile" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-              <BrandMark size="sm" />
-              <span className="font-display font-bold text-primary text-xl tracking-wide">LEADERSHIELD</span>
+            <Link href="/" data-testid="link-logo-auth-mobile" className="hover:opacity-90 transition-opacity">
+              <BrandLockup size="md" showTagline={false} />
             </Link>
           </div>
 

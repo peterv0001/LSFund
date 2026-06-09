@@ -9,7 +9,7 @@ export default function RefundPolicyPage() {
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between gap-4 flex-wrap">
           <Link href="/" data-testid="link-logo-refund-policy" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Shield className="w-4 h-4 text-primary shrink-0" />
-            <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Network</span>
+            <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Funding</span>
           </Link>
           <Link href="/">
             <Button variant="ghost" size="sm" data-testid="button-back-home">
@@ -37,8 +37,8 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">1. Overview</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              This Refund & Cancellation Policy applies to the subscription products offered through the Leadershield
-              Network Merchant Growth Platform, including Merchant Essentials, Growth Accelerator, and Elite AI Revenue
+              This Refund & Cancellation Policy applies to the subscription products offered through the Leader Shield
+              Funding Merchant Growth Platform, including Merchant Essentials, Growth Accelerator, and Elite AI Revenue
               System (collectively, "Subscription Products"). By purchasing or subscribing to any of these products,
               you agree to the terms outlined in this policy.
             </p>
@@ -98,7 +98,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">4. Cooling-Off Period</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Leadershield Network provides a <span className="font-semibold text-foreground">14-day cooling-off period</span> for all new subscription purchases. This means:
+              Leader Shield Funding provides a <span className="font-semibold text-foreground">14-day cooling-off period</span> for all new subscription purchases. This means:
             </p>
             <ul className="list-disc pl-6 space-y-3 text-muted-foreground">
               <li>If you are a new subscriber and wish to cancel within 14 calendar days of your initial purchase date, you are entitled to a full refund of your first month's subscription fee.</li>
@@ -115,7 +115,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">5. Refund Eligibility</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Beyond the 14-day cooling-off period, refunds may be issued at Leadershield Network's discretion under the following circumstances:
+              Beyond the 14-day cooling-off period, refunds may be issued at Leader Shield Funding's discretion under the following circumstances:
             </p>
             <ul className="list-disc pl-6 space-y-3 text-muted-foreground">
               <li>
@@ -176,7 +176,7 @@ export default function RefundPolicyPage() {
                 <span className="font-semibold text-foreground">Training Materials & Digital Content:</span> Any training courses, digital downloads, or educational materials that have been accessed or downloaded are non-refundable.
               </li>
               <li>
-                <span className="font-semibold text-foreground">Agent Enrollment Fees:</span> Fees paid by agents to join the Leadershield Network as independent contractors are non-refundable after the 14-day cooling-off period.
+                <span className="font-semibold text-foreground">Agent Enrollment Fees:</span> Fees paid by agents to join the Leader Shield Funding as independent contractors are non-refundable after the 14-day cooling-off period.
               </li>
               <li>
                 <span className="font-semibold text-foreground">Custom Integrations & Add-Ons:</span> Any custom development, API integrations, or premium add-on services that have been delivered or initiated are non-refundable.
@@ -205,7 +205,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">9. Modifications to This Policy</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Leadershield Network reserves the right to modify this Refund & Cancellation Policy at any time. Changes will be
+              Leader Shield Funding reserves the right to modify this Refund & Cancellation Policy at any time. Changes will be
               posted on this page with an updated "Last Updated" date. Material changes will be communicated to active subscribers
               via email at least 30 days prior to taking effect. Continued use of the Subscription Products after changes are posted
               constitutes your acceptance of the revised policy.
@@ -225,13 +225,13 @@ export default function RefundPolicyPage() {
               <p><span className="font-semibold text-foreground">Email:</span> support@leadershieldnetwork.com</p>
               <p><span className="font-semibold text-foreground">Billing Inquiries:</span> billing@leadershieldnetwork.com</p>
               <p><span className="font-semibold text-foreground">Legal Escalations:</span> legal@leadershieldnetwork.com</p>
-              <p><span className="font-semibold text-foreground">Mailing Address:</span> Leadershield Network LLC, [Business Address], [City, State ZIP]</p>
+              <p><span className="font-semibold text-foreground">Mailing Address:</span> Leader Shield Funding LLC, [Business Address], [City, State ZIP]</p>
             </div>
           </section>
 
           <div className="mt-12 pt-8 border-t border-border">
             <p className="text-sm text-muted-foreground text-center">
-              This Refund & Cancellation Policy is part of the Leadershield Network Terms of Service. For complete terms governing
+              This Refund & Cancellation Policy is part of the Leader Shield Funding Terms of Service. For complete terms governing
               your use of our platform and services, please review our{" "}
               <Link href="/terms" className="text-primary hover:underline" data-testid="link-terms">Terms of Service</Link>,{" "}
               <Link href="/privacy" className="text-primary hover:underline" data-testid="link-privacy">Privacy Policy</Link>, and{" "}

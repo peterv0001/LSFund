@@ -2,13 +2,13 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'Leadershield Network <noreply@leadershield.com>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Leader Shield Funding <noreply@leadershield.com>';
 const APP_URL = process.env.APP_URL || 'https://leadershield.com';
 
 // Email templates
 const templates = {
   welcome: (data: { firstName: string; email: string; loginUrl: string }) => ({
-    subject: '🎉 Welcome to Leadershield Network!',
+    subject: '🎉 Welcome to Leader Shield Funding!',
     html: `
 <!DOCTYPE html>
 <html>
@@ -18,16 +18,16 @@ const templates = {
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
-      <h1 style="color: #d4af37; margin: 0; font-size: 28px;">Leadershield Network</h1>
+    <div style="background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <h1 style="color: #C9A24B; margin: 0; font-size: 28px;">Leader Shield Funding</h1>
       <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0;">Agent Platform</p>
     </div>
     
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Welcome, ${data.firstName}! 🎉</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Welcome, ${data.firstName}! 🎉</h2>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
-        Congratulations on joining Leadershield Network! You're now part of an elite network of MCA professionals 
+        Congratulations on joining Leader Shield Funding! You're now part of an elite network of MCA professionals 
         building two revenue streams.
       </p>
       
@@ -43,7 +43,7 @@ const templates = {
       </ol>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.loginUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.loginUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           Go to Your Dashboard →
         </a>
       </div>
@@ -54,7 +54,7 @@ const templates = {
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -79,7 +79,7 @@ const templates = {
     </div>
     
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Congratulations, ${data.firstName}!</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Congratulations, ${data.firstName}!</h2>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         Your deal has been funded. Here are the details:
@@ -88,11 +88,11 @@ const templates = {
       <div style="background: #f7fafc; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Funded Amount</span>
-          <strong style="color: #1e3a5f;">$${data.amount.toLocaleString()}</strong>
+          <strong style="color: #0A1628;">$${data.amount.toLocaleString()}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #e2e8f0;">
           <span style="color: #718096;">Your Commission</span>
@@ -105,14 +105,14 @@ const templates = {
       </p>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           View Your Earnings →
         </a>
       </div>
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -121,7 +121,7 @@ const templates = {
   }),
 
   passwordReset: (data: { firstName: string; resetUrl: string }) => ({
-    subject: 'Reset Your Password - Leadershield Network',
+    subject: 'Reset Your Password - Leader Shield Funding',
     html: `
 <!DOCTYPE html>
 <html>
@@ -131,19 +131,19 @@ const templates = {
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+    <div style="background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
       <h1 style="color: white; margin: 0; font-size: 24px;">Password Reset Request</h1>
     </div>
     
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         We received a request to reset your password. Click the button below to set a new password for your account.
       </p>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           Reset My Password →
         </a>
       </div>
@@ -154,12 +154,12 @@ const templates = {
       
       <p style="color: #a0aec0; font-size: 12px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
         If the button above doesn't work, copy and paste this link into your browser:<br/>
-        <a href="${data.resetUrl}" style="color: #1e3a5f; word-break: break-all;">${data.resetUrl}</a>
+        <a href="${data.resetUrl}" style="color: #0A1628; word-break: break-all;">${data.resetUrl}</a>
       </p>
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -184,7 +184,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         Your subscription has been paused. Here are the details:
@@ -193,11 +193,11 @@ const templates = {
       <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Tier</span>
-          <strong style="color: #1e3a5f;">${data.tier}</strong>
+          <strong style="color: #0A1628;">${data.tier}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #fcd34d;">
           <span style="color: #718096;">Effective Date</span>
@@ -210,7 +210,7 @@ const templates = {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           Go to Your Dashboard →
         </a>
       </div>
@@ -221,7 +221,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -246,7 +246,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         Good news! Your subscription has been reactivated. Here are the details:
@@ -255,11 +255,11 @@ const templates = {
       <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Tier</span>
-          <strong style="color: #1e3a5f;">${data.tier}</strong>
+          <strong style="color: #0A1628;">${data.tier}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #86efac;">
           <span style="color: #718096;">Effective Date</span>
@@ -272,7 +272,7 @@ const templates = {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           Go to Your Dashboard →
         </a>
       </div>
@@ -283,7 +283,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -308,7 +308,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         Your subscription has been cancelled. Here are the details:
@@ -317,11 +317,11 @@ const templates = {
       <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Tier</span>
-          <strong style="color: #1e3a5f;">${data.tier}</strong>
+          <strong style="color: #0A1628;">${data.tier}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #fca5a5;">
           <span style="color: #718096;">Effective Date</span>
@@ -334,7 +334,7 @@ const templates = {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           Go to Your Dashboard →
         </a>
       </div>
@@ -345,7 +345,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -370,7 +370,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         Your subscription has expired. Here are the details:
@@ -379,11 +379,11 @@ const templates = {
       <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Tier</span>
-          <strong style="color: #1e3a5f;">${data.tier}</strong>
+          <strong style="color: #0A1628;">${data.tier}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #fcd34d;">
           <span style="color: #718096;">Effective Date</span>
@@ -396,7 +396,7 @@ const templates = {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           Go to Your Dashboard →
         </a>
       </div>
@@ -407,7 +407,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -432,7 +432,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Great work, ${data.firstName}!</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Great work, ${data.firstName}!</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         You've earned a new commission. Here are the details:
@@ -441,11 +441,11 @@ const templates = {
       <div style="background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Commission Type</span>
-          <strong style="color: #1e3a5f;">${data.commissionType}</strong>
+          <strong style="color: #0A1628;">${data.commissionType}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Details</span>
-          <strong style="color: #1e3a5f;">${data.description}</strong>
+          <strong style="color: #0A1628;">${data.description}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #99f6e4;">
           <span style="color: #718096;">Amount Earned</span>
@@ -458,18 +458,18 @@ const templates = {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           View Your Earnings →
         </a>
       </div>
 
       <p style="color: #718096; font-size: 14px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-        You can manage your email preferences in your <a href="${data.dashboardUrl.replace('/earnings', '/settings')}" style="color: #1e3a5f;">account settings</a>.
+        You can manage your email preferences in your <a href="${data.dashboardUrl.replace('/earnings', '/settings')}" style="color: #0A1628;">account settings</a>.
       </p>
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -494,7 +494,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         This is a heads-up that one of your subscriptions is expiring in <strong>${data.daysUntilExpiry} days</strong>. Here are the details:
@@ -503,11 +503,11 @@ const templates = {
       <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Tier</span>
-          <strong style="color: #1e3a5f;">${data.tier}</strong>
+          <strong style="color: #0A1628;">${data.tier}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #fcd34d;">
           <span style="color: #718096;">Expiry Date</span>
@@ -520,7 +520,7 @@ const templates = {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           View Your Subscriptions →
         </a>
       </div>
@@ -531,7 +531,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -556,7 +556,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Great news, ${data.firstName}!</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Great news, ${data.firstName}!</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         The outstanding payment for one of your merchant subscriptions has been successfully processed. Your subscription is now active and commission accrual has resumed.
@@ -565,7 +565,7 @@ const templates = {
       <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #86efac;">
           <span style="color: #718096;">Tier</span>
@@ -578,7 +578,7 @@ const templates = {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           View Your Subscriptions →
         </a>
       </div>
@@ -589,7 +589,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -614,7 +614,7 @@ const templates = {
     </div>
 
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
         Unfortunately, the payment retry for one of your merchant subscriptions has failed. Please update the payment method to restore the subscription.
@@ -623,7 +623,7 @@ const templates = {
       <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 24px; margin: 20px 0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #718096;">Merchant</span>
-          <strong style="color: #1e3a5f;">${data.merchantName}</strong>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #fca5a5;">
           <span style="color: #718096;">Tier</span>
@@ -647,7 +647,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -672,10 +672,10 @@ const templates = {
     </div>
     
     <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
-      <h2 style="color: #1e3a5f; margin: 0 0 20px 0;">Great news, ${data.firstName}!</h2>
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Great news, ${data.firstName}!</h2>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
-        <strong>${data.newMemberName}</strong> just joined Leadershield Network using your referral link!
+        <strong>${data.newMemberName}</strong> just joined Leader Shield Funding using your referral link!
       </p>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
@@ -684,14 +684,14 @@ const templates = {
       </p>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f1f33 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           View Your Team →
         </a>
       </div>
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leadershield Network. All rights reserved.
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
     </p>
   </div>
 </body>
