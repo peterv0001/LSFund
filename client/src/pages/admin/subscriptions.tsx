@@ -26,6 +26,8 @@ import {
   GripVertical,
   Share2,
   Eye,
+  Pencil,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -471,8 +473,10 @@ export default function AdminSubscriptions() {
   });
 
   const updateTemplateMutation = useMutation({
-    mutationFn: (vars: { id: number; isShared: boolean }) =>
-      apiRequest("PATCH", buildUrl(api.exportTemplates.update.path, { id: vars.id }), { isShared: vars.isShared }),
+    mutationFn: (vars: { id: number; name?: string; columns?: ExportColumnKey[]; isShared?: boolean }) => {
+      const { id, ...body } = vars;
+      return apiRequest("PATCH", buildUrl(api.exportTemplates.update.path, { id }), body);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.exportTemplates.list.path] });
     },
@@ -480,6 +484,9 @@ export default function AdminSubscriptions() {
   });
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+  const [editTemplateName, setEditTemplateName] = useState("");
+  const editSnapshotRef = useRef<{ selected: ExportColumnKey[]; order: ExportColumnKey[] } | null>(null);
 
   const { data: historyEntries = [], isLoading: historyLoading } = useQuery<ActivityEntry[]>({
     queryKey: [api.admin.subscriptions.activity.path, historySubId],
@@ -829,6 +836,53 @@ export default function AdminSubscriptions() {
     });
   }
 
+  function startEditTemplate(template: ExportTemplate) {
+    editSnapshotRef.current = {
+      selected: Array.from(selectedColumns),
+      order: [...columnOrder],
+    };
+    setEditingTemplateId(template.id);
+    setEditTemplateName(template.name);
+    setSelectedColumns(new Set(template.columns));
+    const allKeys = EXPORT_COLUMNS.map((c) => c.key);
+    const rest = allKeys.filter((k) => !template.columns.includes(k));
+    setColumnOrder([...template.columns, ...rest]);
+  }
+
+  function cancelEditTemplate() {
+    if (editSnapshotRef.current) {
+      setSelectedColumns(new Set(editSnapshotRef.current.selected));
+      setColumnOrder(editSnapshotRef.current.order);
+    }
+    editSnapshotRef.current = null;
+    setEditingTemplateId(null);
+    setEditTemplateName("");
+  }
+
+  function saveEditTemplate(template: ExportTemplate) {
+    const trimmed = editTemplateName.trim();
+    if (!trimmed) {
+      toast({ title: "Template name cannot be empty", variant: "destructive" });
+      return;
+    }
+    if (selectedColumns.size === 0) {
+      toast({ title: "Select at least one column before saving a template", variant: "destructive" });
+      return;
+    }
+    const orderedSelected = columnOrder.filter((k) => selectedColumns.has(k));
+    updateTemplateMutation.mutate(
+      { id: template.id, name: trimmed, columns: orderedSelected },
+      {
+        onSuccess: () => {
+          editSnapshotRef.current = null;
+          setEditingTemplateId(null);
+          setEditTemplateName("");
+          toast({ title: `Template "${trimmed}" updated` });
+        },
+      }
+    );
+  }
+
   function toggleTemplateSharing(template: ExportTemplate) {
     updateTemplateMutation.mutate(
       { id: template.id, isShared: !template.isShared },
@@ -1134,6 +1188,47 @@ export default function AdminSubscriptions() {
                           {templates.map((tpl) => {
                             const isOwner = tpl.adminId === user?.id;
                             const testSlug = tpl.name.replace(/\s+/g, "-").toLowerCase();
+                            const isEditing = editingTemplateId === tpl.id;
+                            if (isEditing) {
+                              return (
+                                <div
+                                  key={tpl.id}
+                                  className="flex items-center gap-1.5"
+                                  data-testid={`edit-template-form-${testSlug}`}
+                                >
+                                  <Input
+                                    autoFocus
+                                    value={editTemplateName}
+                                    onChange={(e) => setEditTemplateName(e.target.value)}
+                                    className="h-7 text-xs flex-1"
+                                    data-testid={`input-edit-template-name-${testSlug}`}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveEditTemplate(tpl);
+                                      if (e.key === "Escape") cancelEditTemplate();
+                                    }}
+                                  />
+                                  <button
+                                    className="shrink-0 text-primary hover:text-primary/80 transition-colors p-1 rounded"
+                                    onClick={() => saveEditTemplate(tpl)}
+                                    data-testid={`button-save-edit-template-${testSlug}`}
+                                    aria-label={`Save changes to ${tpl.name}`}
+                                    title="Save changes"
+                                    disabled={!editTemplateName.trim() || selectedColumns.size === 0 || updateTemplateMutation.isPending}
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded"
+                                    onClick={cancelEditTemplate}
+                                    data-testid={`button-cancel-edit-template-${testSlug}`}
+                                    aria-label={`Cancel editing ${tpl.name}`}
+                                    title="Cancel"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              );
+                            }
                             return (
                               <div
                                 key={tpl.id}
@@ -1142,9 +1237,9 @@ export default function AdminSubscriptions() {
                               >
                                 <button
                                   className="flex-1 text-left text-sm text-gray-700 px-2 py-1 rounded hover:bg-gray-50 truncate"
-                                  onClick={() => applyTemplate(tpl)}
-                                  data-testid={`button-apply-template-${testSlug}`}
-                                  title={`Apply "${tpl.name}" template`}
+                                  onClick={() => isOwner ? startEditTemplate(tpl) : applyTemplate(tpl)}
+                                  data-testid={isOwner ? `button-edit-template-${testSlug}` : `button-apply-template-${testSlug}`}
+                                  title={isOwner ? `Edit "${tpl.name}" template (rename or change columns)` : `Apply "${tpl.name}" template`}
                                 >
                                   {tpl.name}
                                 </button>
@@ -1156,6 +1251,17 @@ export default function AdminSubscriptions() {
                                   >
                                     <Share2 className="w-3 h-3" />
                                   </span>
+                                )}
+                                {isOwner && (
+                                  <button
+                                    className="shrink-0 text-gray-300 hover:text-primary transition-colors p-1 rounded"
+                                    onClick={() => applyTemplate(tpl)}
+                                    data-testid={`button-apply-template-${testSlug}`}
+                                    title={`Apply "${tpl.name}" template`}
+                                    aria-label={`Apply ${tpl.name}`}
+                                  >
+                                    <ListChecks className="w-3.5 h-3.5" />
+                                  </button>
                                 )}
                                 {isOwner && (
                                   <button
