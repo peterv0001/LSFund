@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown, Star, Zap, DollarSign, Repeat, Users } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,16 +149,29 @@ function LoginForm({ onSubmit, isLoading, onToggle }: {
   isLoading: boolean,
   onToggle: () => void
 }) {
+  const { toast } = useToast();
   const form = useForm({
     resolver: zodResolver(api.auth.login.input),
   });
+
+  const handleLogin = async (data: any) => {
+    try {
+      await onSubmit(data);
+    } catch (err: any) {
+      toast({
+        title: "Sign in failed",
+        description: err?.message || "Invalid email or password. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <motion.form
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      onSubmit={form.handleSubmit(onSubmit)}
+      onSubmit={form.handleSubmit(handleLogin)}
       className="space-y-5"
     >
       <div className="space-y-2">
@@ -211,6 +225,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
   onToggle: () => void,
   referralCode?: string | null
 }) {
+  const { toast } = useToast();
   const [sponsorSearch, setSponsorSearch] = useState("");
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorOption | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -283,7 +298,17 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      onSubmit={form.handleSubmit(({ legalConsent, ...data }) => onSubmit(data))}
+      onSubmit={form.handleSubmit(async ({ legalConsent, ...data }) => {
+        try {
+          await onSubmit(data);
+        } catch (err: any) {
+          toast({
+            title: "Registration failed",
+            description: err?.message || "Something went wrong. Please try again.",
+            variant: "destructive",
+          });
+        }
+      })}
       className="space-y-4"
     >
       <div className="grid grid-cols-2 gap-4">
