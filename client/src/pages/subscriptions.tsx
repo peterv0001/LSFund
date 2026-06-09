@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { loadStripe, type Stripe as StripeType } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { getActionStyle, ACTION_STYLES } from "@/lib/action-styles";
+import { getActionStyle, ACTION_STYLES, getActorBadge } from "@/lib/action-styles";
 
 // === Types ===
 
@@ -796,15 +796,18 @@ function SubscriptionHistoryTimeline({ subId }: { subId: number }) {
                 {log.actorName && (
                   <span className="ml-1">
                     <span className="text-muted-foreground">by {log.actorName}</span>
-                    {log.actorType && (
-                      <Badge
-                        variant="outline"
-                        className={`ml-1 text-[10px] px-1 py-0 h-auto ${log.actorType === "admin" ? "bg-purple-100 text-purple-700 border-purple-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}
-                        data-testid={`badge-history-actortype-${log.id}`}
-                      >
-                        {log.actorType === "admin" ? "Admin" : "Agent"}
-                      </Badge>
-                    )}
+                    {(() => {
+                      const actorBadge = getActorBadge(log.actorType);
+                      return actorBadge ? (
+                        <Badge
+                          variant="outline"
+                          className={`ml-1 text-[10px] px-1 py-0 h-auto ${actorBadge.className}`}
+                          data-testid={`badge-history-actortype-${log.id}`}
+                        >
+                          {actorBadge.label}
+                        </Badge>
+                      ) : null;
+                    })()}
                   </span>
                 )}
               </p>

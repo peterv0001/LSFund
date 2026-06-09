@@ -14,3 +14,16 @@ export function getActionStyle(action: string) {
   );
   return key ? ACTION_STYLES[key] : FALLBACK_STYLE;
 }
+
+export const ACTOR_BADGE_STYLES: Record<
+  "admin" | "agent",
+  { label: string; className: string }
+> = {
+  admin: { label: "Admin", className: "bg-purple-100 text-purple-700 border-purple-200" },
+  agent: { label: "Agent", className: "bg-blue-100 text-blue-700 border-blue-200" },
+};
+
+export function getActorBadge(actorType: string | null | undefined) {
+  if (!actorType) return null;
+  return actorType === "admin" ? ACTOR_BADGE_STYLES.admin : ACTOR_BADGE_STYLES.agent;
+}
