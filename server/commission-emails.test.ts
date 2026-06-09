@@ -334,3 +334,235 @@ describe("calculate-commissions – notification created even when email is opte
     await cleanupAgent(agent.id);
   });
 });
+
+// ── Binary bonus & sponsor override coverage ──────────────────────────────────
+//
+// The same emailOnCommissionEarned preference gate that controls subscription
+// commission emails also guards binary bonus emails (POST
+// /api/admin/commissions/calculate) and sponsor override emails (deal approval
+// via POST /api/admin/deals/:id/approve).  These tests exercise both paths so a
+// regression that removes either preference check is caught.
+
+/**
+ * Create an agent with an explicit rank and (optionally) a binary placement.
+ * Binary bonuses are only calculated for builder/leader/director/partner agents,
+ * so the upline agent must be created with one of those ranks.
+ */
+async function createRankedAgent(
+  suffix: string,
+  rank: string,
+  prefs: CommissionEmailPrefs = {},
+  placement?: { placementId: number; leg: "left" | "right" }
+) {
+  const [agent] = await db
+    .insert(schema.agents)
+    .values({
+      email: `${AGENT_EMAIL_PREFIX}-${suffix}@example.com`,
+      password: await hashPassword(PASSWORD),
+      firstName: "Commission",
+      lastName: "Tester",
+      currentRank: rank,
+      highestRank: rank,
+      emailPreferences: prefs,
+      placementId: placement?.placementId,
+      leg: placement?.leg,
+    })
+    .returning();
+  return agent;
+}
+
+/**
+ * Create a funded deal so its companyRevenue counts toward leg volume.
+ * getLegVolume only sums deals with status 'funded' created since the start of
+ * the current week, and new rows default createdAt to now().
+ */
+async function createFundedDeal(agentId: number, revenue = "10000.00") {
+  const [deal] = await db
+    .insert(schema.deals)
+    .values({
+      agentId,
+      merchantName: "Volume Merchant",
+      loanAmount: "50000.00",
+      companyRevenue: revenue,
+      status: "funded",
+    })
+    .returning();
+  return deal;
+}
+
+/**
+ * Create a pending deal (eligible for admin approval).  gbrAmount drives the
+ * sponsor-override amount in the commission waterfall.
+ */
+async function createPendingDeal(agentId: number, gbrAmount = "10000.00") {
+  const [deal] = await db
+    .insert(schema.deals)
+    .values({
+      agentId,
+      merchantName: "Approval Merchant",
+      loanAmount: "50000.00",
+      companyRevenue: gbrAmount,
+      gbrAmount,
+      status: "pending",
+    })
+    .returning();
+  return deal;
+}
+
+async function cleanupAgentFull(agentId: number) {
+  await db.delete(schema.holdbacks).where(eq(schema.holdbacks.agentId, agentId));
+  await db.delete(schema.commissions).where(eq(schema.commissions.agentId, agentId));
+  await db.delete(schema.notifications).where(eq(schema.notifications.agentId, agentId));
+  await db.delete(schema.deals).where(eq(schema.deals.agentId, agentId));
+  await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, agentId));
+  await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
+}
+
+describe("binary bonus calculation – emailOnCommissionEarned gate", () => {
+  it("sends a binary bonus email when emailOnCommissionEarned is true", async () => {
+    // Upline builder agent earns the binary bonus.
+    const upline = await createRankedAgent("binary-on", "builder", {
+      emailOnCommissionEarned: true,
+    });
+    // Both legs need funded volume so the weaker leg volume is > 0.
+    const left = await createRankedAgent("binary-on-left", "agent", {}, {
+      placementId: upline.id,
+      leg: "left",
+    });
+    const right = await createRankedAgent("binary-on-right", "agent", {}, {
+      placementId: upline.id,
+      leg: "right",
+    });
+    await createFundedDeal(left.id);
+    await createFundedDeal(right.id);
+
+    await request(testApp)
+      .post("/api/admin/commissions/calculate")
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+    const callForUpline = calls.find((args: unknown[]) => args[0] === upline.email);
+    expect(callForUpline).toBeDefined();
+    expect(callForUpline![1]).toEqual(
+      expect.objectContaining({
+        firstName: upline.firstName,
+        commissionType: "Binary Bonus",
+      })
+    );
+
+    await cleanupAgentFull(left.id);
+    await cleanupAgentFull(right.id);
+    await cleanupAgentFull(upline.id);
+  });
+
+  it("does NOT send a binary bonus email when emailOnCommissionEarned is false", async () => {
+    const upline = await createRankedAgent("binary-off", "builder", {
+      emailOnCommissionEarned: false,
+    });
+    const left = await createRankedAgent("binary-off-left", "agent", {}, {
+      placementId: upline.id,
+      leg: "left",
+    });
+    const right = await createRankedAgent("binary-off-right", "agent", {}, {
+      placementId: upline.id,
+      leg: "right",
+    });
+    await createFundedDeal(left.id);
+    await createFundedDeal(right.id);
+
+    await request(testApp)
+      .post("/api/admin/commissions/calculate")
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    // The binary bonus commission row should still be created (proving the
+    // agent was processed) even though the email is suppressed.
+    const bonusCommissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.agentId, upline.id));
+    expect(bonusCommissions.some((c) => c.type === "binary_bonus")).toBe(true);
+
+    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+    const calledForUpline = calls.some((args: unknown[]) => args[0] === upline.email);
+    expect(calledForUpline).toBe(false);
+
+    await cleanupAgentFull(left.id);
+    await cleanupAgentFull(right.id);
+    await cleanupAgentFull(upline.id);
+  });
+});
+
+describe("deal approval sponsor override – emailOnCommissionEarned gate", () => {
+  it("sends a sponsor override email to the sponsor when emailOnCommissionEarned is true", async () => {
+    const sponsor = await createRankedAgent("override-on-sponsor", "agent", {
+      emailOnCommissionEarned: true,
+    });
+    const downline = await createRankedAgent("override-on-downline", "agent", {});
+    // Link the downline to the sponsor so getUpline returns the sponsor.
+    await db
+      .update(schema.agents)
+      .set({ sponsorId: sponsor.id })
+      .where(eq(schema.agents.id, downline.id));
+    const deal = await createPendingDeal(downline.id);
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+    const callForSponsor = calls.find((args: unknown[]) => args[0] === sponsor.email);
+    expect(callForSponsor).toBeDefined();
+    expect(callForSponsor![1]).toEqual(
+      expect.objectContaining({
+        firstName: sponsor.firstName,
+        commissionType: "L1 Sponsor Override",
+      })
+    );
+
+    await cleanupAgentFull(downline.id);
+    await cleanupAgentFull(sponsor.id);
+  });
+
+  it("does NOT send a sponsor override email when the sponsor's emailOnCommissionEarned is false", async () => {
+    const sponsor = await createRankedAgent("override-off-sponsor", "agent", {
+      emailOnCommissionEarned: false,
+    });
+    const downline = await createRankedAgent("override-off-downline", "agent", {});
+    await db
+      .update(schema.agents)
+      .set({ sponsorId: sponsor.id })
+      .where(eq(schema.agents.id, downline.id));
+    const deal = await createPendingDeal(downline.id);
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    // The sponsor override commission row should still be created (proving the
+    // waterfall ran) even though the email is suppressed.
+    const sponsorCommissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.agentId, sponsor.id));
+    expect(sponsorCommissions.some((c) => c.type === "mac_sponsor_l1")).toBe(true);
+
+    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+    const calledForSponsor = calls.some((args: unknown[]) => args[0] === sponsor.email);
+    expect(calledForSponsor).toBe(false);
+
+    await cleanupAgentFull(downline.id);
+    await cleanupAgentFull(sponsor.id);
+  });
+});
