@@ -167,6 +167,7 @@ export class WebhookHandlers {
       if (commissionAmount > 0) {
         await storage.createCommission({
           agentId: sub.agentId,
+          subscriptionId: sub.id,
           type: commType,
           amount: commissionAmount.toFixed(2),
           periodDate,
@@ -184,6 +185,7 @@ export class WebhookHandlers {
           if (uplineAmount > 0) {
             await storage.createCommission({
               agentId: sponsor.id,
+              subscriptionId: sub.id,
               type: 'subscription_residual',
               amount: uplineAmount.toFixed(2),
               periodDate,
