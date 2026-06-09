@@ -3483,6 +3483,104 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Revert a target migration together with all later still-applied
+  // migrations that block it. Reverts successors first (latest → earliest),
+  // then the target itself, reporting the outcome of each step.
+  app.post("/api/admin/migrations/:name/revert-chain", requireAdmin, async (req, res) => {
+    const { name } = req.params;
+
+    const migration = migrations.find((m) => m.name === name);
+    if (!migration) {
+      return res.status(400).json({ message: `Migration "${name}" not found` });
+    }
+
+    const appliedRows = await pool.query<{ name: string }>(
+      `SELECT name FROM schema_migrations`
+    );
+    const appliedNames = new Set(appliedRows.rows.map((r) => r.name));
+
+    if (!appliedNames.has(name)) {
+      return res.status(400).json({ message: `Migration "${name}" has not been applied` });
+    }
+
+    // Build the chain: the target plus every later migration that is still
+    // applied, then reverse so successors are reverted before the target.
+    const migrationIndex = migrations.findIndex((m) => m.name === name);
+    const chain = migrations
+      .slice(migrationIndex)
+      .filter((m) => appliedNames.has(m.name))
+      .reverse();
+
+    // Every migration in the chain must have a rollback, otherwise we cannot
+    // safely revert the whole chain.
+    const missingDown = chain.filter((m) => !m.down).map((m) => m.name);
+    if (missingDown.length > 0) {
+      const list = missingDown.map((n) => `"${n}"`).join(", ");
+      const plural = missingDown.length > 1 ? "s" : "";
+      const verb = missingDown.length > 1 ? "have" : "has";
+      return res.status(400).json({
+        message: `Cannot revert chain — the following migration${plural} ${verb} no rollback defined: ${list}`,
+      });
+    }
+
+    const results: {
+      name: string;
+      status: "reverted" | "failed" | "skipped";
+      message: string;
+    }[] = [];
+    let failed = false;
+
+    for (const m of chain) {
+      if (failed) {
+        results.push({
+          name: m.name,
+          status: "skipped",
+          message: "Skipped because an earlier step failed",
+        });
+        continue;
+      }
+      try {
+        await revertMigration(m.name);
+        await storage.logActivity({
+          actorId: req.user!.id,
+          actorType: "admin",
+          action: "revert_migration",
+          entityType: "migration",
+          entityId: 0,
+          description: `Reverted migration: ${m.name} (chain revert of "${name}")`,
+          details: { migration: m.name, chainTarget: name },
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers["user-agent"] ?? null,
+        });
+        results.push({
+          name: m.name,
+          status: "reverted",
+          message: `Migration "${m.name}" reverted successfully`,
+        });
+      } catch (err: unknown) {
+        console.error(`[migrations] chain revert step "${m.name}" failed`, err);
+        failed = true;
+        results.push({
+          name: m.name,
+          status: "failed",
+          message: "Migration revert failed due to a server error",
+        });
+      }
+    }
+
+    const success = !failed;
+    const failedStep = results.find((r) => r.status === "failed");
+    res.json({
+      success,
+      results,
+      ...(success
+        ? {}
+        : {
+            message: `Migration chain revert stopped: "${failedStep?.name ?? name}" failed to revert.`,
+          }),
+    });
+  });
+
   app.get("/api/admin/health/schema", requireAdmin, async (_req, res) => {
     try {
       const result = await checkSchemaHealth();

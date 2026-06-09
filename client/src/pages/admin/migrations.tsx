@@ -80,6 +80,55 @@ export default function AdminMigrations() {
     },
   });
 
+  type ChainResult = {
+    name: string;
+    status: "reverted" | "failed" | "skipped";
+    message: string;
+  };
+
+  const revertChainMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch(
+        `/api/admin/migrations/${encodeURIComponent(name)}/revert-chain`,
+        { method: "POST", credentials: "include" }
+      );
+      const body: unknown = await res.json();
+      if (!res.ok) {
+        const serverMessage =
+          typeof body === "object" &&
+          body !== null &&
+          "message" in body &&
+          typeof (body as Record<string, unknown>).message === "string"
+            ? ((body as Record<string, unknown>).message as string)
+            : "Failed to revert migration chain";
+        throw new Error(serverMessage);
+      }
+      return body as { success: boolean; results: ChainResult[] };
+    },
+    onSuccess: (data, name) => {
+      const reverted = data.results.filter((r) => r.status === "reverted");
+      if (data.success) {
+        toast({
+          title: "Migration chain reverted",
+          description: `Rolled back ${reverted.length} migration${reverted.length === 1 ? "" : "s"} ending with "${name}".`,
+        });
+      } else {
+        const failedStep = data.results.find((r) => r.status === "failed");
+        toast({
+          title: "Chain revert stopped",
+          description: `Reverted ${reverted.length} migration${reverted.length === 1 ? "" : "s"} before "${failedStep?.name ?? name}" failed. The rest were not reverted.`,
+          variant: "destructive",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/migrations"] });
+    },
+    onError: (err: unknown) => {
+      const message =
+        err instanceof Error ? err.message : "Failed to revert migration chain";
+      toast({ title: "Chain revert failed", description: message, variant: "destructive" });
+    },
+  });
+
   const applyMutation = useMutation({
     mutationFn: async (name: string) => {
       const res = await fetch(
@@ -256,13 +305,68 @@ export default function AdminMigrations() {
                             )}
                           </div>
 
+                          <div className="flex items-center gap-2 ml-4 shrink-0">
+                          {isUnsafeRevert && (() => {
+                            const revertOrder = [...successors].reverse().concat(m.name);
+                            return (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                                  disabled={revertChainMutation.isPending}
+                                  data-testid={`button-revert-chain-${m.name}`}
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                                  Revert all dependent
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Revert this migration and its dependents?</AlertDialogTitle>
+                                  <AlertDialogDescription asChild>
+                                    <div className="space-y-3">
+                                      <p>
+                                        To revert <span className="font-mono font-semibold">{m.name}</span>, the later migrations applied after it must be rolled back first. The following {revertOrder.length} migrations will be reverted in this order:
+                                      </p>
+                                      <ol className="list-decimal list-inside space-y-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5" data-testid={`list-revert-chain-${m.name}`}>
+                                        {revertOrder.map((n) => (
+                                          <li key={n} className="text-sm font-mono text-gray-800" data-testid={`list-revert-chain-item-${n}`}>
+                                            {n}
+                                            {n === m.name && (
+                                              <span className="ml-1.5 text-xs font-sans text-gray-500">(target)</span>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ol>
+                                      <p className="text-sm text-gray-500">
+                                        This modifies the database schema and cannot be undone without re-applying these migrations. If any step fails, the remaining migrations are left untouched.
+                                      </p>
+                                    </div>
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel data-testid="button-cancel-revert-chain">Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                                    onClick={() => revertChainMutation.mutate(m.name)}
+                                    data-testid="button-confirm-revert-chain"
+                                  >
+                                    Revert {revertOrder.length} migrations
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            );
+                          })()}
                           {m.hasDown ? (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="ml-4 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                                  className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                                   disabled={revertMutation.isPending}
                                   data-testid={`button-revert-${m.name}`}
                                 >
@@ -326,6 +430,7 @@ export default function AdminMigrations() {
                               </TooltipContent>
                             </Tooltip>
                           )}
+                          </div>
                         </li>
                       );
                       })}
