@@ -337,6 +337,26 @@ describe("agent self-service route – null/missing emailPreferences", () => {
 
     await cleanupAgent(agent.id);
   });
+
+  it("sends a reactivated email by default when preferences are an empty object (all prefs enabled)", async () => {
+    // Pass an empty object {} to simulate preferences with no explicit flags.
+    // The route uses `(prefs.emailOnReactivated !== false)` which is true when
+    // the key is absent, so the email should be sent.
+    const agent = await createAgent("null-prefs-react", {});
+    const sub = await createSubscription(agent.id, "paused");
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "active" })
+      .expect(200);
+
+    await shortDelay();
+    expect(emailService.sendSubscriptionReactivatedEmail).toHaveBeenCalledOnce();
+
+    await cleanupAgent(agent.id);
+  });
 });
 
 // ── Admin route ───────────────────────────────────────────────────────────────
