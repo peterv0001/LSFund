@@ -24,6 +24,7 @@ import {
   CalendarDays,
   GripVertical,
   Share2,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -782,6 +783,13 @@ export default function AdminSubscriptions() {
   }
 
   const [shareOnSave, setShareOnSave] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const previewColumns = columnOrder
+    .filter((k) => selectedColumns.has(k))
+    .map((k) => EXPORT_COLUMNS.find((c) => c.key === k))
+    .filter((c): c is { key: ExportColumnKey; label: string } => Boolean(c));
+  const previewRows = filteredSubscriptions.slice(0, 5);
 
   function saveTemplate() {
     const trimmed = newTemplateName.trim();
@@ -1261,6 +1269,27 @@ export default function AdminSubscriptions() {
                   </div>
                   <Separator />
 
+                  {/* Preview */}
+                  <div className="px-3 py-2">
+                    <button
+                      className="flex items-center gap-1.5 text-xs text-primary hover:underline disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
+                      onClick={() => setShowPreview(true)}
+                      data-testid="button-preview-export"
+                      disabled={selectedColumns.size === 0 || filteredSubscriptions.length === 0}
+                      title={
+                        selectedColumns.size === 0
+                          ? "Select at least one column to preview"
+                          : filteredSubscriptions.length === 0
+                            ? "No rows to preview"
+                            : "Preview export"
+                      }
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Preview export
+                    </button>
+                  </div>
+                  <Separator />
+
                   {/* Save as template */}
                   <div className="px-3 py-2">
                     {showSaveForm ? (
@@ -1335,6 +1364,69 @@ export default function AdminSubscriptions() {
               </Button>
             </div>
           </div>
+
+          <Dialog open={showPreview} onOpenChange={setShowPreview}>
+            <DialogContent className="max-w-3xl" data-testid="dialog-export-preview">
+              <DialogHeader>
+                <DialogTitle>Export preview</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-gray-500">
+                Showing the first {previewRows.length} of {filteredSubscriptions.length} row
+                {filteredSubscriptions.length !== 1 ? "s" : ""} in the selected column order.
+              </p>
+              <div className="overflow-auto max-h-[60vh] border border-gray-100 rounded-md">
+                <Table data-testid="table-export-preview">
+                  <TableHeader>
+                    <TableRow>
+                      {previewColumns.map((c) => (
+                        <TableHead
+                          key={c.key}
+                          className="whitespace-nowrap"
+                          data-testid={`preview-header-${c.key}`}
+                        >
+                          {c.label}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewRows.map((s) => (
+                      <TableRow key={s.id} data-testid={`preview-row-${s.id}`}>
+                        {previewColumns.map((c) => (
+                          <TableCell
+                            key={c.key}
+                            className="whitespace-nowrap text-sm"
+                            data-testid={`preview-cell-${c.key}-${s.id}`}
+                          >
+                            {getCellValue(c.key, s) || "—"}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPreview(false)}
+                  data-testid="button-close-preview"
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowPreview(false);
+                    exportCsv();
+                  }}
+                  data-testid="button-preview-download"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download CSV
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Date Range Summary Card */}
           {showDateRangeSummary && dateRangeSummary && (
