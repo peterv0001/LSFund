@@ -3024,8 +3024,13 @@ export async function registerRoutes(
       ? req.query.actorType.trim()
       : undefined;
 
-    const action = actionRaw === 'migration' ? undefined : actionRaw;
-    const actions = actionRaw === 'migration' ? ['run_migration', 'revert_migration'] : undefined;
+    const ACTION_GROUPS: Record<string, string[]> = {
+      migration: ['run_migration', 'revert_migration'],
+      subscription_lifecycle: ['cancel', 'pause', 'activate', 'suspend', 'reactivate'],
+      financial: ['void', 'release', 'clawback'],
+    };
+    const actions = actionRaw && ACTION_GROUPS[actionRaw] ? ACTION_GROUPS[actionRaw] : undefined;
+    const action = actions ? undefined : actionRaw;
     
     const result = await storage.getActivityLogs(page, pageSize, { search, startDate, endDate, entityType, action, actions, actorType });
     res.json({ ...result, page, pageSize });

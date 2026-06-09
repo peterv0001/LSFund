@@ -95,6 +95,8 @@ const ACTION_OPTIONS = [
   { value: "error", label: "Error" },
   { value: "release", label: "Release" },
   { value: "clawback", label: "Clawback" },
+  { value: "subscription_lifecycle", label: "Subscription lifecycle (all)" },
+  { value: "financial", label: "Financial (all)" },
   { value: "migration", label: "Migration (all)" },
   { value: "run_migration", label: "Run Migration" },
   { value: "revert_migration", label: "Revert Migration" },
