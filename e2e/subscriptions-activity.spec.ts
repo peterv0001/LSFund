@@ -120,6 +120,49 @@ test.describe("All Activity timeline – activity entries after subscription act
   });
 });
 
+test.describe("Subscription history timeline – color legend", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupAgent(page);
+  });
+
+  test("shows all five legend entries with the correct labels when a history panel is expanded", async ({
+    page,
+  }) => {
+    const subRes = await page.context().request.post("/api/subscriptions", {
+      data: { merchantName: `Legend Merchant ${TS}`, tier: "tier_1" },
+    });
+    expect(subRes.ok()).toBeTruthy();
+
+    await page.goto("/subscriptions");
+
+    // Subscriptions tab is the default; expand the first subscription's history panel
+    const toggleBtn = page
+      .locator('[data-testid^="button-toggle-history-"]')
+      .first();
+    await expect(toggleBtn).toBeVisible({ timeout: 8000 });
+    await toggleBtn.click();
+
+    // Wait for the history to finish loading (legend only renders once entries load)
+    const legend = page.locator('[data-testid^="history-legend-"]').first();
+    await expect(legend).toBeVisible({ timeout: 8000 });
+
+    // All five legend entries must be present with the correct labels
+    const expectedEntries: Array<{ key: string; label: string }> = [
+      { key: "create", label: "Created" },
+      { key: "pause", label: "Paused" },
+      { key: "cancel", label: "Cancelled" },
+      { key: "reactivate", label: "Reactivated" },
+      { key: "expire", label: "Expired" },
+    ];
+
+    for (const { key, label } of expectedEntries) {
+      const entry = page.getByTestId(`legend-entry-${key}`).first();
+      await expect(entry).toBeVisible();
+      await expect(entry).toContainText(label);
+    }
+  });
+});
+
 test.describe("All Activity timeline – pagination controls", () => {
   test.beforeEach(async ({ page }) => {
     await setupAgent(page);
