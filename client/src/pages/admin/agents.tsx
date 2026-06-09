@@ -337,17 +337,28 @@ export default function AdminAgents() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Link
-                        href={`/admin/subscriptions?agentId=${agent.id}`}
-                        data-testid={`link-subscription-count-${agent.id}`}
-                        title="Active subscriptions / Total subscriptions"
-                        className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
-                      >
-                        <CreditCard className="w-3.5 h-3.5" />
-                        <span data-testid={`text-active-count-${agent.id}`}>{agent.activeSubscriptionCount}</span>
+                      <span className="inline-flex items-center gap-1.5 font-medium">
+                        <CreditCard className="w-3.5 h-3.5 text-primary" />
+                        <Link
+                          href={`/admin/subscriptions?agentId=${agent.id}&status=active`}
+                          data-testid={`link-active-count-${agent.id}`}
+                          title="View active subscriptions only"
+                          aria-label={`View ${agent.activeSubscriptionCount} active subscriptions for this agent`}
+                          className="text-primary hover:underline"
+                        >
+                          <span data-testid={`text-active-count-${agent.id}`}>{agent.activeSubscriptionCount}</span>
+                        </Link>
                         <span className="text-muted-foreground font-normal">/</span>
-                        <span data-testid={`text-total-count-${agent.id}`}>{agent.totalSubscriptionCount}</span>
-                      </Link>
+                        <Link
+                          href={`/admin/subscriptions?agentId=${agent.id}`}
+                          data-testid={`link-total-count-${agent.id}`}
+                          title="View all subscriptions"
+                          aria-label={`View all ${agent.totalSubscriptionCount} subscriptions for this agent`}
+                          className="text-primary hover:underline"
+                        >
+                          <span data-testid={`text-total-count-${agent.id}`}>{agent.totalSubscriptionCount}</span>
+                        </Link>
+                      </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(agent.createdAt), "MMM d, yyyy")}

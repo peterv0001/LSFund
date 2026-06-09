@@ -106,16 +106,16 @@ test.describe("Admin agents page – subscription counts display", () => {
       .first();
     await expect(agentRow).toBeVisible({ timeout: 10000 });
 
-    const subscriptionLink = agentRow.locator('[data-testid^="link-subscription-count-"]');
-    await expect(subscriptionLink).toBeVisible();
+    const activeLink = agentRow.locator('[data-testid^="link-active-count-"]');
+    const totalLink = agentRow.locator('[data-testid^="link-total-count-"]');
+    await expect(activeLink).toBeVisible();
+    await expect(totalLink).toBeVisible();
 
     const activeCountSpan = agentRow.locator('[data-testid^="text-active-count-"]');
     const totalCountSpan = agentRow.locator('[data-testid^="text-total-count-"]');
 
     await expect(activeCountSpan).toHaveText("2");
     await expect(totalCountSpan).toHaveText("4");
-
-    await expect(subscriptionLink).toContainText("/");
   });
 
   test("Subscriptions cell link navigates to the subscriptions page filtered by agent", async ({
@@ -140,8 +140,12 @@ test.describe("Admin agents page – subscription counts display", () => {
       .first();
     await expect(agentRow).toBeVisible({ timeout: 10000 });
 
-    const subscriptionLink = agentRow.locator('[data-testid^="link-subscription-count-"]');
-    const href = await subscriptionLink.getAttribute("href");
-    expect(href).toMatch(/\/admin\/subscriptions\?agentId=\d+/);
+    const activeLink = agentRow.locator('[data-testid^="link-active-count-"]');
+    const activeHref = await activeLink.getAttribute("href");
+    expect(activeHref).toMatch(/\/admin\/subscriptions\?agentId=\d+&status=active/);
+
+    const totalLink = agentRow.locator('[data-testid^="link-total-count-"]');
+    const totalHref = await totalLink.getAttribute("href");
+    expect(totalHref).toMatch(/\/admin\/subscriptions\?agentId=\d+$/);
   });
 });
