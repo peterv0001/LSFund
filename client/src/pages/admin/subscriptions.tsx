@@ -166,6 +166,7 @@ type ExportColumnKey =
   | "status"
   | "changeDate"
   | "startDate"
+  | "endDate"
   | "reactivatedAt"
   | "reactivatedBy"
   | "billingStatus"
@@ -184,6 +185,7 @@ const EXPORT_COLUMNS: { key: ExportColumnKey; label: string }[] = [
   { key: "status", label: "Status" },
   { key: "changeDate", label: "Change Date" },
   { key: "startDate", label: "Start Date" },
+  { key: "endDate", label: "End Date" },
   { key: "reactivatedAt", label: "Reactivated At" },
   { key: "reactivatedBy", label: "Reactivated By" },
   { key: "billingStatus", label: "Billing Status" },
@@ -684,6 +686,7 @@ export default function AdminSubscriptions() {
       case "status": return s.status;
       case "changeDate": return changeDate;
       case "startDate": return format(new Date(s.startDate), "yyyy-MM-dd");
+      case "endDate": return s.endDate ? format(new Date(s.endDate), "yyyy-MM-dd") : "";
       case "reactivatedAt": return s.reactivatedAt ? format(new Date(s.reactivatedAt), "yyyy-MM-dd") : "";
       case "reactivatedBy": return s.reactivatedBy ? `${s.reactivatedBy.firstName} ${s.reactivatedBy.lastName}` : "";
       case "billingStatus": return s.billingStatus ?? "";
