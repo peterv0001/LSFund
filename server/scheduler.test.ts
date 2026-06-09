@@ -271,6 +271,110 @@ describe("expireOverdueSubscriptions – side-effect errors do not abort the run
 });
 
 // =========================================================
+// expireOverdueSubscriptions — failure alert logged to activity log
+// =========================================================
+//
+// When the status transition itself fails (e.g. a DB error in
+// updateSubscriptionStatus), the catch block must record an admin-visible
+// activity log entry so failed expiry attempts are not silently lost. The
+// subscription is left untouched and retried on the next scheduler tick.
+
+describe("expireOverdueSubscriptions – auto-expiry failure is logged to the activity log", () => {
+  it("logs an 'error' activity entry for the 'subscription' entity when updateSubscriptionStatus throws", async () => {
+    const sub = makeSubscription({ status: "active" });
+    mockStorage.getSubscriptionsDueForExpiry.mockResolvedValue([sub]);
+    mockStorage.updateSubscriptionStatus.mockRejectedValue(new Error("DB write failed"));
+
+    await expireOverdueSubscriptions();
+
+    expect(mockStorage.logActivity).toHaveBeenCalledOnce();
+    const [logArg] = mockStorage.logActivity.mock.calls[0];
+    expect(logArg.action).toBe("error");
+    expect(logArg.entityType).toBe("subscription");
+    expect(logArg.entityId).toBe(sub.id);
+    expect(logArg.actorId).toBe(0);
+    expect(logArg.actorType).toBe("system");
+  });
+
+  it("captures the error message and subscription details in the log details field", async () => {
+    const sub = makeSubscription({ status: "active" });
+    mockStorage.getSubscriptionsDueForExpiry.mockResolvedValue([sub]);
+    mockStorage.updateSubscriptionStatus.mockRejectedValue(new Error("connection reset"));
+
+    await expireOverdueSubscriptions();
+
+    const [logArg] = mockStorage.logActivity.mock.calls[0];
+    expect(logArg.details.error).toBe("connection reset");
+    expect(logArg.details.merchantName).toBe(sub.merchantName);
+    expect(logArg.details.tier).toBe(sub.tier);
+    expect(logArg.details.endDate).toBe(sub.endDate);
+    expect(logArg.details.currentStatus).toBe(sub.status);
+    expect(logArg.description).toContain(`#${sub.id}`);
+    expect(logArg.description).toContain(sub.merchantName);
+  });
+
+  it("stringifies a non-Error rejection value in the details.error field", async () => {
+    const sub = makeSubscription({ status: "active" });
+    mockStorage.getSubscriptionsDueForExpiry.mockResolvedValue([sub]);
+    mockStorage.updateSubscriptionStatus.mockRejectedValue("plain string failure");
+
+    await expireOverdueSubscriptions();
+
+    const [logArg] = mockStorage.logActivity.mock.calls[0];
+    expect(logArg.details.error).toBe("plain string failure");
+  });
+
+  it("skips the agent lookup, notification, and email when the expiry transition fails", async () => {
+    const sub = makeSubscription({ status: "active" });
+    mockStorage.getSubscriptionsDueForExpiry.mockResolvedValue([sub]);
+    mockStorage.updateSubscriptionStatus.mockRejectedValue(new Error("DB write failed"));
+
+    await expireOverdueSubscriptions();
+
+    expect(mockStorage.getAgent).not.toHaveBeenCalled();
+    expect(mockStorage.createNotification).not.toHaveBeenCalled();
+    expect(mockEmailService.sendSubscriptionExpiredEmail).not.toHaveBeenCalled();
+  });
+
+  it("logs a failure for the broken subscription but still expires the healthy one", async () => {
+    const failing = makeSubscription({ id: 401, merchantName: "Failing Corp" });
+    const healthy = makeSubscription({ id: 402, merchantName: "Healthy LLC" });
+    mockStorage.getSubscriptionsDueForExpiry.mockResolvedValue([failing, healthy]);
+    mockStorage.updateSubscriptionStatus
+      .mockRejectedValueOnce(new Error("DB write failed"))
+      .mockResolvedValue({});
+
+    await expireOverdueSubscriptions();
+
+    // Both subscriptions were attempted.
+    expect(mockStorage.updateSubscriptionStatus).toHaveBeenCalledTimes(2);
+
+    // The failing one produced an 'error' log; the healthy one produced an 'update' log.
+    const actions = mockStorage.logActivity.mock.calls.map((c) => c[0].action);
+    expect(actions).toContain("error");
+    expect(actions).toContain("update");
+
+    const errorLog = mockStorage.logActivity.mock.calls.find((c) => c[0].action === "error")![0];
+    expect(errorLog.entityId).toBe(failing.id);
+
+    const updateLog = mockStorage.logActivity.mock.calls.find((c) => c[0].action === "update")![0];
+    expect(updateLog.entityId).toBe(healthy.id);
+
+    // The healthy subscription still notified its agent.
+    expect(mockEmailService.sendSubscriptionExpiredEmail).toHaveBeenCalledOnce();
+  });
+
+  it("does not throw even when logging the failure also throws", async () => {
+    const sub = makeSubscription({ status: "active" });
+    mockStorage.getSubscriptionsDueForExpiry.mockResolvedValue([sub]);
+    mockStorage.updateSubscriptionStatus.mockRejectedValue(new Error("DB write failed"));
+    mockStorage.logActivity.mockRejectedValue(new Error("log write failed"));
+
+    await expect(expireOverdueSubscriptions()).resolves.toBeUndefined();
+  });
+});
+
+// =========================================================
 // warnUpcomingExpirations — helpers
 // =========================================================
 //
