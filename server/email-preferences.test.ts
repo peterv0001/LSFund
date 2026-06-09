@@ -657,6 +657,37 @@ describe("in-app notification delivery – agent self-service route", () => {
 
     await cleanupAgent(agent.id);
   });
+
+  it("creates a reactivated notification even when emailOnReactivated is false", async () => {
+    const agent = await createAgent("notif-agent-react", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "paused");
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "active" })
+      .expect(200);
+
+    await shortDelay(50);
+
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(notifs.length).toBeGreaterThan(0);
+    expect(
+      notifs.some(
+        (n) =>
+          n.type === "system" &&
+          n.title === "Subscription Reactivated: Test Merchant" &&
+          n.message?.includes("Test Merchant")
+      )
+    ).toBe(true);
+
+    await cleanupAgent(agent.id);
+  });
 });
 
 describe("in-app notification delivery – admin route", () => {
