@@ -91,7 +91,15 @@ export const agents = pgTable("agents", {
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Prevent two agents from occupying the same parent+leg slot in the binary
+  // tree. Partial index (WHERE placement_id/leg IS NOT NULL) leaves the root
+  // and any sponsorless, unplaced agents unrestricted. This is the race guard:
+  // concurrent signups resolving to the same slot can't both insert.
+  placementLegUniqueIdx: uniqueIndex("agents_placement_leg_unique_idx")
+    .on(table.placementId, table.leg)
+    .where(sql`${table.placementId} IS NOT NULL AND ${table.leg} IS NOT NULL`),
+}));
 
 export const dealProgramTypeEnum = pgEnum("deal_program_type", ['pmf_funding', 'iso_broker', 'iso_referral']);
 

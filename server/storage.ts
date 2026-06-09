@@ -11,6 +11,18 @@ import {
 import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum, SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
+// Detects a PostgreSQL unique-constraint violation (SQLSTATE 23505). When a
+// `hint` is supplied, the violation must reference that text in its constraint
+// name or detail, so callers can distinguish (e.g.) a referral-code collision
+// from a placement-slot collision.
+function isUniqueViolation(err: unknown, hint?: string): boolean {
+  const e = err as { code?: string; constraint?: string; detail?: string } | null;
+  if (!e || e.code !== "23505") return false;
+  if (!hint) return true;
+  const haystack = `${e.constraint ?? ""} ${e.detail ?? ""}`.toLowerCase();
+  return haystack.includes(hint.toLowerCase());
+}
+
 // Helper to get start of current week (Monday)
 function getWeekStart(date: Date = new Date()): Date {
   const d = new Date(date);
@@ -78,15 +90,65 @@ export class DatabaseStorage {
   }
 
   async createAgent(agent: InsertAgent): Promise<Agent> {
-    // Generate referral code if not provided
-    const referralCode = agent.referralCode || this.generateReferralCode(agent.firstName, agent.lastName);
-    
-    const [newAgent] = await db.insert(agents).values({
-      ...agent,
-      email: agent.email.toLowerCase(),
-      referralCode,
-    }).returning();
-    return newAgent;
+    // Always give the new agent its own referral code. If none was passed in,
+    // generate one and retry on the (rare) random collision so a new agent
+    // never fails to receive a unique code.
+    const MAX_ATTEMPTS = 5;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const referralCode =
+        agent.referralCode || this.generateReferralCode(agent.firstName, agent.lastName);
+      try {
+        const [newAgent] = await db.insert(agents).values({
+          ...agent,
+          email: agent.email.toLowerCase(),
+          referralCode,
+        }).returning();
+        return newAgent;
+      } catch (err) {
+        // Only retry when WE generated the code and it collided; surface any
+        // other failure (including a placement-slot collision) to the caller.
+        if (isUniqueViolation(err, "referral") && !agent.referralCode) {
+          lastError = err;
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError ?? new Error("Failed to create agent with a unique referral code");
+  }
+
+  // Resolves an open binary-tree slot under `sponsorId` and inserts the new
+  // agent into it. The placement DB has a unique index on (placement_id, leg),
+  // so if a concurrent signup grabbed the same slot first the insert fails with
+  // a unique violation; we then re-resolve the placement (which now traverses
+  // past the filled slot) and retry. This is what prevents two agents from
+  // ending up on the same leg of the same parent.
+  async createAgentWithPlacement(
+    agent: InsertAgent,
+    sponsorId: number,
+    strategy: 'left' | 'right' | 'auto',
+  ): Promise<Agent> {
+    const MAX_ATTEMPTS = 8;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const placement = await this.findPlacement(sponsorId, strategy);
+      try {
+        return await this.createAgent({
+          ...agent,
+          sponsorId,
+          placementId: placement.placementId,
+          leg: placement.leg,
+        });
+      } catch (err) {
+        if (isUniqueViolation(err, "placement")) {
+          lastError = err;
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError ?? new Error("Failed to place agent in the binary tree after multiple attempts");
   }
 
   private generateReferralCode(firstName: string, lastName: string): string {

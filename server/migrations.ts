@@ -380,6 +380,23 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped unique index on deal-based commissions");
     },
   },
+  {
+    name: "016_add_agents_placement_leg_unique_index",
+    async run(client) {
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS agents_placement_leg_unique_idx
+        ON agents (placement_id, leg)
+        WHERE placement_id IS NOT NULL AND leg IS NOT NULL
+      `);
+      console.log("[migrations] Added unique index on binary-tree placement (placement_id, leg)");
+    },
+    async down(client) {
+      await client.query(`
+        DROP INDEX IF EXISTS agents_placement_leg_unique_idx
+      `);
+      console.log("[migrations] Dropped unique index on binary-tree placement");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

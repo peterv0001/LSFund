@@ -2,3 +2,4 @@
 - [React.lazy + HMR warnings](react-lazy-hmr-warnings.md) — "Invalid hook call"/sync-suspend errors after editing lazy routes in App.tsx are HMR false positives; restart + reload before investigating.
 - [Writing to prod DB](writing-to-prod-db.md) — prod is read-only via executeSql; sandbox hides process.env. To mutate live prod: request prod conn string secret, run a pg script via bash.
 - [Actor badges in agent history](actor-badges-agent-history.md) — per-sub history endpoint nulls agent actorName, so the blue "Agent" badge never shows from real agent actions; stub the response to test it.
+- [Binary tree placement races](binary-tree-placement-races.md) — placement uniqueness needs a DB partial unique index on (placement_id, leg) + retry; app-level find-then-insert can't stop concurrent same-slot signups.

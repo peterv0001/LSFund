@@ -328,46 +328,59 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Email already exists" });
       }
       
+      // Resolve the sponsor from an explicit sponsorId or a referral code.
+      // If either field is supplied a referral was clearly intended, so a
+      // missing or inactive sponsor must be an explicit error — never a silent
+      // fall-through to a sponsorless, unplaced signup that loses the referral.
+      const REFERRAL_UNAVAILABLE_MESSAGE =
+        "This referral link is no longer valid because the sponsor's account is unavailable. You can sign up without a referral instead.";
+      const hasReferralCode =
+        typeof input.referralCode === 'string' && input.referralCode.trim() !== '';
+      
       let sponsorId: number | undefined;
       
-      // First check if sponsorId was provided directly
-      if (input.sponsorId) {
+      if (input.sponsorId !== undefined) {
         const sponsor = await storage.getAgent(input.sponsorId);
-        // Validate sponsor is active
-        if (sponsor && sponsor.status === 'active') {
-          sponsorId = sponsor.id;
+        if (!sponsor || sponsor.status !== 'active') {
+          return res.status(400).json({ message: REFERRAL_UNAVAILABLE_MESSAGE });
         }
-      }
-      // Fall back to referral code if no sponsorId
-      else if (input.referralCode) {
-        const sponsor = await storage.getAgentByReferralCode(input.referralCode);
-        // Validate sponsor is active
-        if (sponsor && sponsor.status === 'active') {
-          sponsorId = sponsor.id;
+        sponsorId = sponsor.id;
+      } else if (hasReferralCode) {
+        const sponsor = await storage.getAgentByReferralCode(input.referralCode!.trim());
+        if (!sponsor || sponsor.status !== 'active') {
+          return res.status(400).json({ message: REFERRAL_UNAVAILABLE_MESSAGE });
         }
-      }
-      
-      let placementId: number | undefined;
-      let leg: 'left' | 'right' | undefined;
-      
-      if (sponsorId) {
-        const placement = await storage.findPlacement(sponsorId, input.placementLeg || 'auto');
-        placementId = placement.placementId;
-        leg = placement.leg;
+        sponsorId = sponsor.id;
       }
       
       const hashedPassword = await hashPassword(input.password);
-      const agent = await storage.createAgent({
-        ...input,
+      
+      // Strip any client-supplied tree/identity fields. The referral code is
+      // only used above to look up the sponsor — it (and placement) must never
+      // be written onto the new agent from the request body. The new agent
+      // always gets a server-generated unique referral code and a
+      // server-resolved placement.
+      const {
+        referralCode: _ignoredReferralCode,
+        sponsorId: _ignoredSponsorId,
+        placementId: _ignoredPlacementId,
+        leg: _ignoredLeg,
+        placementLeg,
+        ...agentInput
+      } = input;
+      
+      const agentData = {
+        ...agentInput,
         password: hashedPassword,
-        sponsorId,
-        placementId,
-        leg: leg as 'left' | 'right',
-        currentRank: 'agent',
-        status: 'active',
+        currentRank: 'agent' as const,
+        status: 'active' as const,
         isAdmin: false,
         isSuperAdmin: false,
-      });
+      };
+      
+      const agent = sponsorId
+        ? await storage.createAgentWithPlacement(agentData, sponsorId, placementLeg || 'auto')
+        : await storage.createAgent(agentData);
       
       // Create welcome notification
       await storage.createNotification({
