@@ -78,8 +78,14 @@ export default function AdminAgents() {
   });
   const [rankFilter, setRankFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<string | null>(() => {
+    const params = new URLSearchParams(urlSearch);
+    return params.get("sortBy") || null;
+  });
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+    const params = new URLSearchParams(urlSearch);
+    return params.get("sortOrder") === "asc" ? "asc" : "desc";
+  });
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   
@@ -112,13 +118,32 @@ export default function AdminAgents() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSort = (column: string) => {
-    if (sortBy === column) {
-      setSortOrder(o => o === 'desc' ? 'asc' : 'desc');
+  const updateSortInUrl = useCallback((nextSortBy: string | null, nextSortOrder: 'asc' | 'desc') => {
+    const params = new URLSearchParams(window.location.search);
+    if (nextSortBy) {
+      params.set("sortBy", nextSortBy);
+      params.set("sortOrder", nextSortOrder);
     } else {
-      setSortBy(column);
-      setSortOrder(column === 'name' || column === 'rank' ? 'asc' : 'desc');
+      params.delete("sortBy");
+      params.delete("sortOrder");
     }
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
+
+  const handleSort = (column: string) => {
+    let nextSortBy = sortBy;
+    let nextSortOrder = sortOrder;
+    if (sortBy === column) {
+      nextSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+      setSortOrder(nextSortOrder);
+    } else {
+      nextSortBy = column;
+      nextSortOrder = column === 'name' || column === 'rank' ? 'asc' : 'desc';
+      setSortBy(nextSortBy);
+      setSortOrder(nextSortOrder);
+    }
+    updateSortInUrl(nextSortBy, nextSortOrder);
     setPage(1);
   };
 
