@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearch, useLocation } from "wouter";
 
 type HoldbackAgent = {
@@ -88,6 +88,8 @@ const STATUS_LABELS: Record<string, string> = {
   clawed_back: "Clawed Back",
 };
 
+const STATUS_LS_KEY = "admin:holdbacks:statusFilter";
+
 export default function AdminHoldbacks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -97,10 +99,22 @@ export default function AdminHoldbacks() {
   const [statusFilter, setStatusFilter] = useState<string>(() => {
     const params = new URLSearchParams(search);
     const s = params.get("status");
-    return s && s !== "all" ? s : "all";
+    if (s && s !== "all") return s;
+    try {
+      const stored = localStorage.getItem(STATUS_LS_KEY);
+      if (stored && stored !== "all") return stored;
+    } catch {}
+    return "all";
   });
 
   const updateStatusInUrl = useCallback((status: string) => {
+    try {
+      if (status === "all") {
+        localStorage.removeItem(STATUS_LS_KEY);
+      } else {
+        localStorage.setItem(STATUS_LS_KEY, status);
+      }
+    } catch {}
     const params = new URLSearchParams(window.location.search);
     if (status === "all") {
       params.delete("status");
@@ -110,6 +124,14 @@ export default function AdminHoldbacks() {
     const qs = params.toString();
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }, [setLocation]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (statusFilter !== "all" && params.get("status") !== statusFilter) {
+      updateStatusInUrl(statusFilter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [clawbackDialog, setClawbackDialog] = useState<HoldbackEntry | null>(null);
   const [clawbackReason, setClawbackReason] = useState("");
   const [clawbackPct, setClawbackPct] = useState("100");

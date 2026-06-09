@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrlWithQuery, buildUrl } from "@shared/routes";
@@ -58,6 +58,8 @@ import { useSearch, useLocation, Link } from "wouter";
 
 type AgentWithCount = Agent & { totalSubscriptionCount: number; activeSubscriptionCount: number };
 
+const STATUS_LS_KEY = "admin:agents:statusFilter";
+
 export default function AdminAgents() {
   const urlSearch = useSearch();
   const [, setLocation] = useLocation();
@@ -66,7 +68,12 @@ export default function AdminAgents() {
   const [statusFilter, setStatusFilter] = useState<string>(() => {
     const params = new URLSearchParams(urlSearch);
     const s = params.get("status");
-    return s && s !== "all" ? s : "all";
+    if (s && s !== "all") return s;
+    try {
+      const stored = localStorage.getItem(STATUS_LS_KEY);
+      if (stored && stored !== "all") return stored;
+    } catch {}
+    return "all";
   });
   const [rankFilter, setRankFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
@@ -79,6 +86,13 @@ export default function AdminAgents() {
   const queryClient = useQueryClient();
 
   const updateStatusInUrl = useCallback((status: string) => {
+    try {
+      if (status === "all") {
+        localStorage.removeItem(STATUS_LS_KEY);
+      } else {
+        localStorage.setItem(STATUS_LS_KEY, status);
+      }
+    } catch {}
     const params = new URLSearchParams(window.location.search);
     if (status === "all") {
       params.delete("status");
@@ -88,6 +102,14 @@ export default function AdminAgents() {
     const qs = params.toString();
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }, [setLocation]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (statusFilter !== "all" && params.get("status") !== statusFilter) {
+      updateStatusInUrl(statusFilter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
