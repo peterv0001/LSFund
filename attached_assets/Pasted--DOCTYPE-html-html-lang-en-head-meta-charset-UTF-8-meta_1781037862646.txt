@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Leader Shield Funding — Brand &amp; Design System v1.0</title>
+<meta name="description" content="The Leader Shield Funding brand kit and design language: positioning, logo, color, typography, design tokens, components, voice, and compliance guardrails." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0A1628; --ink-2:#142943; --ink-3:#1C3557;
+  --line-dark:rgba(255,255,255,.10);
+  --brass:#C9A24B; --brass-2:#E0C27E; --brass-ink:#A07B22; --brass-soft:rgba(201,162,75,.14);
+  --green:#1C8A5B; --green-2:#34A877; --green-soft:rgba(28,138,91,.12);
+  --paper:#F6F8FB; --paper-2:#ECF1F7; --line:#E2E8F1;
+  --steel:#5C6B82; --steel-2:#7E8CA3; --white:#FFFFFF;
+  --display:'Archivo',-apple-system,BlinkMacSystemFont,sans-serif;
+  --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace;
+  --r-sm:10px; --r-md:16px; --r-lg:24px;
+  --shadow:0 1px 2px rgba(10,22,40,.04),0 8px 28px rgba(10,22,40,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:16px;line-height:1.6}
+svg{display:block}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.02em;line-height:1.06;font-weight:800}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+:focus-visible{outline:3px solid var(--brass);outline-offset:3px;border-radius:4px}
+
+/* ---- MASTHEAD ---- */
+.masthead{background:var(--ink);color:#fff;position:relative;overflow:hidden}
+.masthead::before{content:"";position:absolute;inset:0;background:radial-gradient(760px 460px at 82% -10%,rgba(201,162,75,.16),transparent 60%)}
+.masthead-in{position:relative;z-index:2;max-width:1240px;margin:0 auto;padding:30px 40px 76px}
+.mh-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:64px}
+.brand{display:flex;align-items:center;gap:13px}
+.brand .crest{width:40px;height:44px;flex:none}
+.brand .word b{font-family:var(--display);font-weight:900;font-size:22px;color:#fff}
+.brand .word span{font-family:var(--display);font-weight:600;font-size:22px;color:var(--brass)}
+.brand .word small{display:block;font-family:var(--mono);font-weight:500;font-size:9.5px;letter-spacing:.34em;color:#8493AB;margin-top:3px}
+.mh-tag{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#8493AB}
+.masthead h1{font-size:clamp(2.6rem,5.4vw,4.4rem);font-weight:900;color:#fff;max-width:18ch}
+.masthead h1 em{color:var(--brass);font-style:normal}
+.masthead p{margin-top:22px;font-size:19px;color:#AFBCD0;max-width:56ch}
+.mh-meta{display:flex;gap:36px;margin-top:40px;flex-wrap:wrap}
+.mh-meta div .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6F7E96}
+.mh-meta div .v{font-family:var(--mono);font-size:15px;color:#fff;margin-top:5px}
+
+/* ---- LAYOUT ---- */
+.shell{max-width:1240px;margin:0 auto;padding:0 40px;display:grid;grid-template-columns:228px 1fr;gap:56px;align-items:start}
+.sidenav{position:sticky;top:28px;padding:40px 0}
+.sidenav ol{list-style:none}
+.sidenav a{display:flex;gap:12px;padding:9px 0;font-size:14px;color:var(--steel);transition:color .15s;align-items:baseline}
+.sidenav a:hover,.sidenav a.active{color:var(--ink)}
+.sidenav a .nn{font-family:var(--mono);font-size:11px;color:var(--brass-ink);min-width:22px}
+.content{padding:64px 0 80px;min-width:0}
+
+/* ---- SECTION ---- */
+.sec{padding-bottom:88px;border-bottom:1px solid var(--line);margin-bottom:88px}
+.sec:last-of-type{border:none;margin-bottom:0}
+.sec-no{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--brass-ink);letter-spacing:.08em}
+.sec h2{font-size:clamp(1.8rem,3.4vw,2.6rem);margin:10px 0 16px}
+.sec .intro{font-size:18px;color:var(--steel);max-width:64ch;margin-bottom:40px}
+.sub{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel-2);margin:40px 0 18px}
+
+/* ---- THESIS CARDS ---- */
+.thesis{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.tcard{background:var(--white);border:1px solid var(--line);border-radius:var(--r-md);padding:28px}
+.tcard .ic{width:46px;height:46px;border-radius:12px;background:var(--ink);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.tcard .ic svg{width:22px;height:22px;color:var(--brass-2)}
+.tcard h3{font-size:17px;margin-bottom:8px}
+.tcard p{font-size:14.5px;color:var(--steel)}
+.pull{background:var(--ink);color:#fff;border-radius:var(--r-lg);padding:36px 40px;margin-top:20px}
+.pull .q{font-family:var(--display);font-weight:700;font-size:clamp(1.3rem,2.6vw,1.9rem);letter-spacing:-.02em;line-height:1.25;color:#fff}
+.pull .q em{color:var(--brass-2);font-style:normal}
+
+/* ---- LOGO ---- */
+.logo-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:20px}
+.logo-stage{border:1px solid var(--line);border-radius:var(--r-md);background:var(--white);display:flex;align-items:center;justify-content:center;padding:48px;min-height:180px}
+.logo-stage.dark{background:var(--ink);border-color:var(--ink)}
+.logo-lg{display:flex;align-items:center;gap:16px}
+.logo-lg .crest{width:54px;height:60px}
+.logo-lg .word b{font-family:var(--display);font-weight:900;font-size:30px;color:var(--ink)}
+.logo-lg .word span{font-family:var(--display);font-weight:600;font-size:30px;color:var(--brass)}
+.logo-lg .word small{display:block;font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.34em;color:var(--steel);margin-top:4px}
+.dark .logo-lg .word b{color:#fff}
+.dark .logo-lg .word small{color:#8493AB}
+.dodont{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+.dd{border-radius:var(--r-md);padding:20px;font-size:14px}
+.dd.do{background:var(--green-soft);border:1px solid rgba(28,138,91,.25)}
+.dd.dont{background:rgba(190,40,40,.07);border:1px solid rgba(190,40,40,.2)}
+.dd .h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.dd.do .h{color:#15724A}.dd.dont .h{color:#B23232}
+.dd ul{list-style:none;font-size:14px;color:var(--ink-2)}
+.dd li{padding:4px 0}
+
+/* ---- SWATCHES ---- */
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.sw{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--white)}
+.sw .chip{height:84px}
+.sw .meta{padding:13px 14px}
+.sw .nm{font-family:var(--display);font-weight:700;font-size:14px}
+.sw .hex{font-family:var(--mono);font-size:12px;color:var(--ink);margin-top:3px;display:flex;align-items:center;gap:7px;cursor:pointer}
+.sw .hex:hover{color:var(--brass-ink)}
+.sw .hex .cp{font-size:10px;color:var(--steel-2)}
+.sw .role{font-size:11.5px;color:var(--steel);margin-top:7px;line-height:1.4}
+.sw .var{font-family:var(--mono);font-size:10.5px;color:var(--steel-2);margin-top:5px}
+.note{background:var(--paper-2);border-left:3px solid var(--brass);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:16px 18px;font-size:14px;color:var(--ink-2);margin-top:22px}
+.note b{color:var(--ink)}
+
+/* ---- TYPE SPECIMENS ---- */
+.specimen{border:1px solid var(--line);border-radius:var(--r-md);background:var(--white);overflow:hidden}
+.spec-row{display:grid;grid-template-columns:1fr 240px;gap:20px;align-items:center;padding:22px 26px;border-bottom:1px solid var(--line)}
+.spec-row:last-child{border:none}
+.spec-row .meta{font-family:var(--mono);font-size:11.5px;color:var(--steel);line-height:1.7}
+.spec-row .meta b{color:var(--ink)}
+.t-xl{font-family:var(--display);font-weight:900;font-size:46px;letter-spacing:-.03em;line-height:1}
+.t-l{font-family:var(--display);font-weight:800;font-size:32px;letter-spacing:-.02em}
+.t-h3{font-family:var(--display);font-weight:700;font-size:20px}
+.t-lede{font-size:19px;color:var(--steel)}
+.t-body{font-size:16px}
+.t-small{font-size:13.5px;color:var(--steel)}
+.t-eye{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--brass-ink)}
+.t-data{font-family:var(--mono);font-weight:600;font-size:30px;letter-spacing:-.02em}
+
+/* ---- CODE BLOCKS ---- */
+.code{position:relative;background:var(--ink);border-radius:var(--r-md);overflow:hidden;margin-top:8px}
+.code pre{padding:24px 26px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7;color:#C9D4E2}
+.code .tok-c{color:#6F7E96}
+.code .tok-p{color:var(--brass-2)}
+.code .tok-v{color:var(--green-2)}
+.copy{position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;color:#9FB0C7;background:rgba(255,255,255,.06);border:1px solid var(--line-dark);padding:7px 12px;border-radius:8px;transition:all .15s}
+.copy:hover{color:var(--brass-2);border-color:var(--brass)}
+.copy.ok{color:var(--green-2);border-color:var(--green)}
+
+/* ---- COMPONENTS DEMO ---- */
+.demo{border:1px solid var(--line);border-radius:var(--r-md);background:var(--white);padding:30px}
+.demo.dark{background:var(--ink);border-color:var(--ink)}
+.demo-label{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel-2);margin-bottom:16px}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:9px;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.01em;padding:15px 26px;border-radius:var(--r-sm);transition:transform .18s,box-shadow .18s,background .18s}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:17px;height:17px}
+.btn-primary{background:var(--brass);color:var(--ink);box-shadow:0 8px 24px rgba(201,162,75,.32)}
+.btn-primary:hover{background:var(--brass-2)}
+.btn-dark{background:var(--ink);color:#fff}.btn-dark:hover{background:var(--ink-2)}
+.btn-ghost{background:transparent;color:#fff;border:1.5px solid var(--line-dark)}.btn-ghost:hover{border-color:var(--brass);color:var(--brass-2)}
+.btn-sm{padding:11px 18px;font-size:14px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--brass-ink);display:inline-flex;align-items:center;gap:9px}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.democard{border:1px solid var(--line);border-radius:var(--r-md);padding:26px;max-width:320px}
+.democard .ic{width:48px;height:48px;border-radius:12px;background:var(--ink);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.democard .ic svg{width:22px;height:22px;color:var(--brass-2)}
+.democard h4{font-size:18px;font-weight:700;margin-bottom:7px}
+.democard p{font-size:14px;color:var(--steel)}
+.datawell{background:var(--ink);border-radius:var(--r-md);padding:26px;color:#fff;max-width:280px}
+.datawell .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8493AB}
+.datawell .big{font-family:var(--mono);font-weight:600;font-size:38px;color:var(--brass-2);letter-spacing:-.03em;margin:6px 0}
+.datawell .s{font-size:13px;color:#A9B6CB}
+
+/* ---- ICONS ---- */
+.iconset{display:grid;grid-template-columns:repeat(8,1fr);gap:14px}
+.ist{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--white);aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px}
+.ist svg{width:26px;height:26px;color:var(--ink);stroke-width:2}
+.ist span{font-family:var(--mono);font-size:9.5px;color:var(--steel-2)}
+
+/* ---- VOICE ---- */
+.voice{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.vrow{display:grid;grid-template-columns:1fr 1fr;gap:16px;grid-column:1/-1}
+.vc{border-radius:var(--r-md);padding:20px 22px}
+.vc.say{background:var(--green-soft);border:1px solid rgba(28,138,91,.22)}
+.vc.dont{background:rgba(190,40,40,.06);border:1px solid rgba(190,40,40,.18)}
+.vc .h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:12px}
+.vc.say .h{color:#15724A}.vc.dont .h{color:#B23232}
+.vc p{font-size:15px;color:var(--ink-2);padding:6px 0}
+.vc p.ex{font-family:var(--display);font-weight:600;font-size:16px;color:var(--ink)}
+
+/* ---- GUARDRAILS ---- */
+.guard{background:var(--ink);color:#fff;border-radius:var(--r-lg);padding:8px 4px}
+.grow{display:flex;gap:18px;padding:22px 32px;border-bottom:1px solid var(--line-dark)}
+.grow:last-child{border:none}
+.grow .gn{font-family:var(--mono);font-size:13px;color:var(--brass-2);min-width:28px}
+.grow .gt h4{font-size:16px;color:#fff;margin-bottom:5px}
+.grow .gt p{font-size:14px;color:#A9B6CB}
+
+footer{background:#05101F;color:#8A99AF;padding:48px 0;font-size:13px}
+.foot-in{max-width:1240px;margin:0 auto;padding:0 40px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;font-family:var(--mono)}
+.foot-in b{color:#fff;font-weight:600}
+
+@media(max-width:980px){
+  .shell{grid-template-columns:1fr;gap:0}
+  .sidenav{display:none}
+  .content{padding-top:40px}
+  .thesis,.logo-grid,.voice,.dodont{grid-template-columns:1fr}
+  .swatches{grid-template-columns:1fr 1fr}
+  .iconset{grid-template-columns:repeat(4,1fr)}
+  .spec-row{grid-template-columns:1fr;gap:14px}
+  .masthead-in{padding:24px 24px 56px}
+  .shell{padding:0 24px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ MASTHEAD ============ -->
+<header class="masthead">
+  <div class="masthead-in">
+    <div class="mh-top">
+      <div class="brand">
+        <svg class="crest" viewBox="0 0 38 42" fill="none" aria-hidden="true"><path d="M19 1.5 35.5 7v13c0 11-7.4 17.6-16.5 20.8C9.9 37.6 2.5 31 2.5 20V7L19 1.5Z" fill="#0A1628" stroke="#C9A24B" stroke-width="1.6"/><path d="M19 11v18M11.5 17.5 19 11l7.5 6.5" stroke="#C9A24B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="word"><b>Leader</b><span>Shield</span><small>Funding</small></span>
+      </div>
+      <span class="mh-tag">Brand &amp; Design System · v1.0</span>
+    </div>
+    <span class="t-eye" style="color:var(--brass)">The system of record</span>
+    <h1 style="margin-top:14px">Transparency, built into <em>every pixel</em>.</h1>
+    <p>The brand exists to be the opposite of its category. This guide turns that single idea — show the truth, protect the business — into the color, type, components, and language the product runs on.</p>
+    <div class="mh-meta">
+      <div><div class="k">Category</div><div class="v">Business funding · MCA</div></div>
+      <div><div class="k">Audience</div><div class="v">U.S. business owners</div></div>
+      <div><div class="k">Core idea</div><div class="v">Protection through clarity</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- ============ SIDE NAV ============ -->
+  <nav class="sidenav" aria-label="Sections">
+    <ol>
+      <li><a href="#thesis"><span class="nn">01</span> Brand thesis</a></li>
+      <li><a href="#logo"><span class="nn">02</span> Logo &amp; mark</a></li>
+      <li><a href="#color"><span class="nn">03</span> Color</a></li>
+      <li><a href="#type"><span class="nn">04</span> Typography</a></li>
+      <li><a href="#tokens"><span class="nn">05</span> Design tokens</a></li>
+      <li><a href="#components"><span class="nn">06</span> Components</a></li>
+      <li><a href="#icons"><span class="nn">07</span> Iconography</a></li>
+      <li><a href="#motion"><span class="nn">08</span> Motion</a></li>
+      <li><a href="#voice"><span class="nn">09</span> Voice &amp; tone</a></li>
+      <li><a href="#guardrails"><span class="nn">10</span> Compliance guardrails</a></li>
+    </ol>
+  </nav>
+
+  <main class="content">
+
+    <!-- 01 THESIS -->
+    <section class="sec" id="thesis">
+      <div class="sec-no">01 — Brand thesis</div>
+      <h2>The opposite of the category.</h2>
+      <p class="intro">Merchant cash advance earned a reputation for hidden cost, shifting terms, and pressure. Leader Shield is built to be its inverse. Every brand decision answers one question: <b>does this make the truth easier to see?</b> The name carries the idea — <em>Leader</em> sets us apart from look-alike competitors; <em>Shield</em> signals protection.</p>
+      <div class="thesis">
+        <div class="tcard">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <h3>Show the number</h3><p>The total cost appears before the signature, never after. Transparency is the product, not the marketing.</p>
+        </div>
+        <div class="tcard">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V6l-8-3Z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <h3>Protect, don't push</h3><p>The shield posture: calm, solid, on the business owner's side. No urgency theater, no hype.</p>
+        </div>
+        <div class="tcard">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/></svg></div>
+          <h3>Plain over clever</h3><p>Specific beats slick. We name things by what the owner controls, in language a non-expert reads once and trusts.</p>
+        </div>
+        <div class="tcard">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M5 5h11a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h11"/></svg></div>
+          <h3>Precision signals trust</h3><p>Exact figures, set in monospace. Where money is shown, the typeface itself says "no rounding, no games."</p>
+        </div>
+      </div>
+      <div class="pull"><p class="q">"In a market that profits from confusion, the most persuasive thing we can do is <em>be conspicuously clear</em>."</p></div>
+    </section>
+
+    <!-- 02 LOGO -->
+    <section class="sec" id="logo">
+      <div class="sec-no">02 — Logo &amp; mark</div>
+      <h2>One mark, Leader-forward.</h2>
+      <p class="intro">The lockup pairs a heraldic <b>crest</b> (shield + an upward chevron for momentum and leadership) with the wordmark. <em>Leader</em> is set heavier and in ink; <em>Shield</em> is lighter and in brass — a deliberate weighting that separates us from the incumbent "Shield Funding" and keeps the distinctive half of the name dominant.</p>
+      <div class="logo-grid">
+        <div class="logo-stage">
+          <div class="logo-lg"><svg class="crest" viewBox="0 0 38 42" fill="none"><path d="M19 1.5 35.5 7v13c0 11-7.4 17.6-16.5 20.8C9.9 37.6 2.5 31 2.5 20V7L19 1.5Z" fill="#0A1628" stroke="#C9A24B" stroke-width="1.6"/><path d="M19 11v18M11.5 17.5 19 11l7.5 6.5" stroke="#C9A24B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="word"><b>Leader</b><span>Shield</span><small>Funding</small></span></div>
+        </div>
+        <div class="logo-stage dark">
+          <div class="logo-lg"><svg class="crest" viewBox="0 0 38 42" fill="none"><path d="M19 1.5 35.5 7v13c0 11-7.4 17.6-16.5 20.8C9.9 37.6 2.5 31 2.5 20V7L19 1.5Z" fill="#142943" stroke="#C9A24B" stroke-width="1.6"/><path d="M19 11v18M11.5 17.5 19 11l7.5 6.5" stroke="#C9A24B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="word"><b>Leader</b><span>Shield</span><small>Funding</small></span></div>
+        </div>
+      </div>
+      <div class="dodont">
+        <div class="dd do">
+          <div class="h"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Do</div>
+          <ul>
+            <li>Keep clear space ≥ the crest height on all sides.</li>
+            <li>Use full-color on light; the ink-fill crest on dark.</li>
+            <li>Lead with "Leader Shield" — drop "Funding Network" on merchant surfaces.</li>
+          </ul>
+        </div>
+        <div class="dd dont">
+          <div class="h">✕ Don't</div>
+          <ul>
+            <li>Re-weight to make "Shield" dominant (invites incumbent confusion).</li>
+            <li>Recolor the crest outside ink, slate, or brass.</li>
+            <li>Stretch, rotate, or add effects to the mark.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 COLOR -->
+    <section class="sec" id="color">
+      <div class="sec-no">03 — Color</div>
+      <h2>Vault ink, shield brass, verified green.</h2>
+      <p class="intro">A restrained, institutional palette. Deep ink carries authority and seriousness; brass is the single accent, used sparingly so it stays valuable; green appears only to confirm and reassure. Click any value to copy.</p>
+
+      <div class="sub">Core / surfaces dark</div>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#0A1628"></div><div class="meta"><div class="nm">Vault Ink</div><div class="hex" data-hex="#0A1628">#0A1628 <span class="cp">copy</span></div><div class="role">Primary dark surface &amp; text on light</div><div class="var">--ink</div></div></div>
+        <div class="sw"><div class="chip" style="background:#142943"></div><div class="meta"><div class="nm">Slate</div><div class="hex" data-hex="#142943">#142943 <span class="cp">copy</span></div><div class="role">Secondary dark panel</div><div class="var">--ink-2</div></div></div>
+        <div class="sw"><div class="chip" style="background:#1C3557"></div><div class="meta"><div class="nm">Deep Slate</div><div class="hex" data-hex="#1C3557">#1C3557 <span class="cp">copy</span></div><div class="role">Tertiary / dividers on dark</div><div class="var">--ink-3</div></div></div>
+        <div class="sw"><div class="chip" style="background:#05101F"></div><div class="meta"><div class="nm">Abyss</div><div class="hex" data-hex="#05101F">#05101F <span class="cp">copy</span></div><div class="role">Footer / deepest ground</div><div class="var">—</div></div></div>
+      </div>
+
+      <div class="sub">Accent — brass (use sparingly)</div>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#C9A24B"></div><div class="meta"><div class="nm">Shield Brass</div><div class="hex" data-hex="#C9A24B">#C9A24B <span class="cp">copy</span></div><div class="role">Primary accent, on-dark only</div><div class="var">--brass</div></div></div>
+        <div class="sw"><div class="chip" style="background:#E0C27E"></div><div class="meta"><div class="nm">Brass Light</div><div class="hex" data-hex="#E0C27E">#E0C27E <span class="cp">copy</span></div><div class="role">Hover / highlight on dark</div><div class="var">--brass-2</div></div></div>
+        <div class="sw"><div class="chip" style="background:#A07B22"></div><div class="meta"><div class="nm">Brass Ink</div><div class="hex" data-hex="#A07B22">#A07B22 <span class="cp">copy</span></div><div class="role">Brass as text on light (AA)</div><div class="var">--brass-ink</div></div></div>
+        <div class="sw"><div class="chip" style="background:#C9A24B;opacity:.14"></div><div class="meta"><div class="nm">Brass Soft</div><div class="hex" data-hex="rgba(201,162,75,.14)">14% tint <span class="cp">copy</span></div><div class="role">Icon wells / soft fills</div><div class="var">--brass-soft</div></div></div>
+      </div>
+
+      <div class="sub">Signal — verified green</div>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#1C8A5B"></div><div class="meta"><div class="nm">Verified Green</div><div class="hex" data-hex="#1C8A5B">#1C8A5B <span class="cp">copy</span></div><div class="role">Confirmation / checks on light</div><div class="var">--green</div></div></div>
+        <div class="sw"><div class="chip" style="background:#34A877"></div><div class="meta"><div class="nm">Green Light</div><div class="hex" data-hex="#34A877">#34A877 <span class="cp">copy</span></div><div class="role">Positive value on dark</div><div class="var">--green-2</div></div></div>
+        <div class="sw"><div class="chip" style="background:#F6F8FB;border-right:1px solid var(--line)"></div><div class="meta"><div class="nm">Clean Paper</div><div class="hex" data-hex="#F6F8FB">#F6F8FB <span class="cp">copy</span></div><div class="role">Light section ground</div><div class="var">--paper</div></div></div>
+        <div class="sw"><div class="chip" style="background:#5C6B82"></div><div class="meta"><div class="nm">Steel</div><div class="hex" data-hex="#5C6B82">#5C6B82 <span class="cp">copy</span></div><div class="role">Secondary text</div><div class="var">--steel</div></div></div>
+      </div>
+
+      <div class="note"><b>Accessibility guardrail.</b> Shield Brass (#C9A24B) fails contrast as body text on white — never use it for small text on light surfaces. For brass-colored text on light, use <b>Brass Ink (#A07B22)</b>. Reserve #C9A24B for accents, large display, and anything on ink. Body text on light is always Vault Ink or Steel.</div>
+    </section>
+
+    <!-- 04 TYPE -->
+    <section class="sec" id="type">
+      <div class="sec-no">04 — Typography</div>
+      <h2>Authority, clarity, and exact numbers.</h2>
+      <p class="intro">Three roles, three faces. <b>Archivo</b> brings institutional weight to display. <b>IBM Plex Sans</b> reads as engineered and trustworthy in body. <b>IBM Plex Mono</b> sets every financial figure — the monospace itself signals precision, which is the whole brand argument.</p>
+      <div class="specimen">
+        <div class="spec-row"><div class="t-xl">Capital, shown plainly</div><div class="meta">Display XL · <b>Archivo 900</b><br>clamp 2.9–4.7rem · tracking −.03em</div></div>
+        <div class="spec-row"><div class="t-l">The honest math</div><div class="meta">Display L · <b>Archivo 800</b><br>clamp 2–3.2rem · tracking −.02em</div></div>
+        <div class="spec-row"><div class="t-h3">Reviewed file by file</div><div class="meta">Heading 3 · <b>Archivo 700</b><br>18–20px · tracking −.01em</div></div>
+        <div class="spec-row"><div class="t-lede">Fast capital, with the real cost shown before you commit.</div><div class="meta">Lede · <b>Plex Sans 400</b><br>19px · Steel · line-height 1.5</div></div>
+        <div class="spec-row"><div class="t-body">A merchant cash advance is the purchase of future receivables — not a loan.</div><div class="meta">Body · <b>Plex Sans 400</b><br>16–17px · line-height 1.6</div></div>
+        <div class="spec-row"><div class="t-eye">● The funding profile</div><div class="meta">Eyebrow · <b>Plex Mono 600</b><br>12.5px · tracking .18em · uppercase</div></div>
+        <div class="spec-row"><div class="t-data">$62,500</div><div class="meta">Data / figures · <b>Plex Mono 600</b><br>tabular-nums · always for money</div></div>
+      </div>
+      <div class="note"><b>Rule.</b> Any number a customer might check — dollars, factor rates, terms, percentages — is set in IBM Plex Mono with tabular figures. Prose never carries a dollar figure in the body face.</div>
+    </section>
+
+    <!-- 05 TOKENS -->
+    <section class="sec" id="tokens">
+      <div class="sec-no">05 — Design tokens</div>
+      <h2>The single source of truth.</h2>
+      <p class="intro">Drop this token block into any surface — web, the landing page, the agent portal, future lead magnets — and the brand stays identical everywhere. This is the exact <span class="mono">:root</span> the home page runs on.</p>
+      <div class="code" data-copy>
+        <button class="copy">Copy</button>
+<pre>:root{
+  <span class="tok-c">/* Core surfaces */</span>
+  <span class="tok-p">--ink</span>:        <span class="tok-v">#0A1628</span>;
+  <span class="tok-p">--ink-2</span>:      <span class="tok-v">#142943</span>;
+  <span class="tok-p">--ink-3</span>:      <span class="tok-v">#1C3557</span>;
+  <span class="tok-p">--abyss</span>:      <span class="tok-v">#05101F</span>;
+  <span class="tok-c">/* Accent — brass */</span>
+  <span class="tok-p">--brass</span>:      <span class="tok-v">#C9A24B</span>;
+  <span class="tok-p">--brass-2</span>:    <span class="tok-v">#E0C27E</span>;
+  <span class="tok-p">--brass-ink</span>:  <span class="tok-v">#A07B22</span>;  <span class="tok-c">/* brass text on light */</span>
+  <span class="tok-p">--brass-soft</span>: <span class="tok-v">rgba(201,162,75,.14)</span>;
+  <span class="tok-c">/* Signal — green */</span>
+  <span class="tok-p">--green</span>:      <span class="tok-v">#1C8A5B</span>;
+  <span class="tok-p">--green-2</span>:    <span class="tok-v">#34A877</span>;
+  <span class="tok-c">/* Surfaces light + text */</span>
+  <span class="tok-p">--paper</span>:      <span class="tok-v">#F6F8FB</span>;
+  <span class="tok-p">--paper-2</span>:    <span class="tok-v">#ECF1F7</span>;
+  <span class="tok-p">--line</span>:       <span class="tok-v">#E2E8F1</span>;
+  <span class="tok-p">--steel</span>:      <span class="tok-v">#5C6B82</span>;
+  <span class="tok-p">--steel-2</span>:    <span class="tok-v">#7E8CA3</span>;
+  <span class="tok-p">--white</span>:      <span class="tok-v">#FFFFFF</span>;
+  <span class="tok-c">/* Type */</span>
+  <span class="tok-p">--display</span>: <span class="tok-v">'Archivo', sans-serif</span>;
+  <span class="tok-p">--sans</span>:    <span class="tok-v">'IBM Plex Sans', sans-serif</span>;
+  <span class="tok-p">--mono</span>:    <span class="tok-v">'IBM Plex Mono', monospace</span>;
+  <span class="tok-c">/* Radii + elevation */</span>
+  <span class="tok-p">--r-sm</span>: <span class="tok-v">10px</span>; <span class="tok-p">--r-md</span>: <span class="tok-v">16px</span>;
+  <span class="tok-p">--r-lg</span>: <span class="tok-v">24px</span>; <span class="tok-p">--r-xl</span>: <span class="tok-v">32px</span>;
+  <span class="tok-p">--shadow</span>: <span class="tok-v">0 8px 28px rgba(10,22,40,.08)</span>;
+  <span class="tok-p">--shadow-lg</span>: <span class="tok-v">0 24px 60px rgba(10,22,40,.16)</span>;
+  <span class="tok-c">/* Layout */</span>
+  <span class="tok-p">--maxw</span>: <span class="tok-v">1180px</span>;
+  <span class="tok-p">--section-y</span>: <span class="tok-v">108px</span>;
+}</pre>
+      </div>
+      <div class="note"><b>For React Native / Expo (MOMENTUM-style):</b> mirror these as a JS theme object — <span class="mono">colors.ink</span>, <span class="mono">colors.brass</span>, <span class="mono">font.display / sans / mono</span>, <span class="mono">radius.sm/md/lg</span> — so native screens and web render from one vocabulary.</div>
+    </section>
+
+    <!-- 06 COMPONENTS -->
+    <section class="sec" id="components">
+      <div class="sec-no">06 — Components</div>
+      <h2>The building blocks.</h2>
+      <p class="intro">Primitives derived from the tokens. Buttons earn their hierarchy: brass is the one true call to action per view; dark is secondary; ghost lives on dark grounds.</p>
+
+      <div class="demo" style="margin-bottom:18px">
+        <div class="demo-label">Buttons — one brass CTA per view</div>
+        <div class="row">
+          <button class="btn btn-primary">Start a funding review <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          <button class="btn btn-dark">Become a partner</button>
+          <button class="btn btn-primary btn-sm">Small CTA</button>
+        </div>
+      </div>
+      <div class="code" data-copy style="margin-bottom:30px">
+        <button class="copy">Copy</button>
+<pre><span class="tok-p">.btn-primary</span>{ background:<span class="tok-v">var(--brass)</span>; color:<span class="tok-v">var(--ink)</span>;
+  box-shadow:<span class="tok-v">0 8px 24px rgba(201,162,75,.32)</span>; }
+<span class="tok-p">.btn-primary</span>:hover{ background:<span class="tok-v">var(--brass-2)</span>; }</pre>
+      </div>
+
+      <div class="row" style="gap:18px;align-items:stretch">
+        <div class="demo" style="flex:1;min-width:260px">
+          <div class="demo-label">Eyebrow</div>
+          <span class="eyebrow"><span class="dot"></span> The honest math</span>
+        </div>
+        <div class="demo" style="flex:1;min-width:260px">
+          <div class="demo-label">Data well — figures in mono</div>
+          <div class="datawell"><div class="k">Total you repay</div><div class="big">$62,500</div><div class="s">$12,500 cost of capital</div></div>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:18px">
+        <div class="demo-label">Value card — ink icon well, brass glyph</div>
+        <div class="democard">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <h4>One number, up front</h4>
+          <p>You see the total repayment and cost before you sign — never buried in a schedule.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 ICONS -->
+    <section class="sec" id="icons">
+      <div class="sec-no">07 — Iconography</div>
+      <h2>Line, not fill.</h2>
+      <p class="intro">A single stroke style: 24×24 viewbox, <b>2px stroke</b>, rounded joins, <span class="mono">currentColor</span>. Icons sit in ink wells with a brass glyph, or inline in ink. Never multicolor, never filled illustrations.</p>
+      <div class="iconset">
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 4 6v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V6l-8-3Z"/></svg><span>shield</span></div>
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg><span>transparency</span></div>
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span>speed</span></div>
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6"/></svg><span>document</span></div>
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg><span>verified</span></div>
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg><span>growth</span></div>
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M7 7h7a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h8"/></svg><span>capital</span></div>
+        <div class="ist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 11a4 4 0 1 0-3.5-6M2 21v-1a5 5 0 0 1 5-5h2"/></svg><span>partners</span></div>
+      </div>
+    </section>
+
+    <!-- 08 MOTION -->
+    <section class="sec" id="motion">
+      <div class="sec-no">08 — Motion</div>
+      <h2>Calm, purposeful, reduced-motion safe.</h2>
+      <p class="intro">Motion confirms, it doesn't perform. Three behaviors only — anything more reads as nervous, which undercuts a trust brand.</p>
+      <div class="thesis">
+        <div class="tcard"><h3 class="mono" style="font-size:14px;color:var(--brass-ink)">Scroll reveal</h3><p style="margin-top:8px">Sections fade up 22px over 700ms on entry. One pass, then static.</p></div>
+        <div class="tcard"><h3 class="mono" style="font-size:14px;color:var(--brass-ink)">Hover lift</h3><p style="margin-top:8px">Cards rise 3px with a soft shadow; buttons brighten and depress 1px on press.</p></div>
+        <div class="tcard"><h3 class="mono" style="font-size:14px;color:var(--brass-ink)">Live readout</h3><p style="margin-top:8px">The honest-math figures update instantly on input — the one moment of true interactivity.</p></div>
+        <div class="tcard"><h3 class="mono" style="font-size:14px;color:var(--brass-ink)">Always</h3><p style="margin-top:8px">Respect <span class="mono">prefers-reduced-motion</span>: disable transitions and reveals entirely.</p></div>
+      </div>
+    </section>
+
+    <!-- 09 VOICE -->
+    <section class="sec" id="voice">
+      <div class="sec-no">09 — Voice &amp; tone</div>
+      <h2>Plain verbs. Real numbers. No theater.</h2>
+      <p class="intro">We sound like a straight, capable partner — never a pitchman. Sentence case, active voice, and an action keeps the same name through the whole flow (the button that says "Start a funding review" leads to a screen titled the same).</p>
+      <div class="voice">
+        <div class="vrow">
+          <div class="vc say"><div class="h">Say this</div><p class="ex">"See the exact cost before you sign."</p></div>
+          <div class="vc dont"><div class="h">Not this</div><p class="ex">"Best rates guaranteed — apply now!"</p></div>
+        </div>
+        <div class="vrow">
+          <div class="vc say"><div class="h">Say this</div><p class="ex">"Start a funding review"</p><p>Names what the owner does.</p></div>
+          <div class="vc dont"><div class="h">Not this</div><p class="ex">"Submit" / "Apply Now"</p><p>System-speak; raises commitment anxiety.</p></div>
+        </div>
+        <div class="vrow">
+          <div class="vc say"><div class="h">Say this</div><p class="ex">"A 1.25 factor on $50K = $62,500 total."</p></div>
+          <div class="vc dont"><div class="h">Not this</div><p class="ex">"Low rates from just 15%!"</p><p>Conflates factor with APR; misleading.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 GUARDRAILS -->
+    <section class="sec" id="guardrails">
+      <div class="sec-no">10 — Compliance guardrails</div>
+      <h2>The rules that keep the brand safe.</h2>
+      <p class="intro">In regulated finance, brand and compliance are the same discipline. These are non-negotiable across every surface. (Confirm specifics with counsel — this codifies posture, not legal advice.)</p>
+      <div class="guard">
+        <div class="grow"><span class="gn">01</span><div class="gt"><h4>It's a purchase, not a loan</h4><p>Describe MCA as the purchase of future receivables. Use "factor rate" (1.15–1.49 multiplier). Never say or imply "APR," "interest rate," or express the factor as a bare percentage.</p></div></div>
+        <div class="grow"><span class="gn">02</span><div class="gt"><h4>Every figure is illustrative until verified</h4><p>Calculator outputs and any stat are estimates, labeled as such. Performance metrics (capital deployed, businesses funded, ratings) must be substantiated before they appear — no placeholder numbers ship live.</p></div></div>
+        <div class="grow"><span class="gn">03</span><div class="gt"><h4>No income claims on merchant surfaces</h4><p>Earnings figures, agent income, and opportunity language live exclusively on the partner property, behind the appropriate business-opportunity disclosures. They never touch the merchant brand.</p></div></div>
+        <div class="grow"><span class="gn">04</span><div class="gt"><h4>Disclosures match the audience</h4><p>Merchant surfaces carry funding-terms and illustrative-figure disclosures only. The anti-pyramid, income, and independent-contractor disclosures belong on the partner site — placing them on the merchant page erodes borrower trust.</p></div></div>
+        <div class="grow"><span class="gn">05</span><div class="gt"><h4>State-aware cost presentation</h4><p>Commercial-financing disclosure laws (CA, NY, and others) govern how cost is shown to merchants. Cost presentation follows the strictest applicable standard, not the loosest.</p></div></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="foot-in">
+    <span><b>Leader Shield Funding</b> — Brand &amp; Design System v1.0</span>
+    <span>Source of truth · pairs with the merchant home page · © 2026</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  /* copy hex swatches */
+  document.querySelectorAll('.sw .hex').forEach(function(el){
+    el.addEventListener('click',function(){
+      var v=el.getAttribute('data-hex');
+      copy(v,el.querySelector('.cp'),'copied');
+    });
+  });
+  /* copy code blocks */
+  document.querySelectorAll('.code[data-copy]').forEach(function(block){
+    var btn=block.querySelector('.copy'),pre=block.querySelector('pre');
+    btn.addEventListener('click',function(){
+      copy(pre.innerText,btn,'Copied',true);
+    });
+  });
+  function copy(text,el,label,isBtn){
+    var done=function(){
+      var prev=el.textContent;el.textContent=label;if(isBtn)el.classList.add('ok');
+      setTimeout(function(){el.textContent=prev;if(isBtn)el.classList.remove('ok');},1400);
+    };
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,done);}
+    else{var t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(t);done();}
+  }
+  /* active section in sidenav */
+  var links=document.querySelectorAll('.sidenav a'),secs=document.querySelectorAll('.sec');
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){l.classList.toggle('active',l.getAttribute('href')==='#'+e.target.id);});
+      }
+    });
+  },{rootMargin:'-30% 0px -60% 0px'});
+  secs.forEach(function(s){io.observe(s);});
+})();
+</script>
+</body>
+</html>
