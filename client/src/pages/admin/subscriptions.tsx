@@ -1355,9 +1355,17 @@ export default function AdminSubscriptions() {
                   <CalendarRange className="w-4 h-4 text-primary" />
                   <span className="text-sm font-semibold text-gray-700">
                     {dateRangeFilter === "7d"
-                      ? "Summary: Last 7 days"
+                      ? `Summary: Last 7 days${
+                          dateThreshold
+                            ? ` (${format(dateThreshold, "MMM d")} – ${format(new Date(), "MMM d")})`
+                            : ""
+                        }`
                       : dateRangeFilter === "30d"
-                      ? "Summary: Last 30 days"
+                      ? `Summary: Last 30 days${
+                          dateThreshold
+                            ? ` (${format(dateThreshold, "MMM d")} – ${format(new Date(), "MMM d")})`
+                            : ""
+                        }`
                       : `Summary${
                           customStartDate && customEndDate
                             ? `: ${format(new Date(customStartDate + "T00:00:00"), "MMM d, yyyy")} – ${format(new Date(customEndDate + "T00:00:00"), "MMM d, yyyy")}`
