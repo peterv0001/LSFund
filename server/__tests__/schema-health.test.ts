@@ -3,7 +3,7 @@ import { getTableColumns, getTableName, isTable } from "drizzle-orm";
 import type { PoolClient } from "pg";
 import * as schema from "@shared/schema";
 import { pool } from "../db.js";
-import { checkSchemaHealth } from "../schema-health.js";
+import { checkSchemaHealth, logSchemaHealth } from "../schema-health.js";
 
 function makeMockPoolClient(
   rows: { table_name: string; column_name: string }[]
@@ -84,6 +84,63 @@ describe("checkSchemaHealth() – drift case", () => {
     expect(result.drift.length).toBeGreaterThan(0);
     for (const entry of result.drift) {
       expect(entry.missingColumns.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+function countSchemaTables(): number {
+  let count = 0;
+  for (const value of Object.values(schema)) {
+    if (isTable(value)) count++;
+  }
+  return count;
+}
+
+describe("logSchemaHealth() – healthy case", () => {
+  it("logs a passing message and does not call console.error", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await logSchemaHealth();
+
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const passLogged = logSpy.mock.calls.some((call) =>
+      String(call[0]).includes(
+        "Schema health check passed — all expected columns are present"
+      )
+    );
+    expect(passLogged).toBe(true);
+
+    const failLogged = logSpy.mock.calls.some((call) =>
+      String(call[0]).includes("Schema health check FAILED")
+    );
+    expect(failLogged).toBe(false);
+  });
+});
+
+describe("logSchemaHealth() – drift case", () => {
+  it("logs a FAILED summary and an error line for each affected table", async () => {
+    vi.spyOn(pool, "connect").mockResolvedValueOnce(makeMockPoolClient([]));
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await logSchemaHealth();
+
+    const tableCount = countSchemaTables();
+
+    const failLogged = logSpy.mock.calls.some((call) =>
+      String(call[0]).includes(
+        `Schema health check FAILED — ${tableCount} table(s) have missing columns. Run db:push to sync.`
+      )
+    );
+    expect(failLogged).toBe(true);
+
+    expect(errorSpy).toHaveBeenCalledTimes(tableCount);
+    for (const call of errorSpy.mock.calls) {
+      expect(String(call[0])).toMatch(
+        /\[schema-health\] Table ".+" is missing column\(s\): .+/
+      );
     }
   });
 });
