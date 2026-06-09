@@ -140,6 +140,119 @@ describe("updateSubscriptionStatus – reactivation", () => {
 });
 
 // =========================================================
+// getSubscriptionsByAgent – reactivation actor attribution
+//
+// The subscriptions card renders "Reactivated on [date] by [name]" for
+// active subscriptions that were previously paused. The name comes from
+// getSubscriptionsByAgent resolving reactivatedById -> reactivatedByName.
+// The UI shows the resolved name when present and falls back to "by Admin"
+// when reactivatedByName is null. These tests lock in that data path so it
+// cannot silently break.
+// =========================================================
+
+describe("getSubscriptionsByAgent – reactivatedByName attribution", () => {
+  let adminActorId: number;
+  let agentActorId: number;
+
+  beforeAll(async () => {
+    const [admin] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${TEST_EMAIL_PREFIX}-react-admin@example.com`,
+        password: "not-a-real-hash",
+        firstName: "Ada",
+        lastName: "Adminson",
+        currentRank: "agent",
+        highestRank: "agent",
+        isAdmin: true,
+      })
+      .returning();
+    adminActorId = admin.id;
+
+    const [agent] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${TEST_EMAIL_PREFIX}-react-agent@example.com`,
+        password: "not-a-real-hash",
+        firstName: "Gary",
+        lastName: "Agentsmith",
+        currentRank: "agent",
+        highestRank: "agent",
+      })
+      .returning();
+    agentActorId = agent.id;
+  });
+
+  afterAll(async () => {
+    await db.delete(schema.agents).where(eq(schema.agents.id, adminActorId));
+    await db.delete(schema.agents).where(eq(schema.agents.id, agentActorId));
+  });
+
+  async function getSubFromAgent(subId: number) {
+    const subs = await storage.getSubscriptionsByAgent(agentId);
+    return subs.find((s) => s.id === subId);
+  }
+
+  it("resolves reactivatedByName to the admin's full name when an admin reactivates", async () => {
+    const sub = await createTestSubscription(agentId, "active");
+    await storage.updateSubscriptionStatus(sub.id, "paused");
+    await storage.updateSubscriptionStatus(sub.id, "active", adminActorId);
+
+    const result = await getSubFromAgent(sub.id);
+    expect(result).toBeDefined();
+    expect(result?.status).toBe("active");
+    expect(result?.reactivatedAt).not.toBeNull();
+    expect(result?.reactivatedByName).toBe("Ada Adminson");
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("resolves reactivatedByName to the agent's full name when an agent reactivates", async () => {
+    const sub = await createTestSubscription(agentId, "active");
+    await storage.updateSubscriptionStatus(sub.id, "paused");
+    await storage.updateSubscriptionStatus(sub.id, "active", agentActorId);
+
+    const result = await getSubFromAgent(sub.id);
+    expect(result).toBeDefined();
+    expect(result?.reactivatedAt).not.toBeNull();
+    expect(result?.reactivatedByName).toBe("Gary Agentsmith");
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("leaves reactivatedByName null when no actor is recorded (UI falls back to 'by Admin')", async () => {
+    const sub = await createTestSubscription(agentId, "active");
+    await storage.updateSubscriptionStatus(sub.id, "paused");
+    await storage.updateSubscriptionStatus(sub.id, "active");
+
+    const result = await getSubFromAgent(sub.id);
+    expect(result).toBeDefined();
+    expect(result?.reactivatedAt).not.toBeNull();
+    expect(result?.reactivatedById).toBeNull();
+    expect(result?.reactivatedByName).toBeNull();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("clears reactivatedByName after the subscription is paused again (nothing shown)", async () => {
+    const sub = await createTestSubscription(agentId, "active");
+    await storage.updateSubscriptionStatus(sub.id, "paused");
+    await storage.updateSubscriptionStatus(sub.id, "active", adminActorId);
+
+    let result = await getSubFromAgent(sub.id);
+    expect(result?.reactivatedByName).toBe("Ada Adminson");
+
+    await storage.updateSubscriptionStatus(sub.id, "paused", agentActorId);
+    result = await getSubFromAgent(sub.id);
+    expect(result?.status).toBe("paused");
+    expect(result?.reactivatedAt).toBeNull();
+    expect(result?.reactivatedByName).toBeNull();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+});
+
+// =========================================================
 // Route validation – invalid transitions
 // These tests replicate the guard logic in
 // PATCH /api/subscriptions/:id/status and verify the correct
