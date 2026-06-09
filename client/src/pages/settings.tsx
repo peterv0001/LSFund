@@ -41,6 +41,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  shouldShowAllNotificationsOffWarning,
+  isSaveNotificationPrefsDisabled,
+} from "@/lib/notification-prefs";
 
 export default function SettingsPage() {
   const { user, refetch } = useAuth();
@@ -601,20 +605,20 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {!notifPrefs.emailOnPaused && !notifPrefs.emailOnCancelled && !notifPrefs.emailOnReactivated && !notifPrefs.emailOnExpiryWarning && (
+                {shouldShowAllNotificationsOffWarning(notifPrefs) && (
                   <div
                     data-testid="warning-all-notifications-off"
                     className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                    <span>You have disabled all subscription email notifications, including expiry warnings. You will not receive emails when your subscriptions change status or approach their expiry date.</span>
+                    <span>You have disabled all subscription status email notifications. You will not receive emails when your subscriptions are paused, cancelled, or reactivated.</span>
                   </div>
                 )}
 
                 <Button
                   data-testid="button-save-notification-prefs"
                   onClick={() => updateNotifPrefsMutation.mutate(notifPrefs)}
-                  disabled={updateNotifPrefsMutation.isPending}
+                  disabled={isSaveNotificationPrefsDisabled(updateNotifPrefsMutation.isPending)}
                 >
                   {updateNotifPrefsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   <Save className="w-4 h-4 mr-2" />
