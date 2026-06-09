@@ -6,6 +6,20 @@ import { CONFIG } from './config';
 import Stripe from 'stripe';
 import { getUncachableStripeClient } from './stripeClient';
 
+/**
+ * Thrown when the Stripe webhook secret is not configured (neither the
+ * STRIPE_WEBHOOK_SECRET env var nor a stripe_webhook_secret platform_settings
+ * row exists). Callers should treat this as a server-side configuration problem:
+ * log the detail internally and return a safe, generic 400 to the caller rather
+ * than surfacing a 500 with the raw message.
+ */
+export class WebhookConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'WebhookConfigError';
+  }
+}
+
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
     if (!Buffer.isBuffer(payload)) {
@@ -22,7 +36,7 @@ export class WebhookHandlers {
     const webhookSecret = envSecret || dbSecret;
 
     if (!webhookSecret) {
-      throw new Error('[Webhook] No STRIPE_WEBHOOK_SECRET env var or stripe_webhook_secret in platform_settings — cannot verify signature');
+      throw new WebhookConfigError('[Webhook] No STRIPE_WEBHOOK_SECRET env var or stripe_webhook_secret in platform_settings — cannot verify signature');
     }
 
     const stripe = await getUncachableStripeClient();

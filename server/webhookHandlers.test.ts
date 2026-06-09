@@ -37,7 +37,7 @@ vi.mock('./storage.js', () => ({
   },
 }));
 
-import { WebhookHandlers } from './webhookHandlers.js';
+import { WebhookHandlers, WebhookConfigError } from './webhookHandlers.js';
 import { getUncachableStripeClient } from './stripeClient.js';
 import { db } from './db.js';
 
@@ -89,6 +89,10 @@ function buildWebhookApp() {
         await WebhookHandlers.processWebhook(req.body as Buffer, sig);
         res.status(200).json({ received: true });
       } catch (error: unknown) {
+        if (error instanceof WebhookConfigError) {
+          console.error('[Stripe Webhook] Configuration error:', error.message);
+          return res.status(400).json({ error: 'Webhook not configured' });
+        }
         const message = error instanceof Error ? error.message : 'Unknown error';
         console.error('[Stripe Webhook] Error:', message);
         res.status(400).json({ error: 'Webhook processing error' });
@@ -144,6 +148,42 @@ describe('WebhookHandlers.processWebhook – signature verification', () => {
     await expect(
       WebhookHandlers.processWebhook(payload, 'some_signature')
     ).rejects.toThrow('No STRIPE_WEBHOOK_SECRET');
+  });
+
+  it('throws a WebhookConfigError when no webhook secret is configured', async () => {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([])); // no platformSettings secret
+
+    const payload = Buffer.from(JSON.stringify({ type: 'invoice.paid' }));
+
+    await expect(
+      WebhookHandlers.processWebhook(payload, 'some_signature')
+    ).rejects.toBeInstanceOf(WebhookConfigError);
+  });
+});
+
+// ── POST /api/webhooks/stripe – misconfigured webhook secret ──────────────
+// Guards the production hardening: when no secret is configured the route must
+// respond 400 (never 500) with a safe, non-leaking message, and must not leak
+// the underlying configuration detail to the caller.
+describe('POST /api/webhooks/stripe – missing webhook secret', () => {
+  it('responds 400 with a generic message when no webhook secret is configured', async () => {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([])); // no platformSettings secret
+
+    const app = buildWebhookApp();
+
+    const res = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('Content-Type', 'application/json')
+      .set('stripe-signature', 'some_signature')
+      .send(Buffer.from(JSON.stringify({ type: 'invoice.paid' })))
+      .expect(400);
+
+    expect(res.body).toEqual({ error: 'Webhook not configured' });
+    // The raw configuration detail must never reach the caller.
+    expect(JSON.stringify(res.body)).not.toContain('STRIPE_WEBHOOK_SECRET');
+    expect(db.update).not.toHaveBeenCalled();
   });
 });
 

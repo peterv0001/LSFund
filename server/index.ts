@@ -5,7 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from "./migrations";
 import { startScheduler } from "./scheduler";
 import { logSchemaHealth } from "./schema-health";
-import { WebhookHandlers } from "./webhookHandlers";
+import { WebhookHandlers, WebhookConfigError } from "./webhookHandlers";
 import { getStripePublishableKey, getUncachableStripeClient } from "./stripeClient";
 import { db } from "./db";
 import { platformSettings } from "@shared/schema";
@@ -36,6 +36,13 @@ app.post(
       await WebhookHandlers.processWebhook(req.body as Buffer, sig);
       res.status(200).json({ received: true });
     } catch (error: any) {
+      if (error instanceof WebhookConfigError) {
+        // Misconfiguration (missing webhook secret): log the real detail
+        // server-side only and return a safe, generic 400 so we never leak
+        // configuration internals or surface a 500 to the caller.
+        console.error('[Stripe Webhook] Configuration error:', error.message);
+        return res.status(400).json({ error: 'Webhook not configured' });
+      }
       console.error('[Stripe Webhook] Error:', error.message);
       res.status(400).json({ error: 'Webhook processing error' });
     }
