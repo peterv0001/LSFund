@@ -2554,7 +2554,21 @@ export async function registerRoutes(
         }
       }
       
-      res.json({ message: "Subscription commissions calculated", processed, skipped, totalActive: activeSubs.length });
+      const totalActive = activeSubs.length;
+
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'calculate',
+        entityType: 'commission',
+        entityId: req.user!.id,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} ran subscription commission calculation: ${processed} processed, ${skipped} skipped (already existed) of ${totalActive} active subscriptions`,
+        details: { processed, skipped, totalActive },
+        ipAddress: req.ip ?? null,
+        userAgent: req.headers['user-agent'] ?? null,
+      }).catch((err) => console.error('[ActivityLog] Failed to log commission calculation run:', err));
+
+      res.json({ message: "Subscription commissions calculated", processed, skipped, totalActive });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Subscription commission calculation failed" });
