@@ -1921,12 +1921,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: 'Invalid subscription ID' });
       }
 
-      const schema = z.object({ paymentMethodId: z.string().min(1) });
+      // paymentMethodId is optional: when omitted, the agent is retrying the
+      // outstanding payment using the card already on file.
+      const schema = z.object({ paymentMethodId: z.string().min(1).optional() });
       const parseResult = schema.safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ message: parseResult.error.errors[0].message });
       }
-      const { paymentMethodId } = parseResult.data;
+      const { paymentMethodId: newPaymentMethodId } = parseResult.data;
 
       // Ensure subscription belongs to this agent
       const agentSubs = await storage.getSubscriptionsByAgent(agentId);
@@ -1939,23 +1941,37 @@ export async function registerRoutes(
         return res.status(400).json({ message: 'This subscription does not have an active Stripe billing setup' });
       }
 
+      const isRetryWithExistingCard = !newPaymentMethodId;
+      if (isRetryWithExistingCard && !sub.stripePaymentMethodId) {
+        return res.status(400).json({ message: 'No card on file to retry with. Please enter a new card.' });
+      }
+
       const stripe = await getUncachableStripeClient();
 
-      // Attach payment method to customer
-      await stripe.paymentMethods.attach(paymentMethodId, { customer: sub.stripeCustomerId });
+      // The payment method used to pay the invoice: the new one if provided,
+      // otherwise the existing card on file.
+      const paymentMethodId = newPaymentMethodId ?? sub.stripePaymentMethodId!;
 
-      // Set as default on customer and subscription
-      await stripe.customers.update(sub.stripeCustomerId, {
-        invoice_settings: { default_payment_method: paymentMethodId },
-      });
-      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-        default_payment_method: paymentMethodId,
-      });
+      let cardLast4 = sub.cardLast4 ?? null;
+      let cardBrand = sub.cardBrand ?? null;
 
-      // Retrieve payment method details for local storage
-      const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
-      const cardLast4 = pm.card?.last4 ?? null;
-      const cardBrand = pm.card?.brand ?? null;
+      if (!isRetryWithExistingCard) {
+        // Attach payment method to customer
+        await stripe.paymentMethods.attach(paymentMethodId, { customer: sub.stripeCustomerId });
+
+        // Set as default on customer and subscription
+        await stripe.customers.update(sub.stripeCustomerId, {
+          invoice_settings: { default_payment_method: paymentMethodId },
+        });
+        await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+          default_payment_method: paymentMethodId,
+        });
+
+        // Retrieve payment method details for local storage
+        const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+        cardLast4 = pm.card?.last4 ?? null;
+        cardBrand = pm.card?.brand ?? null;
+      }
 
       // Pay the latest open invoice if one exists
       let newBillingStatus: 'active' | 'past_due' | 'failed' | undefined;
@@ -1996,8 +2012,10 @@ export async function registerRoutes(
         action: 'update',
         entityType: 'subscription',
         entityId: subId,
-        description: `Agent updated payment method for subscription #${subId} (${sub.merchantName}); billing status: ${newBillingStatus ?? 'unchanged'}`,
-        details: { cardLast4, cardBrand, billingStatus: newBillingStatus ?? null },
+        description: isRetryWithExistingCard
+          ? `Agent retried payment with card on file for subscription #${subId} (${sub.merchantName}); billing status: ${newBillingStatus ?? 'unchanged'}`
+          : `Agent updated payment method for subscription #${subId} (${sub.merchantName}); billing status: ${newBillingStatus ?? 'unchanged'}`,
+        details: { cardLast4, cardBrand, billingStatus: newBillingStatus ?? null, retryWithExistingCard: isRetryWithExistingCard },
         ipAddress: req.ip ?? null,
         userAgent: req.headers['user-agent'] ?? null,
       }).catch((err) => console.error('[ActivityLog] Failed to log payment method update:', err));

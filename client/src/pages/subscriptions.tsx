@@ -515,7 +515,7 @@ function LogSubscriptionDialog({ deals }: { deals: Deal[] }) {
 // === Update Card Dialog ===
 
 type CardUpdateResult =
-  | { success: true }
+  | { success: true; usedExistingCard: boolean }
   | { success: false; message: string };
 
 function translateDeclineCode(code: string | null): string {
@@ -536,13 +536,33 @@ function translateDeclineCode(code: string | null): string {
   return map[code] ?? "Your card was declined. Please try a different card or contact your bank.";
 }
 
-function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () => void }) {
+function UpdateCardDialogInner({ subId, cardLast4, cardBrand, onClose }: { subId: number; cardLast4: string | null; cardBrand: string | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const stripe = useStripe();
   const elements = useElements();
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
   const [submitResult, setSubmitResult] = useState<CardUpdateResult | null>(null);
+
+  const hasCardOnFile = Boolean(cardLast4);
+
+  const handleResult = (data: Subscription & { declineCode: string | null }, usedExistingCard: boolean) => {
+    if (data.billingStatus === "active") {
+      queryClient.setQueryData<Subscription[]>(["/api/subscriptions"], (old) =>
+        old?.map((s) => s.id === subId ? { ...s, ...data } : s) ?? old
+      );
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      setSubmitResult({ success: true, usedExistingCard });
+      setTimeout(() => onClose(), 1800);
+    } else {
+      const message = translateDeclineCode(data.declineCode);
+      setSubmitResult({ success: false, message });
+    }
+  };
+
+  const handleError = (err: Error) => {
+    setSubmitResult({ success: false, message: err.message || "Failed to update card. Please try again." });
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -566,23 +586,24 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
       }
       return res.json() as Promise<Subscription & { declineCode: string | null }>;
     },
-    onSuccess: (data) => {
-      if (data.billingStatus === "active") {
-        queryClient.setQueryData<Subscription[]>(["/api/subscriptions"], (old) =>
-          old?.map((s) => s.id === subId ? { ...s, ...data } : s) ?? old
-        );
-        queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
-        setSubmitResult({ success: true });
-        setTimeout(() => onClose(), 1800);
-      } else {
-        const message = translateDeclineCode(data.declineCode);
-        setSubmitResult({ success: false, message });
-      }
-    },
-    onError: (err: Error) => {
-      setSubmitResult({ success: false, message: err.message || "Failed to update card. Please try again." });
-    },
+    onSuccess: (data) => handleResult(data, false),
+    onError: handleError,
   });
+
+  const retryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", `/api/subscriptions/${subId}/payment-method`, {});
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.message || "Failed to retry payment");
+      }
+      return res.json() as Promise<Subscription & { declineCode: string | null }>;
+    },
+    onSuccess: (data) => handleResult(data, true),
+    onError: handleError,
+  });
+
+  const isBusy = mutation.isPending || retryMutation.isPending;
 
   if (!stripe || !elements) {
     return (
@@ -598,7 +619,11 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
       <div className="flex flex-col items-center justify-center py-8 gap-3 text-center" data-testid="update-card-success">
         <CheckCircle2 className="w-10 h-10 text-green-500" />
         <p className="font-semibold text-foreground">Payment successful!</p>
-        <p className="text-sm text-muted-foreground">Your card has been updated and the outstanding payment was collected. Commissions will resume shortly.</p>
+        <p className="text-sm text-muted-foreground">
+          {submitResult.usedExistingCard
+            ? "The outstanding payment was collected with your card on file. Commissions will resume shortly."
+            : "Your card has been updated and the outstanding payment was collected. Commissions will resume shortly."}
+        </p>
       </div>
     );
   }
@@ -606,7 +631,7 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Enter a new card to attach to this merchant subscription and retry the outstanding payment.
+        Retry the outstanding payment with the card on file, or enter a new card.
       </p>
       {submitResult && !submitResult.success && (
         <div
@@ -615,6 +640,33 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
         >
           <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
           <p className="text-sm text-destructive">{submitResult.message}</p>
+        </div>
+      )}
+      {hasCardOnFile && (
+        <div className="space-y-2 rounded-md border border-input bg-muted/30 px-3 py-3" data-testid="retry-existing-card-section">
+          <div className="flex items-center gap-2 text-sm">
+            <CreditCard className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span data-testid="text-card-on-file">
+              {cardBrand ? cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1) : "Card"} •••• {cardLast4}
+            </span>
+          </div>
+          <Button
+            className="w-full"
+            variant="secondary"
+            onClick={() => { setSubmitResult(null); retryMutation.mutate(); }}
+            disabled={isBusy}
+            data-testid="button-retry-existing-card"
+          >
+            {retryMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Retry with existing card
+          </Button>
+        </div>
+      )}
+      {hasCardOnFile && (
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">or use a new card</span>
+          <div className="h-px flex-1 bg-border" />
         </div>
       )}
       <div>
@@ -647,7 +699,7 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
         </Button>
         <Button
           onClick={() => { setSubmitResult(null); mutation.mutate(); }}
-          disabled={mutation.isPending || !cardComplete}
+          disabled={isBusy || !cardComplete}
           data-testid="button-submit-update-card"
         >
           {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -658,7 +710,7 @@ function UpdateCardDialogInner({ subId, onClose }: { subId: number; onClose: () 
   );
 }
 
-function UpdateCardDialog({ subId, open, onOpenChange }: { subId: number; open: boolean; onOpenChange: (v: boolean) => void }) {
+function UpdateCardDialog({ subId, cardLast4, cardBrand, open, onOpenChange }: { subId: number; cardLast4: string | null; cardBrand: string | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" data-testid="dialog-update-card">
@@ -669,7 +721,7 @@ function UpdateCardDialog({ subId, open, onOpenChange }: { subId: number; open: 
           </DialogTitle>
         </DialogHeader>
         <StripeProvider>
-          <UpdateCardDialogInner subId={subId} onClose={() => onOpenChange(false)} />
+          <UpdateCardDialogInner subId={subId} cardLast4={cardLast4} cardBrand={cardBrand} onClose={() => onOpenChange(false)} />
         </StripeProvider>
       </DialogContent>
     </Dialog>
@@ -842,7 +894,7 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
 
   return (
     <>
-    <UpdateCardDialog subId={sub.id} open={updateCardOpen} onOpenChange={setUpdateCardOpen} />
+    <UpdateCardDialog subId={sub.id} cardLast4={sub.cardLast4} cardBrand={sub.cardBrand} open={updateCardOpen} onOpenChange={setUpdateCardOpen} />
     <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>

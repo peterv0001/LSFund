@@ -362,3 +362,117 @@ describe("POST /api/subscriptions – does NOT call Stripe when no paymentMethod
     await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, res.body.id));
   });
 });
+
+// ── PATCH /api/subscriptions/:id/payment-method – retry with existing card ─
+// Builds a mock Stripe client that supports paying an open invoice plus the
+// card-attachment calls used by the new-card flow, so we can assert which
+// calls the retry-with-existing-card path skips.
+function buildRetryMockStripeClient(invoicePaid = true) {
+  const openInvoice = { id: "in_test_open_1", status: "open" };
+  return {
+    paymentMethods: {
+      attach: vi.fn().mockResolvedValue({ id: "pm_test_new" }),
+      retrieve: vi.fn().mockResolvedValue({ id: "pm_test_new", card: { last4: "1111", brand: "mastercard" } }),
+    },
+    customers: {
+      update: vi.fn().mockResolvedValue({ id: MOCK_CUSTOMER_ID }),
+    },
+    subscriptions: {
+      update: vi.fn().mockResolvedValue({ id: MOCK_SUBSCRIPTION_ID }),
+    },
+    invoices: {
+      list: vi.fn().mockResolvedValue({ data: [openInvoice] }),
+      pay: vi.fn().mockResolvedValue({ id: openInvoice.id, status: invoicePaid ? "paid" : "open" }),
+    },
+  };
+}
+
+async function insertBillableSubscription(overrides: Partial<typeof schema.subscriptions.$inferInsert> = {}) {
+  const [sub] = await db
+    .insert(schema.subscriptions)
+    .values({
+      agentId: billingAgentId,
+      merchantName: "Retry Test Merchant",
+      tier: "tier_1",
+      monthlyAmount: "199",
+      startDate: new Date(),
+      stripeCustomerId: MOCK_CUSTOMER_ID,
+      stripeSubscriptionId: MOCK_SUBSCRIPTION_ID,
+      stripePaymentMethodId: "pm_test_existing",
+      cardLast4: "4242",
+      cardBrand: "visa",
+      billingStatus: "past_due",
+      ...overrides,
+    })
+    .returning();
+  return sub;
+}
+
+describe("PATCH /api/subscriptions/:id/payment-method – retry with card on file", () => {
+  it("pays the open invoice with the existing payment method and skips re-attaching the card", async () => {
+    const mockStripe = buildRetryMockStripeClient(true);
+    useMockStripe(mockStripe as unknown as MockStripeClient);
+    const sub = await insertBillableSubscription();
+
+    const res = await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/payment-method`)
+      .set("Cookie", agentCookie)
+      .send({})
+      .expect(200);
+
+    // Pays the existing card's open invoice
+    expect(mockStripe.invoices.pay).toHaveBeenCalledTimes(1);
+    const [, payOpts] = mockStripe.invoices.pay.mock.calls[0];
+    expect(payOpts.payment_method).toBe("pm_test_existing");
+
+    // Skips the new-card attachment flow entirely
+    expect(mockStripe.paymentMethods.attach).not.toHaveBeenCalled();
+    expect(mockStripe.customers.update).not.toHaveBeenCalled();
+    expect(mockStripe.subscriptions.update).not.toHaveBeenCalled();
+
+    // Card on file is preserved, billing flips to active
+    expect(res.body.cardLast4).toBe("4242");
+    expect(res.body.cardBrand).toBe("visa");
+    expect(res.body.billingStatus).toBe("active");
+
+    await db.delete(schema.activityLog).where(eq(schema.activityLog.entityId, sub.id));
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("returns the decline code when the existing card is declined again", async () => {
+    const mockStripe = buildRetryMockStripeClient();
+    mockStripe.invoices.pay = vi.fn().mockRejectedValue(
+      Object.assign(new Error("Your card was declined."), { decline_code: "insufficient_funds" })
+    );
+    useMockStripe(mockStripe as unknown as MockStripeClient);
+    const sub = await insertBillableSubscription();
+
+    const res = await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/payment-method`)
+      .set("Cookie", agentCookie)
+      .send({})
+      .expect(200);
+
+    expect(res.body.billingStatus).toBe("failed");
+    expect(res.body.declineCode).toBe("insufficient_funds");
+
+    await db.delete(schema.activityLog).where(eq(schema.activityLog.entityId, sub.id));
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("rejects a retry when there is no card on file", async () => {
+    const mockStripe = buildRetryMockStripeClient();
+    useMockStripe(mockStripe as unknown as MockStripeClient);
+    const sub = await insertBillableSubscription({ stripePaymentMethodId: null, cardLast4: null, cardBrand: null });
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/payment-method`)
+      .set("Cookie", agentCookie)
+      .send({})
+      .expect(400);
+
+    expect(mockStripe.invoices.pay).not.toHaveBeenCalled();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+});
