@@ -98,7 +98,7 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" data-testid="button-notification-bell">
           <Bell className="w-5 h-5" />
           {(unreadCount?.count || 0) > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
@@ -134,6 +134,7 @@ export function NotificationBell() {
               {notifications.map((notification: Notification) => (
                 <div 
                   key={notification.id}
+                  data-testid={`notification-item-${notification.id}`}
                   className={cn(
                     "px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors",
                     !notification.isRead && "bg-blue-50/50"
@@ -151,7 +152,7 @@ export function NotificationBell() {
                         <p className={cn(
                           "text-sm",
                           !notification.isRead && "font-medium"
-                        )}>
+                        )} data-testid={`text-notification-title-${notification.id}`}>
                           {notification.title}
                         </p>
                         {getCommissionLabel(notification) && (
@@ -168,7 +169,7 @@ export function NotificationBell() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5" data-testid={`text-notification-message-${notification.id}`}>
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
