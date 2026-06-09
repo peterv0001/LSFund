@@ -857,6 +857,46 @@ describe("GET /api/subscriptions/history – activity entries after subscription
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
     }
   });
+
+  it("shows a reactivate entry with actorType 'agent' in the history after the agent self-service reactivates their subscription", async () => {
+    const sub = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: historyAgentId,
+        merchantName: "Agent Self-Service Reactivate Merchant",
+        tier: "tier_1",
+        monthlyAmount: "199.00",
+        status: "paused",
+      })
+      .returning()
+      .then(([r]) => r);
+
+    try {
+      await request(testApp)
+        .patch(`/api/subscriptions/${sub.id}/status`)
+        .set("Cookie", historyAgentCookie)
+        .send({ status: "active" })
+        .expect(200);
+
+      const entry = await pollForActivityLogEntry(sub.id, "reactivate");
+      expect(entry).toBeDefined();
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history")
+        .set("Cookie", historyAgentCookie)
+        .expect(200);
+
+      const match = res.body.logs.find(
+        (l: { action: string; entityId: number; actorType: string }) =>
+          l.action === "reactivate" && l.entityId === sub.id
+      );
+      expect(match).toBeDefined();
+      expect(match.actorType).toBe("agent");
+    } finally {
+      await cleanupActivityLog(sub.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
 });
 
 describe("GET /api/subscriptions/history – merchant name label", () => {
