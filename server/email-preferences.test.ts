@@ -750,3 +750,116 @@ describe("in-app notification delivery – admin route", () => {
     await cleanupAgent(agent.id);
   });
 });
+
+// ── Expiry email always reaches the agent ─────────────────────────────────────
+//
+// Unlike paused / cancelled / reactivated, the expiry email in the admin route
+// (PATCH /api/admin/subscriptions/:id/status) is dispatched UNCONDITIONALLY:
+// there is no `emailOnExpired` preference flag and the branch does not consult
+// emailPreferences at all. Expiry is a critical, time-sensitive account event
+// (commission accrual has stopped), so agents must always be notified.
+//
+// These tests lock that behaviour in so it cannot silently change: the expiry
+// email must fire even when EVERY other email preference is turned off, and
+// even when the agent's emailPreferences object is empty.
+
+describe("admin route – expiry email ignores email preferences", () => {
+  it("DOES send an expiry email even when every email preference is false", async () => {
+    const agent = await createAgent("admin-expired-all-off", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "expired" })
+      .expect(200);
+
+    await shortDelay();
+    expect(emailService.sendSubscriptionExpiredEmail).toHaveBeenCalledOnce();
+    expect(emailService.sendSubscriptionExpiredEmail).toHaveBeenCalledWith(
+      agent.email,
+      expect.objectContaining({ merchantName: "Test Merchant" })
+    );
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("DOES send an expiry email when emailPreferences is an empty object", async () => {
+    const agent = await createAgent("admin-expired-empty-prefs", {});
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "expired" })
+      .expect(200);
+
+    await shortDelay();
+    expect(emailService.sendSubscriptionExpiredEmail).toHaveBeenCalledOnce();
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("does NOT send paused/cancelled/reactivated emails when expiring", async () => {
+    // Expiry must dispatch ONLY the expiry email, never another lifecycle email.
+    const agent = await createAgent("admin-expired-only-expiry", {
+      emailOnPaused: true,
+      emailOnCancelled: true,
+      emailOnReactivated: true,
+    });
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "expired" })
+      .expect(200);
+
+    await shortDelay();
+    expect(emailService.sendSubscriptionExpiredEmail).toHaveBeenCalledOnce();
+    expect(emailService.sendSubscriptionPausedEmail).not.toHaveBeenCalled();
+    expect(emailService.sendSubscriptionCancelledEmail).not.toHaveBeenCalled();
+    expect(emailService.sendSubscriptionReactivatedEmail).not.toHaveBeenCalled();
+
+    await cleanupAgent(agent.id);
+  });
+});
+
+describe("in-app notification delivery – expiry via admin route", () => {
+  it("creates an expired notification even when every email preference is false", async () => {
+    const agent = await createAgent("notif-admin-expired", {
+      emailOnPaused: false,
+      emailOnCancelled: false,
+      emailOnReactivated: false,
+    });
+    const sub = await createSubscription(agent.id, "active");
+    const cookie = await loginAsAdmin();
+
+    await request(testApp)
+      .patch(`/api/admin/subscriptions/${sub.id}/status`)
+      .set("Cookie", cookie)
+      .send({ status: "expired" })
+      .expect(200);
+
+    await shortDelay(50);
+
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(notifs.length).toBeGreaterThan(0);
+    expect(
+      notifs.some(
+        (n) =>
+          n.title === "Subscription Expired: Test Merchant" &&
+          n.message?.includes("Test Merchant")
+      )
+    ).toBe(true);
+
+    await cleanupAgent(agent.id);
+  });
+});

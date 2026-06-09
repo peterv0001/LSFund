@@ -2309,6 +2309,10 @@ export async function registerRoutes(
             emailService.sendSubscriptionCancelledEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription cancelled email:', err));
           } else if (status === 'expired') {
+            // Intentionally NOT gated behind any emailPreferences flag. Expiry is a
+            // critical, time-sensitive account event (commission accrual has stopped
+            // and the merchant must re-subscribe), so there is no opt-out: agents must
+            // always be notified by email even if every other preference is disabled.
             emailService.sendSubscriptionExpiredEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription expired email:', err));
           } else if (isReactivation && prefs.emailOnReactivated !== false) {
