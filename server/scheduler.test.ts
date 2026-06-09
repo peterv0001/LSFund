@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("./storage.js", () => ({
   storage: {
@@ -246,6 +246,64 @@ describe("EXPIRY_CHECK_INTERVAL_MS – default value", () => {
     expect(interval).toBe(30_000);
     delete process.env.EXPIRY_CHECK_INTERVAL_MS;
     vi.resetModules();
+  });
+});
+
+// =========================================================
+// EXPIRY_CHECK_INTERVAL_MS — invalid value fallback + warning
+// =========================================================
+//
+// An operator who mistakenly sets EXPIRY_CHECK_INTERVAL_MS to 0, a negative
+// number, a fractional value, or a non-numeric string would otherwise break the
+// scheduler silently or spin it in a tight loop. The module must log a warning
+// and fall back to the 1-hour default in every one of these cases.
+
+describe("EXPIRY_CHECK_INTERVAL_MS – invalid value fallback", () => {
+  const savedEnv = process.env.EXPIRY_CHECK_INTERVAL_MS;
+
+  const loadWithValue = async (value: string) => {
+    process.env.EXPIRY_CHECK_INTERVAL_MS = value;
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.resetModules();
+    const { EXPIRY_CHECK_INTERVAL_MS: interval } = await import("./scheduler.js");
+    return { interval, warnSpy };
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    if (savedEnv === undefined) {
+      delete process.env.EXPIRY_CHECK_INTERVAL_MS;
+    } else {
+      process.env.EXPIRY_CHECK_INTERVAL_MS = savedEnv;
+    }
+    vi.resetModules();
+  });
+
+  const invalidValues: Array<[string, string]> = [
+    ["zero", "0"],
+    ["a negative number", "-5000"],
+    ["a non-numeric string", "abc"],
+    ["an empty string", ""],
+    ["whitespace only", "   "],
+    ["a fractional number", "1500.5"],
+    ["a numeric value with trailing junk", "30000ms"],
+    ["NaN", "NaN"],
+    ["Infinity", "Infinity"],
+  ];
+
+  for (const [label, value] of invalidValues) {
+    it(`falls back to 3 600 000 ms (1 hour) and warns when the value is ${label}`, async () => {
+      const { interval, warnSpy } = await loadWithValue(value);
+      expect(interval).toBe(3_600_000);
+      expect(warnSpy).toHaveBeenCalledOnce();
+      expect(warnSpy.mock.calls[0][0]).toContain("EXPIRY_CHECK_INTERVAL_MS");
+    });
+  }
+
+  it("does NOT warn and uses the parsed value for a valid positive integer", async () => {
+    const { interval, warnSpy } = await loadWithValue("45000");
+    expect(interval).toBe(45_000);
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
 

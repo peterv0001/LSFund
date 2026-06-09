@@ -1,9 +1,35 @@
 import { storage } from "./storage";
 import { emailService } from "./email";
 
-export const EXPIRY_CHECK_INTERVAL_MS = process.env.EXPIRY_CHECK_INTERVAL_MS
-  ? parseInt(process.env.EXPIRY_CHECK_INTERVAL_MS, 10)
-  : 60 * 60 * 1000; // default: 1 hour
+const DEFAULT_EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // default: 1 hour
+
+function resolveExpiryCheckIntervalMs(): number {
+  const raw = process.env.EXPIRY_CHECK_INTERVAL_MS;
+  if (raw === undefined) {
+    return DEFAULT_EXPIRY_CHECK_INTERVAL_MS;
+  }
+
+  const trimmed = raw.trim();
+  // Reject anything that is not a plain positive integer (no decimals, no
+  // leading/trailing junk, no signs). An operator who fat-fingers this value to
+  // 0, a negative number, or a non-numeric string would otherwise break the
+  // scheduler silently or spin it in a tight loop.
+  const parsed = Number(trimmed);
+  if (
+    trimmed === "" ||
+    !Number.isInteger(parsed) ||
+    parsed <= 0
+  ) {
+    console.warn(
+      `[Scheduler] Invalid EXPIRY_CHECK_INTERVAL_MS value "${raw}" — must be a positive integer (milliseconds). Falling back to the default of ${DEFAULT_EXPIRY_CHECK_INTERVAL_MS}ms (1 hour).`,
+    );
+    return DEFAULT_EXPIRY_CHECK_INTERVAL_MS;
+  }
+
+  return parsed;
+}
+
+export const EXPIRY_CHECK_INTERVAL_MS = resolveExpiryCheckIntervalMs();
 
 export async function warnUpcomingExpirations(): Promise<void> {
   try {
