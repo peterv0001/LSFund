@@ -27,7 +27,7 @@ import {
   Building2, User, DollarSign, FileText, CheckCircle2, AlertTriangle,
   Clock, CheckCheck
 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertDealSchema } from "@shared/schema";
@@ -300,12 +300,23 @@ function MCADealDialog() {
   const macEstimate = estimatedGbr * 0.22;
 
   const step1Fields: (keyof DealFormData)[] = [
-    "merchantName", "merchantPhone", "businessAddress", "businessCity", "businessState", "businessZip"
+    "merchantName", "merchantPhone", "businessAddress", "businessCity", "businessState", "businessZip", "merchantEmail", "ein"
   ];
   const step2Fields: (keyof DealFormData)[] = [
-    "ownerFirstName", "ownerLastName", "ownerPhone", "ownerOwnershipPct"
+    "ownerFirstName", "ownerLastName", "ownerPhone", "ownerOwnershipPct", "ownerEmail", "ownerSsn"
   ];
-  const step3Fields: (keyof DealFormData)[] = ["loanAmount", "avgMonthlyRevenue"];
+  const step3Fields: (keyof DealFormData)[] = ["loanAmount", "avgMonthlyRevenue", "requestedAmount", "gbrAmount"];
+
+  const fieldStep: Partial<Record<keyof DealFormData, number>> = {
+    merchantName: 1, merchantDba: 1, merchantEmail: 1, merchantPhone: 1,
+    businessType: 1, ein: 1, businessStartDate: 1, industry: 1,
+    businessAddress: 1, businessCity: 1, businessState: 1, businessZip: 1,
+    ownerFirstName: 2, ownerLastName: 2, ownerEmail: 2, ownerPhone: 2,
+    ownerDob: 2, ownerSsn: 2, ownerOwnershipPct: 2, ownerAddress: 2,
+    ownerCity: 2, ownerState: 2, ownerZip: 2,
+    requestedAmount: 3, useOfFunds: 3, loanAmount: 3, avgMonthlyRevenue: 3, gbrAmount: 3, programType: 3,
+    notes: 4, stateDisclosureConfirmed: 4,
+  };
 
   const validateStep = async (fields: (keyof DealFormData)[]) => {
     const result = await form.trigger(fields);
@@ -351,6 +362,21 @@ function MCADealDialog() {
         variant: "destructive",
       });
     }
+  };
+
+  const onInvalid = (errors: FieldErrors<DealFormData>) => {
+    const errorFields = Object.keys(errors) as (keyof DealFormData)[];
+    if (errorFields.length === 0) return;
+    const targetStep = Math.min(...errorFields.map((f) => fieldStep[f] ?? 4));
+    const firstFieldOnStep =
+      errorFields.find((f) => (fieldStep[f] ?? 4) === targetStep) ?? errorFields[0];
+    const message = errors[firstFieldOnStep]?.message as string | undefined;
+    setStep(targetStep);
+    toast({
+      title: "Please fix the highlighted fields",
+      description: message || "Some required information is missing or invalid.",
+      variant: "destructive",
+    });
   };
 
   return (
@@ -400,7 +426,7 @@ function MCADealDialog() {
               })}
             </div>
 
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
               {/* STEP 1: Business Information */}
               {step === 1 && (
                 <div className="space-y-4">
