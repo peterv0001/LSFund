@@ -273,6 +273,11 @@ describe("expireOverdueSubscriptions – side-effect errors do not abort the run
 // =========================================================
 // warnUpcomingExpirations — helpers
 // =========================================================
+//
+// The expiry warning email is a critical, time-sensitive operational
+// notification. Unlike paused/cancelled/reactivated/commission emails, it is
+// intentionally NOT gated behind any emailPreferences flag, so it must always
+// be sent to the agent — even when every email preference is turned off.
 
 const futureDate = (days: number) =>
   new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -412,11 +417,16 @@ describe("warnUpcomingExpirations – subscription expiring soon", () => {
 });
 
 // =========================================================
-// warnUpcomingExpirations — respects per-agent email preference
+// warnUpcomingExpirations — expiry warning is non-suppressible
 // =========================================================
+//
+// The expiry warning email is intentionally NOT gated behind any
+// emailPreferences flag, so it must always be sent to the agent — even when
+// every email preference is turned off. Other email types continue to respect
+// emailPreferences elsewhere.
 
-describe("warnUpcomingExpirations – email preference handling", () => {
-  it("skips the warning email when the agent opted out via emailOnExpiryWarning=false", async () => {
+describe("warnUpcomingExpirations – expiry warning is non-suppressible", () => {
+  it("sends the warning email even when emailOnExpiryWarning is explicitly false", async () => {
     const sub = makeWarningSubscription();
     mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub]);
     mockStorage.getAgent.mockResolvedValue({
@@ -426,13 +436,45 @@ describe("warnUpcomingExpirations – email preference handling", () => {
 
     await warnUpcomingExpirations();
 
-    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).not.toHaveBeenCalled();
-    // The in-app notification and the sent-marker should still fire.
+    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).toHaveBeenCalledOnce();
     expect(mockStorage.createNotification).toHaveBeenCalledOnce();
     expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledWith(sub.id);
   });
 
-  it("sends the warning email when the preference is unset (defaults to opted-in)", async () => {
+  it("sends the warning email even when every email preference is turned off", async () => {
+    const sub = makeWarningSubscription();
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub]);
+    mockStorage.getAgent.mockResolvedValue({
+      ...mockAgent,
+      emailPreferences: {
+        emailOnPaused: false,
+        emailOnCancelled: false,
+        emailOnReactivated: false,
+        emailOnDealFunded: false,
+        emailOnTeamSignup: false,
+        emailOnCommissionEarned: false,
+        emailOnPaymentRetrySuccess: false,
+        emailOnPaymentRetryFailed: false,
+      },
+    });
+
+    await warnUpcomingExpirations();
+
+    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).toHaveBeenCalledOnce();
+    expect(mockStorage.createNotification).toHaveBeenCalledOnce();
+  });
+
+  it("sends the warning email when emailPreferences is null", async () => {
+    const sub = makeWarningSubscription();
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub]);
+    mockStorage.getAgent.mockResolvedValue({ ...mockAgent, emailPreferences: null });
+
+    await warnUpcomingExpirations();
+
+    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).toHaveBeenCalledOnce();
+  });
+
+  it("sends the warning email when the preference is unset (empty object)", async () => {
     const sub = makeWarningSubscription();
     mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub]);
     mockStorage.getAgent.mockResolvedValue({ ...mockAgent, emailPreferences: {} });

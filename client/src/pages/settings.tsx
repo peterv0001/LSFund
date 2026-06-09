@@ -78,7 +78,7 @@ export default function SettingsPage() {
   });
 
   // Notification preferences state
-  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnExpiryWarning?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
   const [notifPrefs, setNotifPrefs] = useState({
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
@@ -86,7 +86,6 @@ export default function SettingsPage() {
     emailOnDealFunded: defaultPrefs.emailOnDealFunded !== false,
     emailOnTeamSignup: defaultPrefs.emailOnTeamSignup !== false,
     emailOnCommissionEarned: defaultPrefs.emailOnCommissionEarned !== false,
-    emailOnExpiryWarning: defaultPrefs.emailOnExpiryWarning !== false,
     emailOnPaymentRetrySuccess: defaultPrefs.emailOnPaymentRetrySuccess !== false,
     emailOnPaymentRetryFailed: defaultPrefs.emailOnPaymentRetryFailed !== false,
   });
@@ -566,13 +565,14 @@ export default function SettingsPage() {
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">Subscription Expiry Warning</Label>
                       <p className="text-xs text-muted-foreground">
-                        Receive an email when a subscription is approaching its expiry date.
+                        Always on. Expiry warnings are critical account alerts and cannot be turned off — you'll always be emailed before a subscription expires.
                       </p>
                     </div>
                     <Switch
                       data-testid="toggle-email-on-expiry-warning"
-                      checked={notifPrefs.emailOnExpiryWarning}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnExpiryWarning: checked }))}
+                      checked
+                      disabled
+                      aria-readonly
                     />
                   </div>
 
@@ -611,7 +611,7 @@ export default function SettingsPage() {
                     className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                    <span>You have disabled all subscription status email notifications. You will not receive emails when your subscriptions are paused, cancelled, or reactivated.</span>
+                    <span>You have disabled all subscription status email notifications. You will not receive emails when your subscriptions are paused, cancelled, or reactivated. Critical expiry warnings will still always be sent.</span>
                   </div>
                 )}
 

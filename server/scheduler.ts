@@ -31,6 +31,15 @@ export async function warnUpcomingExpirations(): Promise<void> {
 
         const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
 
+        // The expiry warning in-app notification and email are critical,
+        // time-sensitive operational notifications: they tell the agent that a
+        // subscription's commission accrual is about to stop and that the
+        // merchant must renew. Like the post-expiry email in the admin route
+        // (PATCH /api/admin/subscriptions/:id/status), they are intentionally
+        // NOT gated behind any emailPreferences flag — there is no opt-out, so
+        // agents are always warned even when every other email preference is
+        // turned off. Other email types (paused/cancelled/reactivated/etc.)
+        // continue to respect emailPreferences elsewhere.
         storage.createNotification({
           agentId: sub.agentId,
           type: 'system',
@@ -38,18 +47,13 @@ export async function warnUpcomingExpirations(): Promise<void> {
           message: `Your ${tierLabel} subscription for ${sub.merchantName} expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''} on ${expiryDate}. Commission accrual will stop at that time.`,
         }).catch((err) => console.error('[Scheduler] Failed to create expiry warning notification:', err));
 
-        const prefs = (agent.emailPreferences ?? {}) as Record<string, boolean>;
-        const sendWarningEmail = prefs.emailOnExpiryWarning !== false;
-
-        if (sendWarningEmail) {
-          emailService.sendSubscriptionExpiringWarningEmail(agent.email, {
-            firstName: agent.firstName,
-            merchantName: sub.merchantName,
-            tier: tierLabel,
-            expiryDate,
-            daysUntilExpiry,
-          }).catch((err) => console.error('[Scheduler] Failed to send subscription expiry warning email:', err));
-        }
+        emailService.sendSubscriptionExpiringWarningEmail(agent.email, {
+          firstName: agent.firstName,
+          merchantName: sub.merchantName,
+          tier: tierLabel,
+          expiryDate,
+          daysUntilExpiry,
+        }).catch((err) => console.error('[Scheduler] Failed to send subscription expiry warning email:', err));
 
         await storage.markSubscriptionWarningSent(sub.id);
 
