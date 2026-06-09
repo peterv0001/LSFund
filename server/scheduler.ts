@@ -5,7 +5,7 @@ export const EXPIRY_CHECK_INTERVAL_MS = process.env.EXPIRY_CHECK_INTERVAL_MS
   ? parseInt(process.env.EXPIRY_CHECK_INTERVAL_MS, 10)
   : 60 * 60 * 1000; // default: 1 hour
 
-async function warnUpcomingExpirations(): Promise<void> {
+export async function warnUpcomingExpirations(): Promise<void> {
   try {
     const savedDays = await storage.getPlatformSetting('expiryWarningDays');
     const rawDays = typeof savedDays === 'number' ? savedDays : 7;
