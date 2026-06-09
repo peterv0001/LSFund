@@ -56,10 +56,77 @@ describe("getActionStyle", () => {
       expect(style.dot).toBe("bg-green-500");
     });
 
+    it("returns green for mixed-case 'Subscription Created'", () => {
+      const style = getActionStyle("Subscription Created");
+      expect(style.color).toBe("text-green-700");
+      expect(style.dot).toBe("bg-green-500");
+    });
+
+    it("matches the ACTION_STYLES.create entry exactly", () => {
+      const style = getActionStyle("create");
+      expect(style).toEqual(ACTION_STYLES.create);
+    });
+
+    it("returns yellow for pause events", () => {
+      const style = getActionStyle("pause");
+      expect(style.color).toBe("text-yellow-700");
+      expect(style.dot).toBe("bg-yellow-500");
+    });
+
+    it("returns yellow for mixed-case 'Subscription Paused'", () => {
+      const style = getActionStyle("Subscription Paused");
+      expect(style.color).toBe("text-yellow-700");
+      expect(style.dot).toBe("bg-yellow-500");
+    });
+
+    it("matches the ACTION_STYLES.pause entry exactly", () => {
+      const style = getActionStyle("pause");
+      expect(style).toEqual(ACTION_STYLES.pause);
+    });
+
     it("returns red for cancel events", () => {
       const style = getActionStyle("cancel");
       expect(style.color).toBe("text-red-700");
       expect(style.dot).toBe("bg-red-500");
     });
+
+    it("returns red for mixed-case 'Subscription Cancelled'", () => {
+      const style = getActionStyle("Subscription Cancelled");
+      expect(style.color).toBe("text-red-700");
+      expect(style.dot).toBe("bg-red-500");
+    });
+
+    it("matches the ACTION_STYLES.cancel entry exactly", () => {
+      const style = getActionStyle("cancel");
+      expect(style).toEqual(ACTION_STYLES.cancel);
+    });
+
+    it("returns blue for reactivate events", () => {
+      const style = getActionStyle("reactivate");
+      expect(style.color).toBe("text-blue-700");
+      expect(style.dot).toBe("bg-blue-500");
+    });
+
+    it("returns blue for mixed-case 'Subscription Reactivated'", () => {
+      const style = getActionStyle("Subscription Reactivated");
+      expect(style.color).toBe("text-blue-700");
+      expect(style.dot).toBe("bg-blue-500");
+    });
+
+    it("matches the ACTION_STYLES.reactivate entry exactly", () => {
+      const style = getActionStyle("reactivate");
+      expect(style).toEqual(ACTION_STYLES.reactivate);
+    });
+  });
+
+  describe("named actions never use the gray fallback", () => {
+    it.each(["create", "pause", "cancel", "reactivate"])(
+      "does NOT return gray fallback for '%s'",
+      (action) => {
+        const style = getActionStyle(action);
+        expect(style.color).not.toBe(FALLBACK_STYLE.color);
+        expect(style.dot).not.toBe(FALLBACK_STYLE.dot);
+      }
+    );
   });
 });
