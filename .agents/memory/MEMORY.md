@@ -1,0 +1,1 @@
+- [Prod vs dev database](prod-vs-dev-database.md) — prod 401/stale-data while dev works: deployment runs on the DATABASE_URL snapshotted at publish time; republish to sync. Confirm prod URL via getDeploymentInfo.
