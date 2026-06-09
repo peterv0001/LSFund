@@ -2,6 +2,7 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
+import { buildSubscriptionExportCsv } from "@/lib/subscription-export";
 import {
   RefreshCw,
   Loader2,
@@ -710,44 +711,12 @@ export default function AdminSubscriptions() {
       "",
     ];
 
-    const headers = cols.map((c) => c.label);
-    const rows = filteredSubscriptions.map((s) =>
-      cols.map((c) => `"${getCellValue(c.key, s).replace(/"/g, '""')}"`).join(",")
-    );
-    const totalAmount = filteredSubscriptions.reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
-    const formattedTotal = `$${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const statusCounts: Record<string, number> = {};
-    const statusMrr: Record<string, number> = {};
-    for (const s of filteredSubscriptions) {
-      statusCounts[s.status] = (statusCounts[s.status] ?? 0) + 1;
-      statusMrr[s.status] = (statusMrr[s.status] ?? 0) + Number(s.monthlyAmount);
-    }
-    const statusOrder = ["active", "paused", "cancelled", "expired"];
-    const orderedStatuses = [
-      ...statusOrder.filter((st) => statusCounts[st]),
-      ...Object.keys(statusCounts).filter((st) => !statusOrder.includes(st)),
-    ];
-    const statusBreakdown = orderedStatuses.map((st) => `${statusCounts[st]} ${st}`).join(", ");
-    const mrrBreakdown = orderedStatuses.map((st) => {
-      const amt = statusMrr[st] ?? 0;
-      return `$${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${st}`;
-    }).join(", ");
-    const totalLabel = `${filteredSubscriptions.length} total`;
-    const countLabel = statusBreakdown ? `${totalLabel} (${statusBreakdown})` : totalLabel;
-    const summaryValues = cols.map((c, i) => {
-      if (i === 0) return "Total";
-      if (c.key === "monthlyAmount") return formattedTotal;
-      if (c.key === "status") return countLabel;
-      return "";
+    const csv = buildSubscriptionExportCsv({
+      cols,
+      subscriptions: filteredSubscriptions,
+      getCellValue,
+      metaLines,
     });
-    const summaryRow = summaryValues.map((v) => `"${v.replace(/"/g, '""')}"`).join(",");
-    const mrrBreakdownValues = cols.map((c, i) => {
-      if (i === 0) return "MRR by Status";
-      if (c.key === "monthlyAmount") return mrrBreakdown;
-      return "";
-    });
-    const mrrBreakdownRow = mrrBreakdownValues.map((v) => `"${v.replace(/"/g, '""')}"`).join(",");
-    const csv = [...metaLines, headers.join(","), ...rows, summaryRow, mrrBreakdownRow].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
