@@ -1458,6 +1458,45 @@ describe("GET /api/subscriptions/history – cross-agent read isolation", () => 
 });
 
 // =========================================================
+// GET /api/subscriptions/:id/history – cross-agent read isolation
+// Verifies that agent B cannot read the per-subscription activity
+// timeline of agent A's subscription by passing its ID.
+// =========================================================
+
+describe("GET /api/subscriptions/:id/history – cross-agent read isolation", () => {
+  it("blocks agent B from fetching agent A's per-subscription history by ID", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+
+    try {
+      await storage.logActivity({
+        actorId: agentRouteAgentId,
+        actorType: "agent",
+        action: "pause",
+        entityType: "subscription",
+        entityId: subOwnedByAgentA.id,
+        description: "Cross-agent per-subscription history isolation test entry",
+      });
+
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      const res = await request(testApp)
+        .get(`/api/subscriptions/${subOwnedByAgentA.id}/history`)
+        .set("Cookie", agentBCookie);
+
+      expect([403, 404]).toContain(res.status);
+      expect(res.status).not.toBe(200);
+    } finally {
+      await cleanupActivityLog(subOwnedByAgentA.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+    }
+  });
+});
+
+// =========================================================
 // Commission calculations – getActiveSubscriptionRevenue
 // =========================================================
 
