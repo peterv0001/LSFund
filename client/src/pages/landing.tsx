@@ -392,6 +392,18 @@ export default function LandingPage() {
               </Card>
             </AnimatedSection>
           </div>
+
+          <AnimatedSection delay={0.2}>
+            <div className="flex flex-col items-center text-center mt-14">
+              <a href="https://apply.myrmapp.com/multi-step-apply/pg" target="_blank" rel="noopener noreferrer" data-testid="link-apply-funding">
+                <Button size="lg" className="h-14 px-10 text-lg font-bold shadow-lg hover:scale-105 transition-all">
+                  Apply for Funding
+                  <ArrowRight className="w-5 h-5 ml-3" />
+                </Button>
+              </a>
+              <p className="text-xs text-muted-foreground mt-3">Quick application — funding available as fast as one business day.</p>
+            </div>
+          </AnimatedSection>
         </div>
       </section>
 
@@ -588,6 +600,12 @@ export default function LandingPage() {
                     </div>
                   ))}
                 </div>
+                <a href="https://apply.myrmapp.com/multi-step-apply/pg" target="_blank" rel="noopener noreferrer" data-testid="link-apply-mca-stream" className="block mt-6">
+                  <Button className="w-full h-12 bg-emerald-500 text-white font-bold hover:bg-emerald-600 shadow-lg">
+                    Apply for Funding
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </a>
               </div>
             </AnimatedSection>
 
