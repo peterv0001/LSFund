@@ -1,26 +1,53 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type BrowserContext } from "@playwright/test";
 
 const TS = Date.now();
 
 const AGENT_EMAIL = `e2e-deal-validation-${TS}@example.com`;
 const AGENT_PASSWORD = "E2eDealVal1!";
 
-async function loginAs(
-  page: import("@playwright/test").Page,
-  email: string,
-  password: string
-): Promise<void> {
-  const res = await page.context().request.post("/api/login", {
-    data: { username: email, password },
+// Share one authenticated context/page across the serial tests so we log in
+// only once and don't trip the login endpoint's rate limiting.
+test.describe.configure({ mode: "serial" });
+
+let context: BrowserContext;
+let page: Page;
+
+async function openWizard(): Promise<void> {
+  await page.goto("/deals");
+  await page.locator('[data-testid="button-submit-deal"]').click();
+  await expect(page.locator('[data-testid="input-merchant-name"]')).toBeVisible({
+    timeout: 10000,
   });
-  expect(res.ok()).toBeTruthy();
+}
+
+async function selectOption(triggerTestId: string, optionName: string): Promise<void> {
+  await page.locator(`[data-testid="${triggerTestId}"]`).click();
+  await page.getByRole("option", { name: optionName, exact: true }).click();
+}
+
+// Fill all required step-1 fields with valid values.
+async function fillStep1Valid(merchantName = "Validation Test LLC"): Promise<void> {
+  await page.locator('[data-testid="input-merchant-name"]').fill(merchantName);
+  await page.locator('[data-testid="input-merchant-phone"]').fill("5551234567");
+  await page.locator('[data-testid="input-business-address"]').fill("123 Main St");
+  await page.locator('[data-testid="input-business-city"]').fill("Austin");
+  await selectOption("select-business-state", "TX");
+  await page.locator('[data-testid="input-business-zip"]').fill("78701");
+}
+
+// Fill all required step-2 fields with valid values.
+async function fillStep2Valid(): Promise<void> {
+  await page.locator('[data-testid="input-owner-first-name"]').fill("John");
+  await page.locator('[data-testid="input-owner-last-name"]').fill("Smith");
+  await page.locator('[data-testid="input-owner-phone"]').fill("5559876543");
+  await page.locator('[data-testid="input-owner-pct"]').fill("100");
 }
 
 test.describe("MCA application wizard surfaces validation errors instead of failing silently", () => {
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.context().request.post("/api/register", {
+    context = await browser.newContext();
+    page = await context.newPage();
+    await context.request.post("/api/register", {
       data: {
         firstName: "Deal",
         lastName: `Val${TS}`,
@@ -30,40 +57,98 @@ test.describe("MCA application wizard surfaces validation errors instead of fail
       },
       failOnStatusCode: false,
     });
+    const res = await context.request.post("/api/login", {
+      data: { username: AGENT_EMAIL, password: AGENT_PASSWORD },
+    });
+    expect(res.ok()).toBeTruthy();
+  });
+
+  test.afterAll(async () => {
     await context.close();
   });
 
-  test("an invalid EIN shows a clear error and blocks advancing past step 1", async ({
-    page,
-  }) => {
-    await loginAs(page, AGENT_EMAIL, AGENT_PASSWORD);
-    await page.goto("/deals");
-
-    // Open the MCA application wizard.
-    await page.locator('[data-testid="button-submit-deal"]').click();
-    await expect(page.locator('[data-testid="input-merchant-name"]')).toBeVisible({
-      timeout: 10000,
-    });
-
-    // Fill the step-1 required text fields validly, but give a malformed EIN.
-    await page.locator('[data-testid="input-merchant-name"]').fill("Validation Test LLC");
-    await page.locator('[data-testid="input-merchant-phone"]').fill("5551234567");
-    await page.locator('[data-testid="input-business-address"]').fill("123 Main St");
-    await page.locator('[data-testid="input-business-city"]').fill("Austin");
-    await page.locator('[data-testid="input-business-zip"]').fill("78701");
+  test("an invalid EIN shows a clear error and blocks advancing past step 1", async () => {
+    await openWizard();
+    await fillStep1Valid();
     await page.locator('[data-testid="input-ein"]').fill("12-345");
 
-    // Attempt to advance. Previously a bad format here was swallowed silently.
     await page.locator('[data-testid="button-next-step"]').click();
 
-    // The EIN error must now be visible to the user...
-    await expect(page.getByText("EIN format: XX-XXXXXXX")).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(page.getByText("EIN format: XX-XXXXXXX")).toBeVisible({ timeout: 5000 });
+    // Still on step 1: the owner step heading should not be present.
+    await expect(page.getByText("Owner / Principal Information")).toHaveCount(0);
+  });
 
-    // ...and we must still be on step 1 (owner step heading should not appear).
+  test("an under-age date of birth shows a clear error and blocks advancing past step 2", async () => {
+    await openWizard();
+    await fillStep1Valid();
+    await page.locator('[data-testid="button-next-step"]').click();
+    await expect(page.getByText("Owner / Principal Information")).toBeVisible({ timeout: 5000 });
+
+    await fillStep2Valid();
+    // A date of birth that makes the owner under 18.
+    await page.locator('[data-testid="input-owner-dob"]').fill("2020-01-01");
+    await page.locator('[data-testid="button-next-step"]').click();
+
     await expect(
-      page.getByText("Owner / Principal Information")
-    ).toHaveCount(0);
+      page.getByText("Enter a valid date of birth (owner must be 18+)")
+    ).toBeVisible({ timeout: 5000 });
+    // Still on step 2: the step-3 (Funding) submit fields should not be present.
+    await expect(page.locator('[data-testid="input-requested-amount"]')).toHaveCount(0);
+  });
+
+  test("a fully valid application submits successfully and appears in the deals list", async () => {
+    test.setTimeout(60000);
+    const merchantName = `E2E Valid Merchant ${TS}`;
+
+    await openWizard();
+
+    // Step 1
+    await fillStep1Valid(merchantName);
+    await page.locator('[data-testid="button-next-step"]').click();
+    await expect(page.getByText("Owner / Principal Information")).toBeVisible({ timeout: 5000 });
+
+    // Step 2
+    await fillStep2Valid();
+    await page.locator('[data-testid="button-next-step"]').click();
+
+    // Step 3 — funding details (requested amount is required and gated)
+    await page.locator('[data-testid="input-requested-amount"]').fill("50000");
+    await page.locator('[data-testid="input-avg-monthly-revenue"]').fill("25000");
+    await page.locator('[data-testid="input-loan-amount"]').fill("50000");
+    await page.locator('[data-testid="button-next-step"]').click();
+
+    // Step 4 — review & submit
+    await expect(
+      page.getByRole("heading", { name: "Review & Submit" })
+    ).toBeVisible({ timeout: 5000 });
+    // The submit fires, then the button disables (isPending) and detaches as
+    // the dialog swaps to the success view. Playwright can't settle its
+    // post-click checks on that flapping element, so bound the click and rely
+    // on the success state below as the real verification.
+    try {
+      await page
+        .locator('[data-testid="button-submit-application"]')
+        .click({ timeout: 10000 });
+    } catch {
+      // Expected: element detaches as the success view renders.
+    }
+
+    // Success state confirms the deal was created with no silent failure.
+    await expect(page.locator('[data-testid="text-submission-success-title"]')).toHaveText(
+      "Application Submitted!",
+      { timeout: 10000 }
+    );
+
+    // Back to the list — the new deal should be visible in the deals table
+    // (scope to the table to avoid also matching the name in the success dialog).
+    try {
+      await page.locator('[data-testid="button-close-success"]').click({ timeout: 5000 });
+    } catch {
+      // Best effort: the success dialog may detach as it closes.
+    }
+    await expect(
+      page.locator("table").getByText(merchantName, { exact: false }).first()
+    ).toBeVisible({ timeout: 10000 });
   });
 });

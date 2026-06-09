@@ -70,6 +70,19 @@ const dealFormSchema = insertDealSchema.extend({
   ownerOwnershipPct: z.coerce.number().min(1).max(100),
   loanAmount: z.coerce.number().min(1000, "Minimum $1,000"),
   avgMonthlyRevenue: z.coerce.number().min(0, "Required"),
+  ownerDob: z
+    .string()
+    .optional()
+    .refine((v) => {
+      if (!v) return true;
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return false;
+      const now = new Date();
+      if (d > now) return false;
+      const ageYears =
+        (now.getTime() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+      return ageYears >= 18 && ageYears <= 120;
+    }, "Enter a valid date of birth (owner must be 18+)"),
   stateDisclosureConfirmed: z.boolean().optional(),
 });
 
@@ -303,7 +316,7 @@ function MCADealDialog() {
     "merchantName", "merchantPhone", "businessAddress", "businessCity", "businessState", "businessZip", "merchantEmail", "ein"
   ];
   const step2Fields: (keyof DealFormData)[] = [
-    "ownerFirstName", "ownerLastName", "ownerPhone", "ownerOwnershipPct", "ownerEmail", "ownerSsn"
+    "ownerFirstName", "ownerLastName", "ownerPhone", "ownerOwnershipPct", "ownerEmail", "ownerSsn", "ownerDob"
   ];
   const step3Fields: (keyof DealFormData)[] = ["loanAmount", "avgMonthlyRevenue", "requestedAmount", "gbrAmount"];
 
@@ -496,6 +509,9 @@ function MCADealDialog() {
                     <div className="space-y-1.5">
                       <Label>Business Email</Label>
                       <Input data-testid="input-merchant-email" type="email" placeholder="info@business.com" {...form.register("merchantEmail")} />
+                      {form.formState.errors.merchantEmail && (
+                        <p className="text-xs text-destructive">{form.formState.errors.merchantEmail.message}</p>
+                      )}
                     </div>
 
                     <div className="col-span-2 space-y-1.5">
@@ -597,11 +613,17 @@ function MCADealDialog() {
                     <div className="space-y-1.5">
                       <Label>Email</Label>
                       <Input data-testid="input-owner-email" type="email" placeholder="owner@business.com" {...form.register("ownerEmail")} />
+                      {form.formState.errors.ownerEmail && (
+                        <p className="text-xs text-destructive">{form.formState.errors.ownerEmail.message}</p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
                       <Label>Date of Birth</Label>
                       <Input data-testid="input-owner-dob" type="date" {...form.register("ownerDob")} />
+                      {form.formState.errors.ownerDob && (
+                        <p className="text-xs text-destructive">{form.formState.errors.ownerDob.message}</p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
