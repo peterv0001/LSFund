@@ -906,6 +906,19 @@ export const api = {
       },
     },
 
+    // System Info (read-only operational config)
+    systemInfo: {
+      get: {
+        method: 'GET' as const,
+        path: '/api/admin/system-info',
+        responses: {
+          200: z.object({
+            expiryCheckIntervalMs: z.number(),
+          }),
+        },
+      },
+    },
+
     // Webhook Status
     webhookStatus: {
       get: {

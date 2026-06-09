@@ -17,6 +17,7 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
+  Clock,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,20 @@ type WebhookStatus = {
   endpointActive: boolean | null;
 };
 
+type SystemInfo = {
+  expiryCheckIntervalMs: number;
+};
+
+function formatInterval(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return `${ms} ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds % 1 === 0 ? seconds : seconds.toFixed(1)} sec`;
+  const minutes = seconds / 60;
+  if (minutes < 60) return `${minutes % 1 === 0 ? minutes : minutes.toFixed(1)} min`;
+  const hours = minutes / 60;
+  return `${hours % 1 === 0 ? hours : hours.toFixed(1)} hr`;
+}
+
 export default function AdminSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -67,6 +82,10 @@ export default function AdminSettings() {
 
   const { data: webhookStatus, isLoading: webhookLoading, refetch: refetchWebhook } = useQuery<WebhookStatus>({
     queryKey: [api.admin.webhookStatus.get.path],
+  });
+
+  const { data: systemInfo, isLoading: systemInfoLoading } = useQuery<SystemInfo>({
+    queryKey: [api.admin.systemInfo.get.path],
   });
 
   const testWebhookMutation = useMutation({
@@ -521,6 +540,49 @@ export default function AdminSettings() {
                         </div>
                       </div>
                     </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* System Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Clock className="w-5 h-5 text-primary" />
+                    System Info
+                  </CardTitle>
+                  <CardDescription>
+                    Read-only view of the active operational configuration
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {systemInfoLoading ? (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Loading system info…</span>
+                    </div>
+                  ) : !systemInfo ? (
+                    <p className="text-sm text-gray-500">Unable to load system info.</p>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <div>
+                        <p className="font-medium text-gray-700">Subscription expiry check interval</p>
+                        <p className="text-gray-500">
+                          How often the scheduler checks for expiring subscriptions
+                          (<code className="font-mono">EXPIRY_CHECK_INTERVAL_MS</code>)
+                        </p>
+                      </div>
+                      <Badge
+                        data-testid="badge-expiry-check-interval"
+                        variant="secondary"
+                        className="font-mono whitespace-nowrap"
+                      >
+                        {formatInterval(systemInfo.expiryCheckIntervalMs)}
+                        <span className="text-gray-400 ml-1">
+                          ({systemInfo.expiryCheckIntervalMs.toLocaleString()} ms)
+                        </span>
+                      </Badge>
+                    </div>
                   )}
                 </CardContent>
               </Card>

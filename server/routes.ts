@@ -17,7 +17,7 @@ import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
-import { resolveExpiryWarningDays } from "./scheduler";
+import { resolveExpiryWarningDays, EXPIRY_CHECK_INTERVAL_MS } from "./scheduler";
 import rateLimit from "express-rate-limit";
 
 // Extend Express User type
@@ -2958,6 +2958,11 @@ export async function registerRoutes(
       }
       res.status(500).json({ message: "Failed to save settings" });
     }
+  });
+
+  // System Info — read-only operational config (e.g. scheduler interval)
+  app.get(api.admin.systemInfo.get.path, requireAdmin, async (_req, res) => {
+    res.json({ expiryCheckIntervalMs: EXPIRY_CHECK_INTERVAL_MS });
   });
 
   // Webhook Status
