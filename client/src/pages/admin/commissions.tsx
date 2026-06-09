@@ -315,13 +315,13 @@ export default function AdminCommissions() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Pending Commissions</CardDescription>
-                  <CardTitle className="text-3xl" data-testid="text-pending-count">{pendingCommissions?.length || 0}</CardTitle>
+                  <CardTitle className="text-3xl font-mono" data-testid="text-pending-count">{pendingCommissions?.length || 0}</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Total Pending Amount</CardDescription>
-                  <CardTitle className="text-3xl text-emerald-600" data-testid="text-pending-amount">${totalPending.toLocaleString()}</CardTitle>
+                  <CardTitle className="text-3xl font-mono text-emerald-600" data-testid="text-pending-amount">${totalPending.toLocaleString()}</CardTitle>
                 </CardHeader>
               </Card>
               <Card className="flex flex-col justify-center">
@@ -453,7 +453,7 @@ export default function AdminCommissions() {
                           <TableCell className="text-muted-foreground">
                             {format(new Date(comm.createdAt), "MMM d, yyyy")}
                           </TableCell>
-                          <TableCell className="text-right font-bold text-emerald-600" data-testid={`text-amount-${comm.id}`}>
+                          <TableCell className="text-right font-mono font-bold text-emerald-600" data-testid={`text-amount-${comm.id}`}>
                             ${Number(comm.amount).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
@@ -489,13 +489,13 @@ export default function AdminCommissions() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Active Holdbacks</CardDescription>
-                  <CardTitle className="text-3xl" data-testid="text-holdback-count">{heldHoldbacks.length}</CardTitle>
+                  <CardTitle className="text-3xl font-mono" data-testid="text-holdback-count">{heldHoldbacks.length}</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Total Held Amount</CardDescription>
-                  <CardTitle className="text-3xl text-primary" data-testid="text-held-amount">${totalHeld.toLocaleString(undefined, { minimumFractionDigits: 2 })}</CardTitle>
+                  <CardTitle className="text-3xl font-mono text-primary" data-testid="text-held-amount">${totalHeld.toLocaleString(undefined, { minimumFractionDigits: 2 })}</CardTitle>
                 </CardHeader>
               </Card>
               <Card className="flex flex-col justify-center">
@@ -682,13 +682,13 @@ export default function AdminCommissions() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Total Subscriptions</CardDescription>
-                  <CardTitle className="text-3xl" data-testid="text-sub-count">{(subscriptionsData as any[] || []).length}</CardTitle>
+                  <CardTitle className="text-3xl font-mono" data-testid="text-sub-count">{(subscriptionsData as any[] || []).length}</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Active Subscriptions</CardDescription>
-                  <CardTitle className="text-3xl text-emerald-600" data-testid="text-active-sub-count">
+                  <CardTitle className="text-3xl font-mono text-emerald-600" data-testid="text-active-sub-count">
                     {(subscriptionsData as any[] || []).filter((s: any) => s.status === 'active').length}
                   </CardTitle>
                 </CardHeader>

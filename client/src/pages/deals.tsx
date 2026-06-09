@@ -198,12 +198,12 @@ export default function DealsPage() {
                           <span className="ml-1 text-xs text-amber-600 font-medium">⚠ Disclosure</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono font-medium">
                         {(deal as any).requestedAmount
                           ? `$${Number((deal as any).requestedAmount).toLocaleString()}`
                           : `$${Number(deal.loanAmount).toLocaleString()}`}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
                         {(deal as any).avgMonthlyRevenue
                           ? `$${Number((deal as any).avgMonthlyRevenue).toLocaleString()}/mo`
                           : '—'}
@@ -732,18 +732,18 @@ function MCADealDialog() {
 
                   {loanAmount > 0 && (
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-2">
-                      <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Estimated Commission Preview</p>
+                      <p className="text-xs font-mono font-semibold text-blue-800 uppercase tracking-wide">Estimated Commission Preview</p>
                       <div className="grid grid-cols-3 gap-3 text-center">
                         <div className="bg-white rounded-lg p-3 border border-blue-100">
-                          <p className="text-lg font-bold text-emerald-600">${estimatedGbr.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                          <p className="text-lg font-mono font-bold text-emerald-600">${estimatedGbr.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                           <p className="text-xs text-gray-500">Est. GBR (10%)</p>
                         </div>
                         <div className="bg-white rounded-lg p-3 border border-blue-100">
-                          <p className="text-lg font-bold text-primary">${macEstimate.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                          <p className="text-lg font-mono font-bold text-primary">${macEstimate.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                           <p className="text-xs text-gray-500">Your MAC (22%)</p>
                         </div>
                         <div className="bg-white rounded-lg p-3 border border-blue-100">
-                          <p className="text-lg font-bold text-blue-600">
+                          <p className="text-lg font-mono font-bold text-blue-600">
                             {avgMonthly > 0 ? `${((Number(loanAmount) / Number(avgMonthly)) * 100).toFixed(0)}%` : '—'}
                           </p>
                           <p className="text-xs text-gray-500">Loan/Rev Ratio</p>

@@ -120,7 +120,7 @@ export default function LeaderboardsPage() {
                         </div>
                         <div className="text-right">
                           <p className={cn(
-                            "font-bold",
+                            "font-mono font-bold",
                             index === 0 ? "text-yellow-600 text-xl" : "text-emerald-600"
                           )}>
                             ${agent.totalEarned.toLocaleString()}

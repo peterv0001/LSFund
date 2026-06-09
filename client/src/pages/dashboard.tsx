@@ -297,11 +297,11 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium">Left Leg Volume</span>
-                  <span className="font-bold text-primary">$0</span>
+                  <span className="font-mono font-bold text-primary">$0</span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium">Right Leg Volume</span>
-                  <span className="font-bold text-primary">$0</span>
+                  <span className="font-mono font-bold text-primary">$0</span>
                 </div>
               </div>
             </div>

@@ -966,7 +966,7 @@ export default function AdminSubscriptions() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Active</p>
-                    <p className="text-2xl font-bold text-gray-900" data-testid="text-active-count">{activeCount}</p>
+                    <p className="text-2xl font-mono font-bold text-gray-900" data-testid="text-active-count">{activeCount}</p>
                   </div>
                 </div>
               </CardContent>
@@ -979,7 +979,7 @@ export default function AdminSubscriptions() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">MRR</p>
-                    <p className="text-2xl font-bold text-gray-900" data-testid="text-mrr">
+                    <p className="text-2xl font-mono font-bold text-gray-900" data-testid="text-mrr">
                       ${mrr.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
                   </div>
@@ -994,7 +994,7 @@ export default function AdminSubscriptions() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Total Subscriptions</p>
-                    <p className="text-2xl font-bold text-gray-900" data-testid="text-total-subs">{totalSubs}</p>
+                    <p className="text-2xl font-mono font-bold text-gray-900" data-testid="text-total-subs">{totalSubs}</p>
                   </div>
                 </div>
               </CardContent>
@@ -1695,7 +1695,7 @@ export default function AdminSubscriptions() {
                     (matches CSV export)
                   </span>
                   <span
-                    className="ml-auto text-sm font-bold text-gray-900"
+                    className="ml-auto text-sm font-mono font-bold text-gray-900"
                     data-testid="text-mrr-total"
                   >
                     {formatMrr(mrrByStatus.total)} total
@@ -1711,7 +1711,7 @@ export default function AdminSubscriptions() {
                       }`}
                     >
                       <span
-                        className="text-sm font-bold"
+                        className="text-sm font-mono font-bold"
                         data-testid={`text-mrr-amount-${item.status}`}
                       >
                         {formatMrr(item.amount)}
@@ -1790,7 +1790,7 @@ export default function AdminSubscriptions() {
                         <TableCell className="text-sm">
                           {TIER_LABELS[sub.tier] ?? sub.tier}
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-mono font-medium">
                           ${Number(sub.monthlyAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>

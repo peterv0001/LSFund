@@ -207,7 +207,7 @@ export default function AdminPayoutsPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Pending Payouts</CardDescription>
-              <CardTitle className="text-2xl text-primary">
+              <CardTitle className="text-2xl font-mono text-primary">
                 ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </CardTitle>
             </CardHeader>
@@ -221,7 +221,7 @@ export default function AdminPayoutsPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Paid (All Time)</CardDescription>
-              <CardTitle className="text-2xl text-emerald-600">
+              <CardTitle className="text-2xl font-mono text-emerald-600">
                 ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </CardTitle>
             </CardHeader>
@@ -235,7 +235,7 @@ export default function AdminPayoutsPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>This Week</CardDescription>
-              <CardTitle className="text-2xl">
+              <CardTitle className="text-2xl font-mono">
                 {payouts.filter(p => {
                   const created = new Date(p.createdAt);
                   const weekAgo = subWeeks(new Date(), 1);
@@ -251,7 +251,7 @@ export default function AdminPayoutsPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Agents with Pending</CardDescription>
-              <CardTitle className="text-2xl">
+              <CardTitle className="text-2xl font-mono">
                 {new Set(pendingPayouts.map(p => p.agentId)).size}
               </CardTitle>
             </CardHeader>
@@ -340,7 +340,7 @@ export default function AdminPayoutsPage() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{getStatusBadge(payout.status)}</TableCell>
-                                <TableCell className="text-right font-semibold">
+                                <TableCell className="text-right font-mono font-semibold">
                                   ${Number(payout.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -437,7 +437,7 @@ export default function AdminPayoutsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">{p.commissionCount}</TableCell>
-                            <TableCell className="text-right font-semibold text-emerald-600">
+                            <TableCell className="text-right font-mono font-semibold text-emerald-600">
                               ${p.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </TableCell>
                           </TableRow>
@@ -447,7 +447,7 @@ export default function AdminPayoutsPage() {
                   </div>
                   <div className="bg-gray-50 px-4 py-3 flex justify-between font-medium">
                     <span>Total</span>
-                    <span className="text-emerald-600">
+                    <span className="font-mono text-emerald-600">
                       ${preview.reduce((sum, p) => sum + p.totalAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -498,7 +498,7 @@ export default function AdminPayoutsPage() {
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="text-muted-foreground">Amount</span>
-                    <span className="font-semibold text-emerald-600">
+                    <span className="font-mono font-semibold text-emerald-600">
                       ${Number(showMarkPaidDialog.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>

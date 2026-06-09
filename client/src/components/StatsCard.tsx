@@ -19,8 +19,8 @@ export function StatsCard({ title, value, icon, trend, trendUp, className }: Sta
     )}>
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
-          <h3 className="mt-2 text-3xl font-display font-bold text-primary">{value}</h3>
+          <p className="text-sm font-mono font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
+          <h3 className="mt-2 text-3xl font-mono font-bold text-primary">{value}</h3>
           
           {trend && (
             <div className={cn(

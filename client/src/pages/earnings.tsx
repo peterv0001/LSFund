@@ -98,9 +98,9 @@ export default function EarningsPage() {
           <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-6 text-white shadow-xl">
             <div className="flex items-center gap-3 mb-4 opacity-80">
               <Wallet className="w-5 h-5" />
-              <span className="text-sm font-medium uppercase tracking-wider">Total Earned</span>
+              <span className="text-sm font-mono font-medium uppercase tracking-wider">Total Earned</span>
             </div>
-            <div className="text-3xl font-bold mb-1" data-testid="text-total-earned">
+            <div className="text-3xl font-mono font-bold mb-1" data-testid="text-total-earned">
               ${statsLoading ? '...' : totalEarned.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
             <div className="text-white/60 text-sm">Lifetime earnings across all streams</div>
@@ -109,9 +109,9 @@ export default function EarningsPage() {
           <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-4 text-muted-foreground">
               <DollarSign className="w-5 h-5" />
-              <span className="text-sm font-medium uppercase tracking-wider">Pending Payout</span>
+              <span className="text-sm font-mono font-medium uppercase tracking-wider">Pending Payout</span>
             </div>
-            <div className="text-3xl font-bold text-primary mb-1" data-testid="text-pending-payout">
+            <div className="text-3xl font-mono font-bold text-primary mb-1" data-testid="text-pending-payout">
               ${statsLoading ? '...' : pendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
             <div className="text-muted-foreground text-sm">Scheduled for next Friday</div>
@@ -120,9 +120,9 @@ export default function EarningsPage() {
           <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-4 text-muted-foreground">
               <Shield className="w-5 h-5" />
-              <span className="text-sm font-medium uppercase tracking-wider">MCA Earnings</span>
+              <span className="text-sm font-mono font-medium uppercase tracking-wider">MCA Earnings</span>
             </div>
-            <div className="text-3xl font-bold text-blue-600 mb-1" data-testid="text-mca-earnings">
+            <div className="text-3xl font-mono font-bold text-blue-600 mb-1" data-testid="text-mca-earnings">
               ${statsLoading ? '...' : mcaEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
             <div className="text-muted-foreground text-sm">MAC + TFC commissions</div>
@@ -131,9 +131,9 @@ export default function EarningsPage() {
           <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-4 text-muted-foreground">
               <Clock className="w-5 h-5" />
-              <span className="text-sm font-medium uppercase tracking-wider">Subscription</span>
+              <span className="text-sm font-mono font-medium uppercase tracking-wider">Subscription</span>
             </div>
-            <div className="text-3xl font-bold text-purple-600 mb-1" data-testid="text-subscription-earnings">
+            <div className="text-3xl font-mono font-bold text-purple-600 mb-1" data-testid="text-subscription-earnings">
               ${statsLoading ? '...' : subscriptionEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
             <div className="text-muted-foreground text-sm">Platform subscription income</div>
@@ -178,7 +178,7 @@ export default function EarningsPage() {
                       <td className="px-6 py-4 text-sm text-gray-600" data-testid={`text-description-${comm.id}`}>
                         {getCommissionDescription(comm)}
                       </td>
-                      <td className="px-6 py-4 text-sm font-bold text-emerald-600 text-right" data-testid={`text-amount-${comm.id}`}>
+                      <td className="px-6 py-4 text-sm font-mono font-bold text-emerald-600 text-right" data-testid={`text-amount-${comm.id}`}>
                         +${Number(comm.amount).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 text-center">
