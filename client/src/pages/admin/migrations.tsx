@@ -1,4 +1,5 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Database, CheckCircle2, Clock, RotateCcw, AlertTriangle, Play, RefreshCw, ShieldCheck, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,7 @@ export default function AdminMigrations() {
     <div className="min-h-screen bg-gray-50 flex">
       <AdminSidebar />
       <main className="flex-1 ml-64 p-8">
+        <SchemaDriftBanner />
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3 mb-8">
             <Database className="w-6 h-6 text-primary" />

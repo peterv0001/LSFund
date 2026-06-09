@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrlWithQuery, buildUrl } from "@shared/routes";
 import { 
@@ -223,6 +224,7 @@ export default function AdminAgents() {
       <AdminSidebar />
       
       <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
+        <SchemaDriftBanner />
         <header className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Agent Management</h1>

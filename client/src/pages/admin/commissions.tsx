@@ -1,4 +1,5 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
@@ -291,6 +292,7 @@ export default function AdminCommissions() {
       <AdminSidebar />
 
       <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
+        <SchemaDriftBanner />
         <header className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900" data-testid="text-page-title">Commission Management</h1>

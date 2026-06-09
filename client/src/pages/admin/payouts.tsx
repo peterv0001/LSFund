@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
 import { api } from "@shared/routes";
 import { 
   DollarSign, 
@@ -183,6 +184,7 @@ export default function AdminPayoutsPage() {
       <AdminSidebar />
       
       <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
+        <SchemaDriftBanner />
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-primary flex items-center gap-3">

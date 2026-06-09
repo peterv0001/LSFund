@@ -1,4 +1,5 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
@@ -146,6 +147,7 @@ export default function AdminSettings() {
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
       <main className="flex-1 ml-64 p-8">
+        <SchemaDriftBanner />
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8">

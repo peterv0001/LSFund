@@ -1,4 +1,5 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
 import { useQuery } from "@tanstack/react-query";
 import { buildUrlWithQuery } from "@shared/routes";
 import {
@@ -351,6 +352,7 @@ export default function AdminActivityLog() {
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
       <main className="flex-1 ml-64 p-8">
+        <SchemaDriftBanner />
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
