@@ -153,6 +153,11 @@ export default function LandingPage() {
             <Link href="/login">
               <Button variant="ghost" size="sm" className={scrolled ? '' : 'text-white hover:bg-white/10 hover:text-white'} data-testid="button-login">Agent Login</Button>
             </Link>
+            <a href="https://apply.myrmapp.com/multi-step-apply/pg" target="_blank" rel="noopener noreferrer" data-testid="link-apply-now">
+              <Button variant="outline" size="sm" className={scrolled ? '' : 'border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white'}>
+                Apply Now
+              </Button>
+            </a>
             <Link href="/signup">
               <Button size="sm" className="bg-white text-primary font-semibold hover:bg-white/90 shadow-md" data-testid="button-join">
                 Join Now
