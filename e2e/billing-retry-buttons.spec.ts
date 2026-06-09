@@ -81,6 +81,53 @@ async function setupBillingFailedSubscription(
   return { agentEmail, subId };
 }
 
+/**
+ * Same as setupBillingFailedSubscription but explicitly leaves
+ * stripe_subscription_id NULL — simulating a manually-created subscription
+ * with no Stripe integration that has nonetheless been marked past_due.
+ */
+async function setupBillingFailedSubscriptionNoStripe(
+  page: import("@playwright/test").Page,
+  suffix: string
+): Promise<{ agentEmail: string; subId: number }> {
+  const agentEmail = `e2e-billing-retry-nostripe-${suffix}-${TS}@example.com`;
+  const agentPassword = "E2eBillingRetry1!";
+
+  await page.context().request.post("/api/register", {
+    data: {
+      firstName: "BillingRetryNoStripe",
+      lastName: `E2E${suffix}${TS}`,
+      email: agentEmail,
+      password: agentPassword,
+      referralCode: "",
+    },
+    failOnStatusCode: false,
+  });
+  await loginAs(page, agentEmail, agentPassword);
+
+  const subRes = await page.context().request.post("/api/subscriptions", {
+    data: { merchantName: `BillingRetryNoStripeE2E ${suffix} ${TS}`, tier: "tier_1" },
+  });
+  expect(subRes.ok()).toBeTruthy();
+  const body = await subRes.json();
+  const subId = body.id as number;
+
+  const pool = makePool();
+  try {
+    await pool.query(
+      `UPDATE subscriptions
+          SET billing_status        = 'past_due',
+              stripe_subscription_id = NULL
+        WHERE id = $1`,
+      [subId]
+    );
+  } finally {
+    await pool.end();
+  }
+
+  return { agentEmail, subId };
+}
+
 async function cleanupSubscriptionAndAgent(agentEmail: string, subId: number): Promise<void> {
   const pool = makePool();
   try {
@@ -247,5 +294,57 @@ test.describe("Billing-failed subscriptions – admin 'Retry' button", () => {
     expect(response.status()).not.toBe(401);
     expect(response.status()).not.toBe(403);
     expect(response.status()).toBe(400);
+  });
+});
+
+// ─── Suite 3: Buttons hidden when stripeSubscriptionId is missing ─────────────
+
+test.describe("Past_due subscriptions without a Stripe subscription id", () => {
+  let agentEmail: string;
+  const agentPassword = "E2eBillingRetry1!";
+  let subId: number;
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    const setup = await setupBillingFailedSubscriptionNoStripe(page, "nostripe");
+    agentEmail = setup.agentEmail;
+    subId = setup.subId;
+    await page.close();
+  });
+
+  test.afterAll(async () => {
+    await cleanupSubscriptionAndAgent(agentEmail, subId);
+  });
+
+  test("agent billing warning banner is still visible (banner does not require a Stripe id)", async ({ page }) => {
+    await loginAs(page, agentEmail, agentPassword);
+    await page.goto("/subscriptions");
+    await expect(
+      page.getByTestId(`banner-payment-failed-${subId}`)
+    ).toBeVisible({ timeout: 10000 });
+  });
+
+  test("agent 'Update Card' button does NOT appear when stripe_subscription_id is NULL", async ({ page }) => {
+    await loginAs(page, agentEmail, agentPassword);
+    await page.goto("/subscriptions");
+
+    // Anchor on the banner so we know the subscription has rendered before
+    // asserting the button is absent (avoids a trivially-passing assertion).
+    await expect(
+      page.getByTestId(`banner-payment-failed-${subId}`)
+    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`button-update-card-${subId}`)).toHaveCount(0);
+  });
+
+  test("admin 'Retry' button does NOT appear when stripe_subscription_id is NULL", async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/admin/subscriptions");
+
+    // Anchor on the subscription row so we know it rendered before asserting
+    // the retry button is absent (avoids a trivially-passing assertion).
+    await expect(
+      page.getByTestId(`row-subscription-${subId}`)
+    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`button-retry-payment-${subId}`)).toHaveCount(0);
   });
 });
