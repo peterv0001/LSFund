@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+Allow: /lp/
+Allow: /privacy
+Allow: /refund-policy
+Allow: /terms
+Allow: /income-disclosure
+Allow: /login
+Allow: /signup
+
+Disallow: /api/
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /team
+Disallow: /deals
+Disallow: /earnings
+Disallow: /settings
+Disallow: /rank
+Disallow: /leaderboards
+Disallow: /resources
+Disallow: /reports
+Disallow: /training
+Disallow: /leads
+Disallow: /subscriptions
+
+Sitemap: https://leadershieldfunding.com/sitemap.xml

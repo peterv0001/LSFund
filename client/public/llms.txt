@@ -1,0 +1,33 @@
+# Leader Shield Funding
+
+> Leader Shield Funding is a network marketing platform for Merchant Cash Advance (MCA) lending and recurring subscription products. Agents earn multi-tiered commissions by referring merchants and recruiting new agents via binary tree hierarchy.
+> URL: https://leadershieldfunding.com
+
+## Key Pages
+
+- [Homepage](https://leadershieldfunding.com/): Main marketing and recruitment landing page with full compensation plan details, income lifestyle scenarios, and agent sign-up CTA.
+- [Income Disclosure](https://leadershieldfunding.com/income-disclosure): FTC-compliant earnings disclosure for prospective agents.
+- [Terms of Service](https://leadershieldfunding.com/terms): Platform terms and conditions.
+- [Privacy Policy](https://leadershieldfunding.com/privacy): Data collection and privacy practices.
+- [Refund Policy](https://leadershieldfunding.com/refund-policy): Subscription and service refund terms.
+
+## Campaign Pages
+
+- [MCA for Declined Merchants](https://leadershieldfunding.com/lp/declined): Landing page for merchants who were declined by traditional banks.
+- [MCA for Debt Consolidation](https://leadershieldfunding.com/lp/consolidation): Landing page for merchants seeking to consolidate existing advances.
+- [Growth Capital](https://leadershieldfunding.com/lp/growth): Landing page for merchants seeking growth capital.
+- [Seasonal Funding](https://leadershieldfunding.com/lp/seasonal): Landing page for merchants with seasonal cash flow needs.
+- [For Partners & ISOs](https://leadershieldfunding.com/lp/partners): Partner and call center ISO recruitment page.
+- [Agent Referral Program](https://leadershieldfunding.com/lp/referral): Agent referral and recruitment landing page.
+
+## Products
+
+- **Merchant Cash Advance (MCA):** Capital access for merchants with commissions earned by agents on funded deals via GBR waterfall.
+- **Merchant Growth Platform — Tier 1 (Merchant Essentials, $199/mo):** Financial reporting, forecasting, AI expense categorization, credit monitoring.
+- **Merchant Growth Platform — Tier 2 (Growth Accelerator, $429/mo):** Google Business optimization, automated reviews, marketing automation, CRM, AI chatbot.
+- **Merchant Growth Platform — Tier 3 (Elite AI Revenue System, $749/mo):** AI lead generation, appointment automation, conversion funnels, ad intelligence.
+
+## Agent Sign-Up
+
+- [Sign Up](https://leadershieldfunding.com/signup): Create a new agent account (referral code required or sponsor search available).
+- [Login](https://leadershieldfunding.com/login): Existing agent login.
