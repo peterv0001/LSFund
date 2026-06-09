@@ -40,6 +40,7 @@ vi.mock('./storage.js', () => ({
 import { WebhookHandlers, WebhookConfigError } from './webhookHandlers.js';
 import { getUncachableStripeClient } from './stripeClient.js';
 import { db } from './db.js';
+import { storage } from './storage.js';
 
 // ── Helper: build a minimal mock Stripe client ────────────────────────────
 function buildMockStripeWithEvent(event: Partial<Stripe.Event>) {
@@ -488,5 +489,101 @@ describe('POST /api/webhooks/stripe – invoice.payment_failed sets billingStatu
 
     expect(db.update).toHaveBeenCalledTimes(1);
     expect(getSetCallArg()).toMatchObject({ billingStatus: 'past_due' });
+  });
+});
+
+// ── Unit – handleInvoicePaid fires commissions via storage ────────────────
+// fireCommissions runs after the billingStatus update. monthsSinceStart is
+// derived from sub.startDate vs the handler's internal new Date(); using a
+// startDate of "now" keeps monthsSinceStart at 0 → decayRate 1.00 and the
+// commission type "subscription_commission", giving deterministic amounts.
+describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () => {
+  const invoiceData = {
+    lines: { data: [{ period: { end: INVOICE_PERIOD_END } }] },
+  };
+
+  it('creates a pending commission for the agent with the expected type and amount', async () => {
+    const stripeSubId = 'sub_commission_agent_test';
+    // tier_1 pool 0.50 × decay 1.00 × $100 monthly = $50.00 commission.
+    const fakeSubscription = {
+      id: 201,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 1,
+      tier: 'tier_1',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: new Date(),
+      mcaPairedDealId: null,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    expect(storage.createCommission).toHaveBeenCalledTimes(1);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 1,
+        subscriptionId: 201,
+        type: 'subscription_commission',
+        amount: '50.00',
+        status: 'pending',
+      })
+    );
+  });
+
+  it('fires upline override commissions when the agent has a sponsor', async () => {
+    const stripeSubId = 'sub_commission_upline_test';
+    const fakeSubscription = {
+      id: 202,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 5,
+      tier: 'tier_1',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: new Date(),
+      mcaPairedDealId: null,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    // Single L1 sponsor: $100 × pool 0.50 × l1Rate 0.10 × decay 1.00 = $5.00.
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    // One commission for the agent, one override for the sponsor.
+    expect(storage.createCommission).toHaveBeenCalledTimes(2);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 7,
+        subscriptionId: 202,
+        type: 'subscription_residual',
+        amount: '5.00',
+        sourceAgentId: 5,
+        status: 'pending',
+      })
+    );
+  });
+
+  it('does not create any commission when the calculated amount is zero', async () => {
+    const stripeSubId = 'sub_commission_zero_test';
+    const fakeSubscription = {
+      id: 203,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 9,
+      tier: 'tier_1',
+      monthlyAmount: '0.00',
+      merchantName: 'Test Merchant',
+      startDate: new Date(),
+      mcaPairedDealId: null,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    expect(storage.createCommission).not.toHaveBeenCalled();
   });
 });
