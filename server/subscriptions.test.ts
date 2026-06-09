@@ -1455,6 +1455,47 @@ describe("GET /api/subscriptions/history – cross-agent read isolation", () => 
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
     }
   });
+
+  it("does not leak agent A's history when agent B filters by agent A's subscriptionId", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+
+    try {
+      await storage.logActivity({
+        actorId: agentRouteAgentId,
+        actorType: "agent",
+        action: "pause",
+        entityType: "subscription",
+        entityId: subOwnedByAgentA.id,
+        description: "Cross-agent subscriptionId filter isolation test entry",
+      });
+
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      const res = await request(testApp)
+        .get(`/api/subscriptions/history?subscriptionId=${subOwnedByAgentA.id}`)
+        .set("Cookie", agentBCookie);
+
+      // The endpoint must not let agent B override its own scope with agent A's
+      // subscriptionId. Either it rejects the request outright (403), or it
+      // returns a 200 whose logs never include agent A's entry.
+      expect([200, 403]).toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body).toHaveProperty("logs");
+        expect(Array.isArray(res.body.logs)).toBe(true);
+        const returnedEntityIds = (res.body.logs as Array<{ entityId: number }>).map(
+          (l) => l.entityId
+        );
+        expect(returnedEntityIds).not.toContain(subOwnedByAgentA.id);
+      }
+    } finally {
+      await cleanupActivityLog(subOwnedByAgentA.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+    }
+  });
 });
 
 // =========================================================
