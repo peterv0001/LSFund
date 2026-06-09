@@ -904,6 +904,22 @@ export const api = {
       },
     },
 
+    webhookSecret: {
+      update: {
+        method: 'POST' as const,
+        path: '/api/admin/webhook-secret',
+        input: z.object({
+          secret: z.string()
+            .trim()
+            .min(1, 'Webhook secret is required')
+            .startsWith('whsec_', 'Webhook secret must start with "whsec_"'),
+        }),
+        responses: {
+          200: z.object({ success: z.boolean() }),
+        },
+      },
+    },
+
     // Subscription Management
     subscriptions: {
       list: {

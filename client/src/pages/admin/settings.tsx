@@ -72,6 +72,24 @@ export default function AdminSettings() {
     onError: () => toast({ title: "Failed to test webhook", variant: "destructive" }),
   });
 
+  const [webhookSecret, setWebhookSecret] = useState("");
+
+  const saveWebhookSecretMutation = useMutation({
+    mutationFn: (secret: string) =>
+      apiRequest("POST", api.admin.webhookSecret.update.path, { secret }),
+    onSuccess: () => {
+      toast({ title: "Webhook secret saved" });
+      setWebhookSecret("");
+      refetchWebhook();
+    },
+    onError: (err: any) =>
+      toast({
+        title: "Failed to save webhook secret",
+        description: err?.message ?? undefined,
+        variant: "destructive",
+      }),
+  });
+
   const [companyInfo, setCompanyInfo] = useState({ name: "", supportEmail: "" });
   const [rankReqs, setRankReqs] = useState<Record<string, { personalVolume: number; weakLegVolume: number }>>({});
   const [expiryWarningDays, setExpiryWarningDays] = useState<number>(7);
@@ -412,6 +430,43 @@ export default function AdminSettings() {
                           )}
                           Test Webhook
                         </Button>
+                      </div>
+
+                      <div className="border-t pt-4 space-y-2">
+                        <Label htmlFor="webhook-secret" className="text-sm font-medium text-gray-700">
+                          Manually set webhook secret
+                        </Label>
+                        <p className="text-xs text-gray-500">
+                          If automatic setup failed, paste the signing secret from your Stripe
+                          webhook endpoint (starts with <code className="font-mono">whsec_</code>) to
+                          recover without restarting.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Input
+                            id="webhook-secret"
+                            type="password"
+                            data-testid="input-webhook-secret"
+                            placeholder="whsec_..."
+                            value={webhookSecret}
+                            onChange={(e) => setWebhookSecret(e.target.value)}
+                            className="font-mono"
+                          />
+                          <Button
+                            size="sm"
+                            data-testid="button-save-webhook-secret"
+                            onClick={() => saveWebhookSecretMutation.mutate(webhookSecret.trim())}
+                            disabled={
+                              saveWebhookSecretMutation.isPending || !webhookSecret.trim()
+                            }
+                          >
+                            {saveWebhookSecretMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Save Secret
+                          </Button>
+                        </div>
                       </div>
                     </>
                   )}

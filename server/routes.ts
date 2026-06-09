@@ -2936,6 +2936,31 @@ export async function registerRoutes(
     }
   });
 
+  // Manually set the Stripe webhook signing secret (recovery path if auto-setup fails)
+  app.post(api.admin.webhookSecret.update.path, requireAdmin, async (req, res) => {
+    try {
+      const { secret } = api.admin.webhookSecret.update.input.parse(req.body);
+
+      await storage.savePlatformSetting('stripe_webhook_secret', secret, req.user!.id);
+
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'settings',
+        entityId: 0,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} manually updated the Stripe webhook secret`,
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to save webhook secret" });
+    }
+  });
+
   // Admin Activity Log — accessible at both /api/admin/activity-log and /api/admin/activity
   async function activityLogHandler(req: Request, res: Response) {
     const page = Number(req.query.page) || 1;
