@@ -3095,6 +3095,18 @@ export async function registerRoutes(
   app.get(api.admin.activityLog.list.path, requireAdmin, activityLogHandler);
   app.get('/api/admin/activity', requireAdmin, activityLogHandler);
 
+  // Count recent auto-expiry failures (subscription errors) for the dashboard alert banner
+  app.get(api.admin.activityLog.expiryFailures.path, requireAdmin, async (_req, res) => {
+    const sinceDays = 7;
+    const startDate = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+    const { total } = await storage.getActivityLogs(1, 1, {
+      entityType: 'subscription',
+      action: 'error',
+      startDate,
+    });
+    res.json({ count: total, sinceDays });
+  });
+
   // ==================== LEADS MANAGEMENT ====================
 
   // Admin: Get all leads

@@ -1065,6 +1065,16 @@ export const api = {
           }),
         },
       },
+      expiryFailures: {
+        method: 'GET' as const,
+        path: '/api/admin/activity-log/expiry-failures',
+        responses: {
+          200: z.object({
+            count: z.number(),
+            sinceDays: z.number(),
+          }),
+        },
+      },
     },
 
     // Lead Management

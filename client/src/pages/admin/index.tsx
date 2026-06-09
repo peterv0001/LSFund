@@ -14,10 +14,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, X, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
 
 export default function AdminDashboard() {
+  const [expiryAlertDismissed, setExpiryAlertDismissed] = useState(false);
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
@@ -35,6 +38,18 @@ export default function AdminDashboard() {
       return res.json();
     },
   });
+
+  const { data: expiryFailures } = useQuery<{ count: number; sinceDays: number }>({
+    queryKey: ['admin', 'activity-log', 'expiry-failures'],
+    queryFn: async () => {
+      const res = await fetch(api.admin.activityLog.expiryFailures.path, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch expiry failures');
+      return res.json();
+    },
+  });
+
+  const expiryFailureCount = expiryFailures?.count ?? 0;
+  const showExpiryAlert = expiryFailureCount > 0 && !expiryAlertDismissed;
 
   if (isLoading) {
     return (
@@ -60,6 +75,41 @@ export default function AdminDashboard() {
             Overview of your network's performance and activity.
           </p>
         </header>
+
+        {showExpiryAlert && (
+          <div
+            className="mb-8 flex items-center gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4"
+            data-testid="banner-expiry-failures"
+          >
+            <AlertTriangle className="h-5 w-5 shrink-0 text-rose-600" />
+            <Link
+              href="/admin/activity?entityType=subscription&action=error"
+              className="flex flex-1 items-center gap-1 text-sm font-medium text-rose-800 hover:text-rose-900"
+              data-testid="link-expiry-failures"
+            >
+              <span>
+                {expiryFailureCount === 1
+                  ? "1 subscription failed to auto-expire"
+                  : `${expiryFailureCount} subscriptions failed to auto-expire`}
+                {expiryFailures?.sinceDays
+                  ? ` in the last ${expiryFailures.sinceDays} days`
+                  : ""}{" "}
+                — view details
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-rose-600 hover:bg-rose-100 hover:text-rose-800"
+              onClick={() => setExpiryAlertDismissed(true)}
+              data-testid="button-dismiss-expiry-failures"
+              aria-label="Dismiss alert"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
 
         {/* Key Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
