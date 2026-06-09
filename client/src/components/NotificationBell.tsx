@@ -73,8 +73,13 @@ export function NotificationBell() {
     },
   });
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
+  const isSubscriptionCommission = (notification: Notification) =>
+    notification.type === 'commission_earned' &&
+    /subscription/i.test(notification.title);
+
+  const getNotificationIcon = (notification: Notification) => {
+    if (isSubscriptionCommission(notification)) return '🔁';
+    switch (notification.type) {
       case 'deal_funded': return '💰';
       case 'commission_earned': return '💵';
       case 'rank_advanced': return '🎉';
@@ -83,6 +88,11 @@ export function NotificationBell() {
       case 'announcement': return '📢';
       default: return '🔔';
     }
+  };
+
+  const getCommissionLabel = (notification: Notification) => {
+    if (notification.type !== 'commission_earned') return null;
+    return isSubscriptionCommission(notification) ? 'Subscription' : 'Deal';
   };
 
   return (
@@ -135,14 +145,29 @@ export function NotificationBell() {
                   }}
                 >
                   <div className="flex gap-3">
-                    <span className="text-lg">{getNotificationIcon(notification.type)}</span>
+                    <span className="text-lg">{getNotificationIcon(notification)}</span>
                     <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        "text-sm",
-                        !notification.isRead && "font-medium"
-                      )}>
-                        {notification.title}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className={cn(
+                          "text-sm",
+                          !notification.isRead && "font-medium"
+                        )}>
+                          {notification.title}
+                        </p>
+                        {getCommissionLabel(notification) && (
+                          <span
+                            className={cn(
+                              "text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full",
+                              isSubscriptionCommission(notification)
+                                ? "bg-[#1C8A5B]/10 text-[#1C8A5B]"
+                                : "bg-[#C9A24B]/10 text-[#8a6f29]"
+                            )}
+                            data-testid={`badge-commission-${notification.id}`}
+                          >
+                            {getCommissionLabel(notification)}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                         {notification.message}
                       </p>
