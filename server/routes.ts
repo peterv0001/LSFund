@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { Agent, emailPreferencesSchema } from "@shared/schema";
+import { Agent, AgentWithTeam, emailPreferencesSchema } from "@shared/schema";
 import { z } from "zod";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -26,6 +26,54 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
+
+// === AGENT SANITIZERS ===
+// Returns own-agent profile: all fields except credentials and reset tokens.
+function sanitizeAgentSelf(agent: Agent): Omit<Agent, 'password' | 'resetToken' | 'resetTokenExpiry'> {
+  const { password, resetToken, resetTokenExpiry, ...safe } = agent;
+  return safe;
+}
+
+// Returns a public-safe agent record for cross-user responses (upline/team).
+// Strips all PII, payment data, credentials, and privilege flags.
+type AgentPublicSafe = Pick<Agent,
+  'id' | 'firstName' | 'lastName' | 'currentRank' | 'highestRank' | 'qualifiedRank' | 'paidAsRank' |
+  'status' | 'profileImageUrl' | 'bio' | 'referralCode' | 'sponsorId' | 'placementId' | 'leg' |
+  'personalVolume' | 'leftLegVolume' | 'rightLegVolume' | 'carryoverLeft' | 'carryoverRight' | 'createdAt'
+>;
+
+function sanitizeAgentPublic(agent: Agent): AgentPublicSafe {
+  return {
+    id: agent.id,
+    firstName: agent.firstName,
+    lastName: agent.lastName,
+    currentRank: agent.currentRank,
+    highestRank: agent.highestRank,
+    qualifiedRank: agent.qualifiedRank,
+    paidAsRank: agent.paidAsRank,
+    status: agent.status,
+    profileImageUrl: agent.profileImageUrl,
+    bio: agent.bio,
+    referralCode: agent.referralCode,
+    sponsorId: agent.sponsorId,
+    placementId: agent.placementId,
+    leg: agent.leg,
+    personalVolume: agent.personalVolume,
+    leftLegVolume: agent.leftLegVolume,
+    rightLegVolume: agent.rightLegVolume,
+    carryoverLeft: agent.carryoverLeft,
+    carryoverRight: agent.carryoverRight,
+    createdAt: agent.createdAt,
+  };
+}
+
+function sanitizeAgentWithTeam(node: AgentWithTeam): AgentWithTeam {
+  const sanitized = sanitizeAgentPublic(node as Agent) as AgentWithTeam;
+  sanitized.children = node.children?.map(sanitizeAgentWithTeam);
+  sanitized.volume = node.volume;
+  sanitized.teamSize = node.teamSize;
+  return sanitized;
+}
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -307,7 +355,7 @@ export async function registerRoutes(
       
       req.login(agent, (err) => {
         if (err) throw err;
-        res.status(201).json(agent);
+        res.status(201).json(sanitizeAgentSelf(agent));
       });
       
     } catch (err) {
@@ -320,7 +368,7 @@ export async function registerRoutes(
   });
 
   app.post(api.auth.login.path, passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+    res.status(200).json(sanitizeAgentSelf(req.user as Agent));
   });
 
   app.post(api.auth.logout.path, (req, res) => {
@@ -331,7 +379,7 @@ export async function registerRoutes(
 
   app.get(api.auth.me.path, (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    res.json(req.user);
+    res.json(sanitizeAgentSelf(req.user as Agent));
   });
 
   app.post(api.auth.changePassword.path, requireAuth, async (req, res) => {
@@ -554,9 +602,15 @@ export async function registerRoutes(
 
   // Dynamic routes after all static /api/agents/* routes
   app.get(api.agents.get.path, requireAuth, async (req, res) => {
-    const agent = await storage.getAgent(Number(req.params.id));
+    // @ts-ignore
+    const requestedId = Number(req.params.id);
+    // @ts-ignore
+    if (req.user!.id !== requestedId && !req.user!.isAdmin) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    const agent = await storage.getAgent(requestedId);
     if (!agent) return res.status(404).json({ message: "Agent not found" });
-    res.json(agent);
+    res.json(sanitizeAgentSelf(agent));
   });
 
   app.get(api.agents.team.path, requireAuth, async (req, res) => {
@@ -566,12 +620,18 @@ export async function registerRoutes(
     }
     
     const team = await storage.getTeamStructure(Number(req.params.id));
-    res.json(team);
+    res.json(sanitizeAgentWithTeam(team));
   });
 
   app.get(api.agents.upline.path, requireAuth, async (req, res) => {
-    const upline = await storage.getUpline(Number(req.params.id));
-    res.json(upline);
+    // @ts-ignore
+    const requestedId = Number(req.params.id);
+    // @ts-ignore
+    if (req.user!.id !== requestedId && !req.user!.isAdmin) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    const upline = await storage.getUpline(requestedId);
+    res.json(upline.map(sanitizeAgentPublic));
   });
 
   app.patch(api.agents.updateProfile.path, requireAuth, async (req, res) => {
@@ -579,7 +639,7 @@ export async function registerRoutes(
       const input = api.agents.updateProfile.input.parse(req.body);
       // @ts-ignore
       const updated = await storage.updateAgent(req.user!.id, input);
-      res.json(updated);
+      res.json(sanitizeAgentSelf(updated));
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -593,7 +653,7 @@ export async function registerRoutes(
       const input = api.agents.updatePayoutMethod.input.parse(req.body);
       // @ts-ignore
       const updated = await storage.updateAgent(req.user!.id, input);
-      res.json(updated);
+      res.json(sanitizeAgentSelf(updated));
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -607,7 +667,7 @@ export async function registerRoutes(
       const prefs = emailPreferencesSchema.parse(req.body);
       // @ts-ignore
       const updated = await storage.updateAgent(req.user!.id, { emailPreferences: prefs });
-      res.json(updated);
+      res.json(sanitizeAgentSelf(updated));
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
