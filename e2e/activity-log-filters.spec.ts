@@ -144,7 +144,7 @@ test.describe("Activity log filters — URL update on filter change", () => {
     await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
 
     await page.getByTestId("input-log-start-date").fill("2026-01-01");
-    // Date inputs fire immediately (no debounce)
+    // Date inputs apply via a 300 ms debounce — wait long enough for it to fire
     await expect(page).toHaveURL(/startDate=2026-01-01/, { timeout: 3000 });
   });
 
@@ -153,6 +153,7 @@ test.describe("Activity log filters — URL update on filter change", () => {
     await expect(page.getByTestId("input-log-end-date")).toBeVisible({ timeout: 8000 });
 
     await page.getByTestId("input-log-end-date").fill("2026-12-31");
+    // Date inputs apply via a 300 ms debounce — wait long enough for it to fire
     await expect(page).toHaveURL(/endDate=2026-12-31/, { timeout: 3000 });
   });
 
