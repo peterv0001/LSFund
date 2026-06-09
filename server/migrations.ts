@@ -363,6 +363,23 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped expiry_warning_sent_at column from subscriptions");
     },
   },
+  {
+    name: "015_add_deal_commission_unique_index",
+    async run(client) {
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS commissions_deal_type_idx
+        ON commissions (agent_id, deal_id, type)
+        WHERE deal_id IS NOT NULL
+      `);
+      console.log("[migrations] Added unique index on deal-based commissions (agent_id, deal_id, type)");
+    },
+    async down(client) {
+      await client.query(`
+        DROP INDEX IF EXISTS commissions_deal_type_idx
+      `);
+      console.log("[migrations] Dropped unique index on deal-based commissions");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

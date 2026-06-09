@@ -205,6 +205,14 @@ export const commissions = pgTable("commissions", {
   subPeriodUniqueIdx: uniqueIndex("commissions_subscription_period_type_idx")
     .on(table.agentId, table.subscriptionId, table.periodDate, table.type)
     .where(sql`${table.subscriptionId} IS NOT NULL`),
+  // Prevent duplicate deal-based commissions for the same agent+deal+type.
+  // Partial index (WHERE deal_id IS NOT NULL) leaves non-deal commission
+  // types (binary bonuses, subscription residuals, etc.) unrestricted. A deal's
+  // waterfall awards each agent at most one commission of a given type, so
+  // period_date is intentionally excluded from the key.
+  dealTypeUniqueIdx: uniqueIndex("commissions_deal_type_idx")
+    .on(table.agentId, table.dealId, table.type)
+    .where(sql`${table.dealId} IS NOT NULL`),
 }));
 
 export const payouts = pgTable("payouts", {

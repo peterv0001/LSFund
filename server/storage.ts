@@ -575,6 +575,19 @@ export class DatabaseStorage {
       return existing;
     }
 
+    if (commission.dealId != null) {
+      const [inserted] = await db.insert(commissions).values(values).onConflictDoNothing().returning();
+      if (inserted) return inserted;
+      const [existing] = await db.select().from(commissions).where(
+        and(
+          eq(commissions.agentId, commission.agentId),
+          eq(commissions.dealId, commission.dealId),
+          eq(commissions.type, commission.type),
+        )
+      ).limit(1);
+      return existing;
+    }
+
     const [newComm] = await db.insert(commissions).values(values).returning();
     return newComm;
   }

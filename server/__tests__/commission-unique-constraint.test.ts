@@ -18,6 +18,7 @@ const TEST_PREFIX = `comm-constraint-${Date.now()}`;
 
 let agentId: number;
 let subscriptionId: number;
+let dealId: number;
 
 async function createTestAgent(suffix: string) {
   const [agent] = await db
@@ -48,11 +49,26 @@ async function createTestSubscription(agentId: number) {
   return sub;
 }
 
+async function createTestDeal(agentId: number) {
+  const [deal] = await db
+    .insert(schema.deals)
+    .values({
+      agentId,
+      merchantName: "Test Merchant",
+      loanAmount: "50000.00",
+      companyRevenue: "10000.00",
+    })
+    .returning();
+  return deal;
+}
+
 beforeAll(async () => {
   const agent = await createTestAgent("main");
   agentId = agent.id;
   const sub = await createTestSubscription(agentId);
   subscriptionId = sub.id;
+  const deal = await createTestDeal(agentId);
+  dealId = deal.id;
 });
 
 afterAll(async () => {
@@ -62,6 +78,7 @@ afterAll(async () => {
   await db
     .delete(schema.subscriptions)
     .where(eq(schema.subscriptions.agentId, agentId));
+  await db.delete(schema.deals).where(eq(schema.deals.agentId, agentId));
   await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
   await testPool.end();
 });
@@ -241,5 +258,144 @@ describe("commissions unique constraint – partial index scope", () => {
     expect(first).toBeDefined();
     expect(second).toBeDefined();
     expect(first.id).not.toBe(second.id);
+  });
+});
+
+describe("commissions unique constraint – deal-based, DB level", () => {
+  const commissionType = "mac_primary" as const;
+
+  it("allows inserting a deal commission for an agent+deal+type", async () => {
+    const [comm] = await db
+      .insert(schema.commissions)
+      .values({
+        agentId,
+        dealId,
+        type: commissionType,
+        amount: "100.00",
+        periodDate: "2025-05-01",
+        status: "pending",
+      })
+      .returning();
+
+    expect(comm).toBeDefined();
+    expect(comm.agentId).toBe(agentId);
+    expect(comm.dealId).toBe(dealId);
+    expect(comm.type).toBe(commissionType);
+  });
+
+  it("rejects a duplicate insert for the same agent+deal+type via DB constraint", async () => {
+    await expect(
+      db
+        .insert(schema.commissions)
+        .values({
+          agentId,
+          dealId,
+          type: commissionType,
+          amount: "999.00",
+          periodDate: "2025-05-02",
+          status: "pending",
+        })
+        .returning()
+    ).rejects.toThrow();
+  });
+
+  it("rejects a duplicate even when the period date differs (period excluded from key)", async () => {
+    await expect(
+      db
+        .insert(schema.commissions)
+        .values({
+          agentId,
+          dealId,
+          type: commissionType,
+          amount: "1.00",
+          periodDate: "2099-01-01",
+          status: "pending",
+        })
+        .returning()
+    ).rejects.toThrow();
+  });
+
+  it("allows a different commission type for the same agent+deal", async () => {
+    const [comm] = await db
+      .insert(schema.commissions)
+      .values({
+        agentId,
+        dealId,
+        type: "tfc",
+        amount: "20.00",
+        periodDate: "2025-05-01",
+        status: "pending",
+      })
+      .returning();
+
+    expect(comm).toBeDefined();
+    expect(comm.type).toBe("tfc");
+  });
+});
+
+describe("createCommission storage method – deal idempotency", () => {
+  const commissionType = "generation_override" as const;
+
+  it("inserts and returns a new deal commission when none exists", async () => {
+    const comm = await storage.createCommission({
+      agentId,
+      dealId,
+      type: commissionType,
+      amount: "60.00",
+      periodDate: "2025-06-01",
+      status: "pending",
+    });
+
+    expect(comm).toBeDefined();
+    expect(comm.dealId).toBe(dealId);
+    expect(comm.amount).toBe("60.00");
+  });
+
+  it("returns the existing deal commission instead of throwing when a duplicate is attempted", async () => {
+    const first = await storage.createCommission({
+      agentId,
+      dealId,
+      type: commissionType,
+      amount: "60.00",
+      periodDate: "2025-06-01",
+      status: "pending",
+    });
+
+    const duplicate = await storage.createCommission({
+      agentId,
+      dealId,
+      type: commissionType,
+      amount: "999.00",
+      periodDate: "2025-06-15",
+      status: "pending",
+    });
+
+    expect(duplicate).toBeDefined();
+    expect(duplicate.id).toBe(first.id);
+    expect(duplicate.amount).toBe("60.00");
+  });
+
+  it("does not create a second record when createCommission is called twice for the same deal key", async () => {
+    await storage.createCommission({
+      agentId,
+      dealId,
+      type: commissionType,
+      amount: "60.00",
+      periodDate: "2025-06-01",
+      status: "pending",
+    });
+
+    const all = await db
+      .select()
+      .from(schema.commissions)
+      .where(
+        and(
+          eq(schema.commissions.agentId, agentId),
+          eq(schema.commissions.dealId, dealId),
+          eq(schema.commissions.type, commissionType)
+        )
+      );
+
+    expect(all).toHaveLength(1);
   });
 });
