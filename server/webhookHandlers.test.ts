@@ -197,6 +197,76 @@ describe('WebhookHandlers.processWebhook – invoice.paid routing', () => {
   });
 });
 
+// ── Event routing – invoice.payment_failed ───────────────────────────────
+describe('WebhookHandlers.processWebhook – invoice.payment_failed routing', () => {
+  it('calls handleInvoicePaymentFailed with the subscription ID from the invoice', async () => {
+    const stripeSubId = 'sub_invoice_failed_test';
+    const invoiceObject = { subscription: stripeSubId, lines: { data: [] } };
+
+    const fakeEvent: Partial<Stripe.Event> = {
+      type: 'invoice.payment_failed',
+      data: { object: invoiceObject as unknown as Stripe.Event.Data['object'] },
+    };
+
+    const mockStripe = buildMockStripeWithEvent(fakeEvent);
+    vi.mocked(getUncachableStripeClient).mockResolvedValue(mockStripe as unknown as Stripe);
+
+    const handleInvoicePaymentFailedSpy = vi
+      .spyOn(WebhookHandlers, 'handleInvoicePaymentFailed')
+      .mockResolvedValue(undefined);
+
+    const payload = Buffer.from(JSON.stringify(fakeEvent));
+    await WebhookHandlers.processWebhook(payload, 'valid_signature');
+
+    expect(handleInvoicePaymentFailedSpy).toHaveBeenCalledTimes(1);
+    expect(handleInvoicePaymentFailedSpy).toHaveBeenCalledWith(stripeSubId);
+  });
+
+  it('does not call handleInvoicePaymentFailed when the invoice has no subscription ID', async () => {
+    const invoiceObject = { subscription: null, lines: { data: [] } };
+
+    const fakeEvent: Partial<Stripe.Event> = {
+      type: 'invoice.payment_failed',
+      data: { object: invoiceObject as unknown as Stripe.Event.Data['object'] },
+    };
+
+    const mockStripe = buildMockStripeWithEvent(fakeEvent);
+    vi.mocked(getUncachableStripeClient).mockResolvedValue(mockStripe as unknown as Stripe);
+
+    const handleInvoicePaymentFailedSpy = vi
+      .spyOn(WebhookHandlers, 'handleInvoicePaymentFailed')
+      .mockResolvedValue(undefined);
+
+    const payload = Buffer.from(JSON.stringify(fakeEvent));
+    await WebhookHandlers.processWebhook(payload, 'valid_signature');
+
+    expect(handleInvoicePaymentFailedSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ── Unit – handleInvoicePaymentFailed updates billingStatus in the DB ─────
+describe('WebhookHandlers.handleInvoicePaymentFailed – updates billingStatus', () => {
+  it('updates the matched subscription billingStatus to "past_due"', async () => {
+    const stripeSubId = 'sub_handler_past_due_test';
+    const fakeSubscription = { id: 101, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+
+    expect(db.update).toHaveBeenCalledTimes(1);
+    expect(getSetCallArg()).toMatchObject({ billingStatus: 'past_due' });
+  });
+
+  it('does not update anything when no subscription matches the stripe ID', async () => {
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([]));
+
+    await WebhookHandlers.handleInvoicePaymentFailed('sub_nonexistent_test');
+
+    expect(db.update).not.toHaveBeenCalled();
+  });
+});
+
 // ── Event routing – customer.subscription.deleted ─────────────────────────
 describe('WebhookHandlers.processWebhook – customer.subscription.deleted routing', () => {
   it('calls handleSubscriptionDeleted with the subscription ID', async () => {
