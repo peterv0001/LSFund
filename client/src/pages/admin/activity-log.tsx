@@ -527,7 +527,20 @@ export default function AdminActivityLog() {
                             </div>
                           </TableCell>
                           <TableCell className="max-w-xs">
-                            {log.description ? (
+                            {(log.action === "run_migration" || log.action === "revert_migration") &&
+                            typeof log.details?.migration === "string" ? (
+                              <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                                <span>
+                                  {log.action === "revert_migration" ? "Reverted" : "Applied"}
+                                </span>
+                                <code
+                                  className="font-mono text-xs bg-gray-100 text-gray-800 rounded px-1.5 py-0.5 break-all"
+                                  data-testid={`text-migration-name-${log.id}`}
+                                >
+                                  {log.details.migration as string}
+                                </code>
+                              </div>
+                            ) : log.description ? (
                               <span className="text-sm text-gray-600">{log.description}</span>
                             ) : log.details ? (
                               <pre className="text-xs text-gray-500 bg-gray-50 rounded p-1 overflow-hidden text-ellipsis max-h-16">
