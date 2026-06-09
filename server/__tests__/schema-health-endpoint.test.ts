@@ -31,8 +31,11 @@ const db = drizzle(testPool, { schema });
 const TS = Date.now();
 const ADMIN_EMAIL = `sh-endpoint-admin-${TS}@example.com`;
 const ADMIN_PASSWORD = "ShEndpoint1!";
+const AGENT_EMAIL = `sh-endpoint-agent-${TS}@example.com`;
+const AGENT_PASSWORD = "ShEndpoint2!";
 
 let adminId: number;
+let agentId: number;
 let testApp: ReturnType<typeof express>;
 
 async function hashPassword(password: string): Promise<string> {
@@ -45,6 +48,13 @@ async function loginAsAdmin(): Promise<string[]> {
   const res = await request(testApp)
     .post("/api/login")
     .send({ username: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  return res.headers["set-cookie"] as unknown as string[];
+}
+
+async function loginAsAgent(): Promise<string[]> {
+  const res = await request(testApp)
+    .post("/api/login")
+    .send({ username: AGENT_EMAIL, password: AGENT_PASSWORD });
   return res.headers["set-cookie"] as unknown as string[];
 }
 
@@ -63,6 +73,20 @@ beforeAll(async () => {
     .returning();
   adminId = admin.id;
 
+  const [agent] = await db
+    .insert(schema.agents)
+    .values({
+      email: AGENT_EMAIL,
+      password: await hashPassword(AGENT_PASSWORD),
+      firstName: "SchHealthEndpoint",
+      lastName: "Agent",
+      currentRank: "agent",
+      highestRank: "agent",
+      isAdmin: false,
+    })
+    .returning();
+  agentId = agent.id;
+
   testApp = express();
   testApp.use(express.json());
   const httpServer = createServer(testApp);
@@ -71,6 +95,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db.delete(schema.agents).where(eq(schema.agents.id, adminId));
+  await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
   await testPool.end();
 });
 
@@ -116,5 +141,17 @@ describe("GET /api/admin/health/schema – HTTP endpoint", () => {
 
   it("returns 401 when not authenticated", async () => {
     await request(testApp).get("/api/admin/health/schema").expect(401);
+  });
+
+  it("returns 403 for an authenticated non-admin agent", async () => {
+    const cookie = await loginAsAgent();
+
+    const res = await request(testApp)
+      .get("/api/admin/health/schema")
+      .set("Cookie", cookie);
+
+    expect(res.status).toBe(403);
+    expect(res.status).not.toBe(401);
+    expect(res.status).not.toBe(200);
   });
 });
