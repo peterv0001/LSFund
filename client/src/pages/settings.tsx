@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/Sidebar";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,6 +46,7 @@ export default function SettingsPage() {
   const { user, refetch } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Profile form state
   const [profile, setProfile] = useState({
@@ -158,8 +160,9 @@ export default function SettingsPage() {
       return res.json();
     },
     onSuccess: () => {
-      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      toast({ title: "Success", description: "Password changed successfully" });
+      toast({ title: "Password Changed", description: "Your password was updated. Please sign in again." });
+      queryClient.clear();
+      setTimeout(() => setLocation("/login"), 1500);
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });

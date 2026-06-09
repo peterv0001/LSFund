@@ -17,6 +17,7 @@ import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import rateLimit from "express-rate-limit";
 
 // Extend Express User type
 declare global {
@@ -73,6 +74,15 @@ function sanitizeAgentWithTeam(node: AgentWithTeam): AgentWithTeam {
   sanitized.volume = node.volume;
   sanitized.teamSize = node.teamSize;
   return sanitized;
+}
+
+// Destroy all PostgreSQL-backed sessions for a given user ID so that
+// a password change or reset invalidates any stolen/concurrent sessions.
+async function destroyAllUserSessions(userId: number): Promise<void> {
+  await pool.query(
+    `DELETE FROM session WHERE sess->'passport'->>'user' = $1::text`,
+    [String(userId)]
+  );
 }
 
 async function hashPassword(password: string) {
@@ -255,10 +265,41 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== RATE LIMITERS ====================
+  // Disabled in test environment to avoid interfering with integration tests.
+  const isTestEnv = process.env.NODE_ENV === "test";
+
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: isTestEnv ? 0 : 20,  // 0 = unlimited in test
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => isTestEnv,
+    message: { message: "Too many attempts. Please try again in 15 minutes." },
+  });
+
+  const passwordLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: isTestEnv ? 0 : 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => isTestEnv,
+    message: { message: "Too many password reset attempts. Please try again in an hour." },
+  });
+
+  const sponsorSearchLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: isTestEnv ? 0 : 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => isTestEnv,
+    message: { message: "Too many search requests. Please slow down." },
+  });
+
   // ==================== AUTH ROUTES ====================
 
   // Sponsor search endpoint (public - for registration dropdown)
-  app.get(api.auth.searchSponsors.path, async (req, res) => {
+  app.get(api.auth.searchSponsors.path, sponsorSearchLimiter, async (req, res) => {
     try {
       const query = (req.query.q as string) || '';
       const results = await storage.searchAgentsForSponsor(query);
@@ -268,7 +309,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.auth.register.path, async (req, res) => {
+  app.post(api.auth.register.path, authLimiter, async (req, res) => {
     try {
       const input = api.auth.register.input.parse(req.body);
       
@@ -367,7 +408,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.auth.login.path, passport.authenticate("local"), (req, res) => {
+  app.post(api.auth.login.path, authLimiter, passport.authenticate("local"), (req, res) => {
     res.status(200).json(sanitizeAgentSelf(req.user as Agent));
   });
 
@@ -394,8 +435,11 @@ export async function registerRoutes(
       
       const hashedPassword = await hashPassword(newPassword);
       await storage.updateAgent(user.id, { password: hashedPassword });
-      
-      res.json({ message: "Password changed successfully" });
+
+      // Invalidate all active sessions for this user (including stolen ones)
+      await destroyAllUserSessions(user.id);
+
+      res.json({ message: "Password changed successfully. Please sign in again." });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -405,7 +449,7 @@ export async function registerRoutes(
   });
 
   // Forgot password
-  app.post(api.auth.forgotPassword.path, async (req, res) => {
+  app.post(api.auth.forgotPassword.path, passwordLimiter, async (req, res) => {
     try {
       const { email } = api.auth.forgotPassword.input.parse(req.body);
       const agent = await storage.getAgentByEmail(email);
@@ -433,7 +477,7 @@ export async function registerRoutes(
   });
 
   // Reset password
-  app.post(api.auth.resetPassword.path, async (req, res) => {
+  app.post(api.auth.resetPassword.path, passwordLimiter, async (req, res) => {
     try {
       const { token, newPassword } = api.auth.resetPassword.input.parse(req.body);
       const hashedToken = createHash("sha256").update(token).digest("hex");
@@ -451,6 +495,9 @@ export async function registerRoutes(
       const hashedPassword = await hashPassword(newPassword);
       await storage.updateAgent(agent.id, { password: hashedPassword });
       await storage.clearResetToken(agent.id);
+
+      // Invalidate all active sessions for this user (including stolen ones)
+      await destroyAllUserSessions(agent.id);
 
       res.json({ message: "Your password has been reset successfully. You can now sign in." });
     } catch (err) {
