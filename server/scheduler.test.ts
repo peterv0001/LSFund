@@ -541,3 +541,85 @@ describe("warnUpcomingExpirations – per-subscription errors do not abort the r
     expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledWith(sub2.id);
   });
 });
+
+// =========================================================
+// warnUpcomingExpirations — warning email is never sent twice
+// =========================================================
+//
+// The duplicate-prevention guard lives in storage: getSubscriptionsDueForWarning
+// only returns subscriptions whose expiryWarningSentAt IS NULL, and
+// markSubscriptionWarningSent stamps that column. This block wires up a stateful
+// mock that mirrors that DB behavior, then runs the scheduler twice to prove an
+// agent can never receive a duplicate warning email/notification for the same
+// subscription.
+
+describe("warnUpcomingExpirations – warning is never sent twice for the same subscription", () => {
+  // Stateful mock that mirrors the real storage dedup guard:
+  //  - getSubscriptionsDueForWarning excludes rows where expiryWarningSentAt is set
+  //  - markSubscriptionWarningSent stamps expiryWarningSentAt with a Date
+  const wireStatefulDedup = (sub: { id: number; expiryWarningSentAt: Date | null }) => {
+    mockStorage.getSubscriptionsDueForWarning.mockImplementation(async () =>
+      sub.expiryWarningSentAt === null ? [sub] : []
+    );
+    mockStorage.markSubscriptionWarningSent.mockImplementation(async (id: number) => {
+      if (id === sub.id) {
+        sub.expiryWarningSentAt = new Date();
+      }
+    });
+  };
+
+  it("sends the warning email exactly once across two scheduler runs", async () => {
+    const sub = makeWarningSubscription();
+    wireStatefulDedup(sub);
+
+    await warnUpcomingExpirations();
+    await warnUpcomingExpirations();
+
+    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).toHaveBeenCalledOnce();
+  });
+
+  it("creates the in-app notification exactly once across two scheduler runs", async () => {
+    const sub = makeWarningSubscription();
+    wireStatefulDedup(sub);
+
+    await warnUpcomingExpirations();
+    await warnUpcomingExpirations();
+
+    expect(mockStorage.createNotification).toHaveBeenCalledOnce();
+  });
+
+  it("populates expiryWarningSentAt on the first run and leaves it unchanged on the second", async () => {
+    const sub = makeWarningSubscription();
+    wireStatefulDedup(sub);
+
+    expect(sub.expiryWarningSentAt).toBeNull();
+
+    await warnUpcomingExpirations();
+
+    const stampedAt = sub.expiryWarningSentAt;
+    expect(stampedAt).toBeInstanceOf(Date);
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledOnce();
+
+    await warnUpcomingExpirations();
+
+    // The second run finds nothing due (guarded by expiryWarningSentAt), so the
+    // marker is never re-stamped — the timestamp is identical to the first run.
+    expect(sub.expiryWarningSentAt).toBe(stampedAt);
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledOnce();
+  });
+
+  it("only the first run queries the agent, sends email, notifies, and marks the warning", async () => {
+    const sub = makeWarningSubscription();
+    wireStatefulDedup(sub);
+
+    await warnUpcomingExpirations();
+    await warnUpcomingExpirations();
+
+    expect(mockStorage.getAgent).toHaveBeenCalledOnce();
+    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).toHaveBeenCalledOnce();
+    expect(mockStorage.createNotification).toHaveBeenCalledOnce();
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledOnce();
+    // Both runs still consult the query; the guard lives there.
+    expect(mockStorage.getSubscriptionsDueForWarning).toHaveBeenCalledTimes(2);
+  });
+});
