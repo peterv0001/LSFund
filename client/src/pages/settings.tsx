@@ -87,7 +87,7 @@ export default function SettingsPage() {
     emailOnPaymentRetryFailed: defaultPrefs.emailOnPaymentRetryFailed !== false,
   });
 
-  type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated';
+  type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated' | 'emailOnDealFunded' | 'emailOnTeamSignup';
   const [pendingDisable, setPendingDisable] = useState<NotifPrefKey | null>(null);
 
   const notifLabels: Record<NotifPrefKey, { title: string; missMessage: string }> = {
@@ -102,6 +102,14 @@ export default function SettingsPage() {
     emailOnReactivated: {
       title: 'Subscription Reactivated',
       missMessage: "You won't receive emails when one of your subscriptions is reactivated.",
+    },
+    emailOnDealFunded: {
+      title: 'Deal Funded',
+      missMessage: "You won't receive emails when one of your deals is funded.",
+    },
+    emailOnTeamSignup: {
+      title: 'New Team Signup',
+      missMessage: "You won't receive emails when a new agent joins your team.",
     },
   };
 
@@ -518,7 +526,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-deal-funded"
                       checked={notifPrefs.emailOnDealFunded}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnDealFunded: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnDealFunded', checked)}
                     />
                   </div>
 
@@ -532,7 +540,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-team-signup"
                       checked={notifPrefs.emailOnTeamSignup}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnTeamSignup: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnTeamSignup', checked)}
                     />
                   </div>
 

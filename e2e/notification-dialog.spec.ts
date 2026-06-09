@@ -122,4 +122,88 @@ test.describe("Notification confirmation dialog", () => {
 
     await expect(page.getByText("Notification preferences saved")).toBeVisible({ timeout: 5000 });
   });
+
+  test("Deal Funded toggle OFF opens the confirmation dialog", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    const toggle = page.getByTestId("toggle-email-on-deal-funded");
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await toggle.click();
+
+    await expect(page.getByTestId("dialog-cancel-disable")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("dialog-confirm-disable")).toBeVisible();
+  });
+
+  test("Deal Funded 'Keep Enabled' leaves the toggle ON", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    const toggle = page.getByTestId("toggle-email-on-deal-funded");
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await toggle.click();
+    await expect(page.getByTestId("dialog-cancel-disable")).toBeVisible({ timeout: 5000 });
+
+    await page.getByTestId("dialog-cancel-disable").click();
+
+    await expect(page.getByTestId("dialog-cancel-disable")).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("toggle-email-on-deal-funded")).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("Deal Funded 'Turn Off' sets the toggle to OFF", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    const toggle = page.getByTestId("toggle-email-on-deal-funded");
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await toggle.click();
+    await expect(page.getByTestId("dialog-confirm-disable")).toBeVisible({ timeout: 5000 });
+
+    await page.getByTestId("dialog-confirm-disable").click();
+
+    await expect(page.getByTestId("dialog-confirm-disable")).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("toggle-email-on-deal-funded")).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("New Team Signup toggle OFF opens the confirmation dialog", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    const toggle = page.getByTestId("toggle-email-on-team-signup");
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await toggle.click();
+
+    await expect(page.getByTestId("dialog-cancel-disable")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("dialog-confirm-disable")).toBeVisible();
+  });
+
+  test("New Team Signup 'Keep Enabled' leaves the toggle ON", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    const toggle = page.getByTestId("toggle-email-on-team-signup");
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await toggle.click();
+    await expect(page.getByTestId("dialog-cancel-disable")).toBeVisible({ timeout: 5000 });
+
+    await page.getByTestId("dialog-cancel-disable").click();
+
+    await expect(page.getByTestId("dialog-cancel-disable")).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("toggle-email-on-team-signup")).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("New Team Signup 'Turn Off' sets the toggle to OFF", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    const toggle = page.getByTestId("toggle-email-on-team-signup");
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await toggle.click();
+    await expect(page.getByTestId("dialog-confirm-disable")).toBeVisible({ timeout: 5000 });
+
+    await page.getByTestId("dialog-confirm-disable").click();
+
+    await expect(page.getByTestId("dialog-confirm-disable")).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("toggle-email-on-team-signup")).toHaveAttribute("aria-checked", "false");
+  });
 });
