@@ -179,7 +179,7 @@ export default function AdminLeadsPage() {
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
       
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
         <SchemaDriftBanner />
         <header className="flex items-center justify-between mb-8">
           <div>
@@ -301,7 +301,8 @@ export default function AdminLeadsPage() {
         </div>
 
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b bg-gray-50 text-left">
                 <th className="px-4 py-3">
@@ -366,6 +367,7 @@ export default function AdminLeadsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>

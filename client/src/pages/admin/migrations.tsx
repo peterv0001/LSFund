@@ -142,7 +142,7 @@ export default function AdminMigrations() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <AdminSidebar />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
         <SchemaDriftBanner />
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3 mb-8">

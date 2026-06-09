@@ -1,4 +1,5 @@
 import { Switch, Route, Redirect } from "wouter";
+import { lazy, Suspense } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,45 +8,54 @@ import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 
 // Public Pages
-import LandingPage from "@/pages/landing";
-import PrivacyPolicyPage from "@/pages/privacy";
-import TermsOfServicePage from "@/pages/terms";
-import RefundPolicyPage from "@/pages/refund-policy";
-import IncomeDisclosurePage from "@/pages/income-disclosure";
+const LandingPage = lazy(() => import("@/pages/landing"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/privacy"));
+const TermsOfServicePage = lazy(() => import("@/pages/terms"));
+const RefundPolicyPage = lazy(() => import("@/pages/refund-policy"));
+const IncomeDisclosurePage = lazy(() => import("@/pages/income-disclosure"));
 
 // Agent Portal Pages
-import AuthPage from "@/pages/auth";
-import ForgotPasswordPage from "@/pages/forgot-password";
-import ResetPasswordPage from "@/pages/reset-password";
-import Dashboard from "@/pages/dashboard";
-import TeamPage from "@/pages/team";
-import DealsPage from "@/pages/deals";
-import EarningsPage from "@/pages/earnings";
-import SettingsPage from "@/pages/settings";
-import RankPage from "@/pages/rank";
-import LeaderboardsPage from "@/pages/leaderboards";
-import ResourcesPage from "@/pages/resources";
-import TrainingPage from "@/pages/training";
-import ReportsPage from "@/pages/reports";
-import LeadsPage from "@/pages/leads";
-import SubscriptionsPage from "@/pages/subscriptions";
-import NotFound from "@/pages/not-found";
+const AuthPage = lazy(() => import("@/pages/auth"));
+const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
+const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const TeamPage = lazy(() => import("@/pages/team"));
+const DealsPage = lazy(() => import("@/pages/deals"));
+const EarningsPage = lazy(() => import("@/pages/earnings"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const RankPage = lazy(() => import("@/pages/rank"));
+const LeaderboardsPage = lazy(() => import("@/pages/leaderboards"));
+const ResourcesPage = lazy(() => import("@/pages/resources"));
+const TrainingPage = lazy(() => import("@/pages/training"));
+const ReportsPage = lazy(() => import("@/pages/reports"));
+const LeadsPage = lazy(() => import("@/pages/leads"));
+const SubscriptionsPage = lazy(() => import("@/pages/subscriptions"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
 // Admin Pages
-import AdminDashboard from "@/pages/admin/index";
-import AdminAgents from "@/pages/admin/agents";
-import AdminCommissions from "@/pages/admin/commissions";
-import AdminPayouts from "@/pages/admin/payouts";
-import AdminLeads from "@/pages/admin/leads";
-import AdminAIQueue from "@/pages/admin/ai-queue";
-import AdminDeals from "@/pages/admin/deals";
-import AdminAnnouncements from "@/pages/admin/announcements";
-import AdminResources from "@/pages/admin/resources";
-import AdminHoldbacks from "@/pages/admin/holdbacks";
-import AdminActivityLog from "@/pages/admin/activity-log";
-import AdminSettings from "@/pages/admin/settings";
-import AdminSubscriptions from "@/pages/admin/subscriptions";
-import AdminMigrations from "@/pages/admin/migrations";
+const AdminDashboard = lazy(() => import("@/pages/admin/index"));
+const AdminAgents = lazy(() => import("@/pages/admin/agents"));
+const AdminCommissions = lazy(() => import("@/pages/admin/commissions"));
+const AdminPayouts = lazy(() => import("@/pages/admin/payouts"));
+const AdminLeads = lazy(() => import("@/pages/admin/leads"));
+const AdminAIQueue = lazy(() => import("@/pages/admin/ai-queue"));
+const AdminDeals = lazy(() => import("@/pages/admin/deals"));
+const AdminAnnouncements = lazy(() => import("@/pages/admin/announcements"));
+const AdminResources = lazy(() => import("@/pages/admin/resources"));
+const AdminHoldbacks = lazy(() => import("@/pages/admin/holdbacks"));
+const AdminActivityLog = lazy(() => import("@/pages/admin/activity-log"));
+const AdminSettings = lazy(() => import("@/pages/admin/settings"));
+const AdminSubscriptions = lazy(() => import("@/pages/admin/subscriptions"));
+const AdminMigrations = lazy(() => import("@/pages/admin/migrations"));
+
+// Suspense fallback shown while a lazily-loaded page is downloading
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 // Protected Route Wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -101,6 +111,7 @@ function Router() {
   }
 
   return (
+    <Suspense fallback={<PageLoader />}>
     <Switch>
       {/* Public Routes */}
       <Route path="/login">
@@ -163,6 +174,7 @@ function Router() {
       {/* Fallback */}
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   );
 }
 

@@ -38,7 +38,7 @@ export default function AIQueuePage() {
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
       
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
         <SchemaDriftBanner />
         <header className="mb-8">
           <div className="flex items-center gap-3 mb-2">

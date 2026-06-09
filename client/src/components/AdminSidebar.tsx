@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,6 +20,8 @@ import {
   RefreshCw,
   Lock,
   Database,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -42,16 +45,47 @@ const adminNavItems = [
 export function AdminSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 flex flex-col z-50 shadow-2xl" style={{ backgroundColor: 'hsl(216 60% 10%)' }}>
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
+  const SidebarContent = () => (
+    <>
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
-        <div className="flex flex-col gap-1">
-          <Link href="/admin" data-testid="link-logo-admin" className="hover:opacity-90 transition-opacity">
-            <BrandLockup size="sm" onDark />
-          </Link>
-          <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-1 pl-0.5">Admin Portal</p>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <Link href="/admin" data-testid="link-logo-admin" className="hover:opacity-90 transition-opacity">
+              <BrandLockup size="sm" onDark />
+            </Link>
+            <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-1 pl-0.5">Admin Portal</p>
+          </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-2 -mr-2 text-white/60 hover:text-white"
+            data-testid="button-close-admin-sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
@@ -108,6 +142,57 @@ export function AdminSidebar() {
           Sign Out
         </Button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile Header */}
+      <header
+        className="lg:hidden fixed top-0 left-0 right-0 z-40 text-white h-14 flex items-center justify-between px-4 shadow-lg"
+        style={{ backgroundColor: "hsl(216 60% 10%)" }}
+      >
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 -ml-2 text-white/80 hover:text-white"
+          data-testid="button-open-admin-sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <Link href="/admin" data-testid="link-logo-admin-mobile" className="hover:opacity-90 transition-opacity">
+          <BrandLockup size="sm" onDark showTagline={false} />
+        </Link>
+
+        <span className="text-[10px] text-white/40 font-semibold uppercase tracking-wider">Admin</span>
+      </header>
+
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <aside
+        className={cn(
+          "lg:hidden fixed left-0 top-0 bottom-0 w-72 flex flex-col z-50 shadow-2xl text-white transition-transform duration-300 ease-in-out",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{ backgroundColor: "hsl(216 60% 10%)" }}
+      >
+        <SidebarContent />
+      </aside>
+
+      {/* Desktop Sidebar */}
+      <aside
+        className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col z-50 shadow-2xl text-white"
+        style={{ backgroundColor: "hsl(216 60% 10%)" }}
+      >
+        <SidebarContent />
+      </aside>
+    </>
   );
 }

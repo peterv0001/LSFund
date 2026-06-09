@@ -1,1 +1,2 @@
 - [Prod vs dev database](prod-vs-dev-database.md) — prod 401/stale-data while dev works: deployment runs on the DATABASE_URL snapshotted at publish time; republish to sync. Confirm prod URL via getDeploymentInfo.
+- [React.lazy + HMR warnings](react-lazy-hmr-warnings.md) — "Invalid hook call"/sync-suspend errors after editing lazy routes in App.tsx are HMR false positives; restart + reload before investigating.

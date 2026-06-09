@@ -351,7 +351,7 @@ export default function AdminActivityLog() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
         <SchemaDriftBanner />
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
