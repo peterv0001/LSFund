@@ -18,10 +18,14 @@ import {
   Shield,
   Repeat,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+
+const DISMISSED_EXPIRING_SOON_KEY = "dismissed-expiring-soon-subscriptions";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -61,6 +65,40 @@ export default function Dashboard() {
     const end = new Date(s.endDate);
     return end >= now && end <= endOfDayInSevenDays;
   });
+
+  const [dismissedExpiringSoonIds, setDismissedExpiringSoonIds] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(DISMISSED_EXPIRING_SOON_KEY);
+      return stored ? (JSON.parse(stored) as number[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const expiringSoonIds = expiringSoonSubscriptions.map((s) => s.id);
+
+  useEffect(() => {
+    const stillExpiring = dismissedExpiringSoonIds.filter((id) => expiringSoonIds.includes(id));
+    if (stillExpiring.length !== dismissedExpiringSoonIds.length) {
+      setDismissedExpiringSoonIds(stillExpiring);
+      try {
+        localStorage.setItem(DISMISSED_EXPIRING_SOON_KEY, JSON.stringify(stillExpiring));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [expiringSoonIds.join(","), dismissedExpiringSoonIds]);
+
+  const hasNewExpiringSoon = expiringSoonIds.some((id) => !dismissedExpiringSoonIds.includes(id));
+
+  const dismissExpiringSoonBanner = () => {
+    setDismissedExpiringSoonIds(expiringSoonIds);
+    try {
+      localStorage.setItem(DISMISSED_EXPIRING_SOON_KEY, JSON.stringify(expiringSoonIds));
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   const copyReferralLink = () => {
     const link = referralData?.referralUrl || `${window.location.origin}/join/${user?.referralCode || user?.id}`;
@@ -108,13 +146,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {expiringSoonSubscriptions.length > 0 && (
+        {expiringSoonSubscriptions.length > 0 && hasNewExpiringSoon && (
           <div
             className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4"
             data-testid="banner-expiring-soon-subscriptions-dashboard"
           >
             <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-amber-800">
+            <p className="text-xs text-amber-800 flex-1">
               <span className="font-semibold">
                 {expiringSoonSubscriptions.length === 1
                   ? "1 subscription is expiring within 7 days"
@@ -125,6 +163,15 @@ export default function Dashboard() {
                 View subscriptions
               </Link>
             </p>
+            <button
+              type="button"
+              onClick={dismissExpiringSoonBanner}
+              className="text-amber-500 hover:text-amber-700 flex-shrink-0"
+              aria-label="Dismiss expiring soon warning"
+              data-testid="button-dismiss-expiring-soon-subscriptions"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
