@@ -131,3 +131,50 @@ describe("Settings notifications: 'all notifications off' warning", () => {
     expect(saveButton.disabled).toBe(false);
   });
 });
+
+describe("Settings notifications: unsaved changes indicator", () => {
+  it("hides the unsaved-changes indicator when no toggles have been modified", async () => {
+    authState.user = baseUser({ emailOnCommissionEarned: true });
+    renderSettings();
+    await openNotificationsTab();
+
+    expect(screen.queryByTestId("text-unsaved-changes")).toBeNull();
+    expect(
+      screen.queryByTestId("warning-unsaved-notification-prefs"),
+    ).toBeNull();
+  });
+
+  it("shows the unsaved-changes indicator after a toggle is changed", async () => {
+    authState.user = baseUser({ emailOnCommissionEarned: true });
+    const user = userEvent.setup();
+    renderSettings();
+    await openNotificationsTab();
+
+    await user.click(screen.getByTestId("toggle-email-on-commission-earned"));
+
+    expect(screen.queryByTestId("text-unsaved-changes")).not.toBeNull();
+    expect(
+      screen.queryByTestId("warning-unsaved-notification-prefs"),
+    ).not.toBeNull();
+  });
+
+  it("warns with a confirmation dialog when navigating away with unsaved changes", async () => {
+    authState.user = baseUser({ emailOnCommissionEarned: true });
+    const user = userEvent.setup();
+    renderSettings();
+    await openNotificationsTab();
+
+    await user.click(screen.getByTestId("toggle-email-on-commission-earned"));
+
+    const link = document.createElement("a");
+    link.setAttribute("href", "/dashboard");
+    link.textContent = "Go to dashboard";
+    document.body.appendChild(link);
+
+    await user.click(link);
+
+    expect(screen.queryByTestId("dialog-unsaved-changes")).not.toBeNull();
+
+    document.body.removeChild(link);
+  });
+});

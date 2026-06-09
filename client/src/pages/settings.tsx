@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/Sidebar";
@@ -79,7 +79,7 @@ export default function SettingsPage() {
 
   // Notification preferences state
   const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
-  const [notifPrefs, setNotifPrefs] = useState({
+  const initialNotifPrefs = {
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
     emailOnReactivated: defaultPrefs.emailOnReactivated !== false,
@@ -88,7 +88,50 @@ export default function SettingsPage() {
     emailOnCommissionEarned: defaultPrefs.emailOnCommissionEarned !== false,
     emailOnPaymentRetrySuccess: defaultPrefs.emailOnPaymentRetrySuccess !== false,
     emailOnPaymentRetryFailed: defaultPrefs.emailOnPaymentRetryFailed !== false,
-  });
+  };
+  const [notifPrefs, setNotifPrefs] = useState(initialNotifPrefs);
+  // Baseline of the last-saved preferences, used to detect unsaved changes.
+  const [savedNotifPrefs, setSavedNotifPrefs] = useState(initialNotifPrefs);
+  const hasUnsavedNotifPrefs =
+    JSON.stringify(notifPrefs) !== JSON.stringify(savedNotifPrefs);
+  // Pending in-app navigation target awaiting user confirmation.
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
+
+  // Warn on full-page navigation (refresh / tab close) when there are unsaved changes.
+  useEffect(() => {
+    if (!hasUnsavedNotifPrefs) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedNotifPrefs]);
+
+  // Intercept in-app link navigation to confirm discarding unsaved changes.
+  useEffect(() => {
+    if (!hasUnsavedNotifPrefs) return;
+    const handler = (e: MouseEvent) => {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const anchor = (e.target as HTMLElement | null)?.closest('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('http') || href.startsWith('#') || anchor.target === '_blank') return;
+      if (href === window.location.pathname) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingNav(href);
+    };
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
+  }, [hasUnsavedNotifPrefs]);
+
+  const confirmNavigation = () => {
+    const target = pendingNav;
+    setPendingNav(null);
+    if (target) setLocation(target);
+  };
 
   type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated' | 'emailOnDealFunded' | 'emailOnTeamSignup';
   const [pendingDisable, setPendingDisable] = useState<NotifPrefKey | null>(null);
@@ -211,8 +254,9 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error('Failed to update notification preferences');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       refetch();
+      setSavedNotifPrefs(variables);
       toast({ title: "Success", description: "Notification preferences saved" });
     },
     onError: () => {
@@ -615,15 +659,36 @@ export default function SettingsPage() {
                   </div>
                 )}
 
-                <Button
-                  data-testid="button-save-notification-prefs"
-                  onClick={() => updateNotifPrefsMutation.mutate(notifPrefs)}
-                  disabled={isSaveNotificationPrefsDisabled(updateNotifPrefsMutation.isPending)}
-                >
-                  {updateNotifPrefsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Preferences
-                </Button>
+                {hasUnsavedNotifPrefs && (
+                  <div
+                    data-testid="warning-unsaved-notification-prefs"
+                    className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                    <span>You have unsaved changes. Click "Save Preferences" to keep them.</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    data-testid="button-save-notification-prefs"
+                    onClick={() => updateNotifPrefsMutation.mutate(notifPrefs)}
+                    disabled={isSaveNotificationPrefsDisabled(updateNotifPrefsMutation.isPending)}
+                    className={hasUnsavedNotifPrefs ? "ring-2 ring-offset-2 ring-primary" : ""}
+                  >
+                    {updateNotifPrefsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Preferences
+                  </Button>
+                  {hasUnsavedNotifPrefs && (
+                    <span
+                      data-testid="text-unsaved-changes"
+                      className="text-sm font-medium text-blue-700"
+                    >
+                      Unsaved changes
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -687,6 +752,25 @@ export default function SettingsPage() {
             </AlertDialogCancel>
             <AlertDialogAction data-testid="dialog-confirm-disable" onClick={confirmDisable}>
               Turn Off
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={pendingNav !== null} onOpenChange={(open) => { if (!open) setPendingNav(null); }}>
+        <AlertDialogContent data-testid="dialog-unsaved-changes">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved notification preference changes. If you leave now, your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="dialog-cancel-leave" onClick={() => setPendingNav(null)}>
+              Stay on Page
+            </AlertDialogCancel>
+            <AlertDialogAction data-testid="dialog-confirm-leave" onClick={confirmNavigation}>
+              Leave Without Saving
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
