@@ -17,6 +17,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Agent } from "@shared/schema";
@@ -386,28 +393,67 @@ export default function AdminAgents() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1.5 font-medium">
-                        <CreditCard className="w-3.5 h-3.5 text-primary" />
-                        <Link
-                          href={`/admin/subscriptions?agentId=${agent.id}&status=active`}
-                          data-testid={`link-active-count-${agent.id}`}
-                          title="View active subscriptions only"
-                          aria-label={`View ${agent.activeSubscriptionCount} active subscriptions for this agent`}
-                          className="text-primary hover:underline"
-                        >
-                          <span data-testid={`text-active-count-${agent.id}`}>{agent.activeSubscriptionCount}</span>
-                        </Link>
-                        <span className="text-muted-foreground font-normal">/</span>
-                        <Link
-                          href={`/admin/subscriptions?agentId=${agent.id}`}
-                          data-testid={`link-total-count-${agent.id}`}
-                          title="View all subscriptions"
-                          aria-label={`View all ${agent.totalSubscriptionCount} subscriptions for this agent`}
-                          className="text-primary hover:underline"
-                        >
-                          <span data-testid={`text-total-count-${agent.id}`}>{agent.totalSubscriptionCount}</span>
-                        </Link>
-                      </span>
+                      {(() => {
+                        const lostAllSubscriptions =
+                          agent.activeSubscriptionCount === 0 &&
+                          agent.totalSubscriptionCount > 0;
+                        return (
+                          <span
+                            data-testid={`cell-subscriptions-${agent.id}`}
+                            data-lost-all={lostAllSubscriptions ? "true" : "false"}
+                            className={`inline-flex items-center gap-1.5 font-medium ${
+                              lostAllSubscriptions
+                                ? "text-amber-600 rounded-md bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200"
+                                : ""
+                            }`}
+                          >
+                            {lostAllSubscriptions ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <AlertTriangle
+                                      data-testid={`icon-lost-subscriptions-${agent.id}`}
+                                      className="w-3.5 h-3.5 text-amber-600"
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    All subscriptions are cancelled or paused
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <CreditCard className="w-3.5 h-3.5 text-primary" />
+                            )}
+                            <Link
+                              href={`/admin/subscriptions?agentId=${agent.id}&status=active`}
+                              data-testid={`link-active-count-${agent.id}`}
+                              title="View active subscriptions only"
+                              aria-label={`View ${agent.activeSubscriptionCount} active subscriptions for this agent`}
+                              className={
+                                lostAllSubscriptions
+                                  ? "text-amber-700 hover:underline"
+                                  : "text-primary hover:underline"
+                              }
+                            >
+                              <span data-testid={`text-active-count-${agent.id}`}>{agent.activeSubscriptionCount}</span>
+                            </Link>
+                            <span className="text-muted-foreground font-normal">/</span>
+                            <Link
+                              href={`/admin/subscriptions?agentId=${agent.id}`}
+                              data-testid={`link-total-count-${agent.id}`}
+                              title="View all subscriptions"
+                              aria-label={`View all ${agent.totalSubscriptionCount} subscriptions for this agent`}
+                              className={
+                                lostAllSubscriptions
+                                  ? "text-amber-700 hover:underline"
+                                  : "text-primary hover:underline"
+                              }
+                            >
+                              <span data-testid={`text-total-count-${agent.id}`}>{agent.totalSubscriptionCount}</span>
+                            </Link>
+                          </span>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(agent.createdAt), "MMM d, yyyy")}
