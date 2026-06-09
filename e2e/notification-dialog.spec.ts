@@ -206,4 +206,24 @@ test.describe("Notification confirmation dialog", () => {
     await expect(page.getByTestId("dialog-confirm-disable")).not.toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId("toggle-email-on-team-signup")).toHaveAttribute("aria-checked", "false");
   });
+
+  test("error toast appears when saving preferences fails", async ({ page }) => {
+    await navigateToNotifications(page);
+
+    await page.route("**/api/agents/notification-preferences", async (route) => {
+      if (route.request().method() === "PATCH") {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "Internal Server Error" }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.getByTestId("button-save-notification-prefs").click();
+
+    await expect(page.getByText("Failed to save notification preferences", { exact: true })).toBeVisible({ timeout: 5000 });
+  });
 });
