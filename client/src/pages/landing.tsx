@@ -1265,7 +1265,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-16 px-6 bg-[#0A1628] text-white">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-5 gap-10 mb-12">
+          <div className="grid md:grid-cols-6 gap-10 mb-12">
             <div className="md:col-span-2">
               <Link href="/" data-testid="link-logo-footer" className="mb-4 hover:opacity-90 transition-opacity w-fit block">
                 <BrandLockup size="md" onDark />
@@ -1282,6 +1282,17 @@ export default function LandingPage() {
                 <a href="#platform" className="block text-white/40 hover:text-white transition-colors">Platform</a>
                 <a href="#compensation" className="block text-white/40 hover:text-white transition-colors">Earnings</a>
                 <a href="#faq" className="block text-white/40 hover:text-white transition-colors">FAQ</a>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold text-white/80 mb-4">Funding Solutions</h4>
+              <div className="space-y-2 text-sm">
+                <Link href="/lp/declined"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-declined">Declined by the Bank</span></Link>
+                <Link href="/lp/consolidation"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-consolidation">Consolidate Advances</span></Link>
+                <Link href="/lp/growth"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-growth">Capital for Growth</span></Link>
+                <Link href="/lp/seasonal"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-seasonal">Seasonal Funding</span></Link>
+                <Link href="/lp/partners"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-partners">Partner Network</span></Link>
+                <Link href="/lp/referral"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-referral">Referral Partners</span></Link>
               </div>
             </div>
             <div>

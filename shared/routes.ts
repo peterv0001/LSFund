@@ -128,6 +128,34 @@ export const api = {
     },
   },
 
+  // === PUBLIC (unauthenticated) ===
+  public: {
+    landingLead: {
+      method: 'POST' as const,
+      path: '/api/public/landing-lead',
+      input: z.object({
+        campaign: z.string().min(1).max(100),
+        name: z.string().min(1).max(200),
+        email: z.string().email().max(200),
+        phone: z.string().max(50).optional(),
+        company: z.string().max(200).optional(),
+        industry: z.string().max(200).optional(),
+        revenue: z.string().max(100).optional(),
+        advance_count: z.string().max(50).optional(),
+        use_of_funds: z.string().max(200).optional(),
+        peak: z.string().max(100).optional(),
+        size: z.string().max(100).optional(),
+        volume: z.string().max(100).optional(),
+        role: z.string().max(200).optional(),
+        referral_capacity: z.string().max(100).optional(),
+      }),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        400: errorSchemas.validation,
+      },
+    },
+  },
+
   // === AGENTS (Agent Portal) ===
   agents: {
     get: {

@@ -14,6 +14,14 @@ const TermsOfServicePage = lazy(() => import("@/pages/terms"));
 const RefundPolicyPage = lazy(() => import("@/pages/refund-policy"));
 const IncomeDisclosurePage = lazy(() => import("@/pages/income-disclosure"));
 
+// Public ad landing pages
+const LpDeclined = lazy(() => import("@/pages/lp/declined"));
+const LpConsolidation = lazy(() => import("@/pages/lp/consolidation"));
+const LpGrowth = lazy(() => import("@/pages/lp/growth"));
+const LpSeasonal = lazy(() => import("@/pages/lp/seasonal"));
+const LpCallCenterIso = lazy(() => import("@/pages/lp/callcenter-iso"));
+const LpReferral = lazy(() => import("@/pages/lp/referral"));
+
 // Agent Portal Pages
 const AuthPage = lazy(() => import("@/pages/auth"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
@@ -129,6 +137,14 @@ function Router() {
       <Route path="/reset-password">
         {user ? <Redirect to="/dashboard" /> : <ResetPasswordPage />}
       </Route>
+
+      {/* Public Ad Landing Pages (no auth guard, always public) */}
+      <Route path="/lp/declined" component={LpDeclined} />
+      <Route path="/lp/consolidation" component={LpConsolidation} />
+      <Route path="/lp/growth" component={LpGrowth} />
+      <Route path="/lp/seasonal" component={LpSeasonal} />
+      <Route path="/lp/partners" component={LpCallCenterIso} />
+      <Route path="/lp/referral" component={LpReferral} />
 
       {/* Public Legal Pages */}
       <Route path="/privacy" component={PrivacyPolicyPage} />

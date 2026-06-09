@@ -296,6 +296,15 @@ export async function registerRoutes(
     message: { message: "Too many search requests. Please slow down." },
   });
 
+  const landingLeadLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isTestEnv ? 0 : 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => isTestEnv,
+    message: { message: "Too many submissions. Please try again later." },
+  });
+
   // ==================== AUTH ROUTES ====================
 
   // Sponsor search endpoint (public - for registration dropdown)
@@ -500,6 +509,39 @@ export async function registerRoutes(
       await destroyAllUserSessions(agent.id);
 
       res.json({ message: "Your password has been reset successfully. You can now sign in." });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Public landing-page lead capture (unauthenticated, for ad funnels)
+  app.post(api.public.landingLead.path, landingLeadLimiter, async (req, res) => {
+    try {
+      const input = api.public.landingLead.input.parse(req.body);
+      const { campaign, name, email, phone, company, industry, ...extra } = input;
+
+      const enrichmentData: Record<string, unknown> = { campaign };
+      for (const [key, value] of Object.entries(extra)) {
+        if (value !== undefined && value !== null && value !== "") {
+          enrichmentData[key] = value;
+        }
+      }
+
+      await storage.createLead({
+        contactName: name,
+        contactEmail: email,
+        contactPhone: phone ?? null,
+        companyName: company ?? null,
+        industry: industry ?? null,
+        enrichmentData,
+        source: `landing:${campaign}`,
+        status: "new",
+      });
+
+      res.json({ success: true });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
