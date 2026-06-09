@@ -1006,6 +1006,17 @@ export const api = {
           200: z.array(z.any()),
         },
       },
+      dueForWarning: {
+        method: 'GET' as const,
+        path: '/api/admin/subscriptions/due-for-warning',
+        responses: {
+          200: z.object({
+            days: z.number(),
+            count: z.number(),
+            subscriptionIds: z.array(z.number()),
+          }),
+        },
+      },
     },
 
     // Holdback Management

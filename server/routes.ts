@@ -17,6 +17,7 @@ import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import { resolveExpiryWarningDays } from "./scheduler";
 import rateLimit from "express-rate-limit";
 
 // Extend Express User type
@@ -2107,6 +2108,21 @@ export async function registerRoutes(
   app.get("/api/admin/subscriptions", requireAdmin, async (req, res) => {
     const subs = await storage.getAllSubscriptions();
     res.json(subs);
+  });
+
+  app.get("/api/admin/subscriptions/due-for-warning", requireAdmin, async (req, res) => {
+    try {
+      const days = await resolveExpiryWarningDays();
+      const due = await storage.getSubscriptionsDueForWarning(days);
+      res.json({
+        days,
+        count: due.length,
+        subscriptionIds: due.map((s) => s.id),
+      });
+    } catch (err) {
+      console.error('[Admin] Failed to compute subscriptions due for warning:', err);
+      res.status(500).json({ message: 'Failed to compute subscriptions due for warning' });
+    }
   });
 
   app.post("/api/admin/subscriptions", requireAdmin, async (req, res) => {

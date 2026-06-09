@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 
 type PlatformSettings = {
   commissionRates: Record<string, number> | null;
@@ -54,6 +55,14 @@ export default function AdminSettings() {
 
   const { data: settings, isLoading } = useQuery<PlatformSettings>({
     queryKey: [api.admin.settings.get.path],
+  });
+
+  const { data: warningPreview, isLoading: warningPreviewLoading } = useQuery<{
+    days: number;
+    count: number;
+    subscriptionIds: number[];
+  }>({
+    queryKey: [api.admin.subscriptions.dueForWarning.path],
   });
 
   const { data: webhookStatus, isLoading: webhookLoading, refetch: refetchWebhook } = useQuery<WebhookStatus>({
@@ -116,6 +125,7 @@ export default function AdminSettings() {
       apiRequest("PATCH", api.admin.settings.update.path, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.admin.settings.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.admin.subscriptions.dueForWarning.path] });
       toast({ title: "Settings saved successfully" });
     },
     onError: () => toast({ title: "Failed to save settings", variant: "destructive" }),
@@ -287,6 +297,46 @@ export default function AdminSettings() {
                     {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     Save Warning Lead Time
                   </Button>
+
+                  <div
+                    className="rounded-md border border-gray-200 bg-gray-50 p-4"
+                    data-testid="panel-warning-preview"
+                  >
+                    {warningPreviewLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Checking which subscriptions would be warned…
+                      </div>
+                    ) : warningPreview && warningPreview.count > 0 ? (
+                      <p className="text-sm text-gray-700">
+                        <Link
+                          href="/admin/subscriptions?dueForWarning=1"
+                          className="font-semibold text-primary underline-offset-2 hover:underline"
+                          data-testid="link-warning-preview-count"
+                        >
+                          {warningPreview.count} subscription{warningPreview.count !== 1 ? "s" : ""}
+                        </Link>{" "}
+                        would receive a warning email right now at the current setting of{" "}
+                        <span className="font-medium">
+                          {(warningPreview.days ?? expiryWarningDays)} day
+                          {(warningPreview.days ?? expiryWarningDays) !== 1 ? "s" : ""}
+                        </span>{" "}
+                        before expiry.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500" data-testid="text-warning-preview-empty">
+                        No active subscriptions currently fall within the{" "}
+                        <span className="font-medium">
+                          {(warningPreview?.days ?? expiryWarningDays)} day
+                          {(warningPreview?.days ?? expiryWarningDays) !== 1 ? "s" : ""}
+                        </span>{" "}
+                        warning window.
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-400">
+                      Save a new lead time above to refresh this preview.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
 

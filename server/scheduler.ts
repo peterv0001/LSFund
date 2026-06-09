@@ -31,11 +31,15 @@ function resolveExpiryCheckIntervalMs(): number {
 
 export const EXPIRY_CHECK_INTERVAL_MS = resolveExpiryCheckIntervalMs();
 
+export async function resolveExpiryWarningDays(): Promise<number> {
+  const savedDays = await storage.getPlatformSetting('expiryWarningDays');
+  const rawDays = typeof savedDays === 'number' ? savedDays : 7;
+  return Math.min(90, Math.max(1, Math.round(rawDays)));
+}
+
 export async function warnUpcomingExpirations(): Promise<void> {
   try {
-    const savedDays = await storage.getPlatformSetting('expiryWarningDays');
-    const rawDays = typeof savedDays === 'number' ? savedDays : 7;
-    const expiryWarningDays: number = Math.min(90, Math.max(1, Math.round(rawDays)));
+    const expiryWarningDays: number = await resolveExpiryWarningDays();
     const due = await storage.getSubscriptionsDueForWarning(expiryWarningDays);
     if (due.length === 0) return;
 

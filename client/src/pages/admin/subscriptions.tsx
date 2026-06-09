@@ -338,6 +338,9 @@ export default function AdminSubscriptions() {
     const parsed = parseInt(id, 10);
     return Number.isFinite(parsed) ? parsed : null;
   });
+  const [dueForWarningFilter, setDueForWarningFilter] = useState<boolean>(() => {
+    return initialParams.get("dueForWarning") === "1";
+  });
   const [historySubId, setHistorySubId] = useState<number | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -396,6 +399,14 @@ export default function AdminSubscriptions() {
     setAgentFilter(agentId);
     updateAgentInUrl(agentId);
   }, [updateAgentInUrl]);
+
+  const clearDueForWarningFilter = useCallback(() => {
+    setDueForWarningFilter(false);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("dueForWarning");
+    const qs = params.toString();
+    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
+  }, [setLocation]);
   const [selectedColumns, setSelectedColumns] = useState<Set<ExportColumnKey>>(() => {
     try {
       const raw = localStorage.getItem(COLUMNS_LS_KEY);
@@ -500,6 +511,12 @@ export default function AdminSubscriptions() {
     queryKey: [api.admin.subscriptions.list.path],
   });
 
+  const { data: dueForWarning } = useQuery<{ days: number; count: number; subscriptionIds: number[] }>({
+    queryKey: [api.admin.subscriptions.dueForWarning.path],
+    enabled: dueForWarningFilter,
+  });
+  const dueForWarningIds = dueForWarning?.subscriptionIds;
+
   const { data: agentsData } = useQuery<{ agents: Agent[] }>({
     queryKey: [api.admin.agents.list.path],
   });
@@ -593,12 +610,17 @@ export default function AdminSubscriptions() {
     ? new Date(customEndDate + "T23:59:59")
     : null;
 
+  const dueForWarningIdSet = dueForWarningFilter && dueForWarningIds
+    ? new Set(dueForWarningIds)
+    : null;
+
   const filteredSubscriptions = subscriptions.filter((s) => {
     if (statusFilter !== "all" && s.status !== statusFilter) return false;
     if (dateThreshold && getChangedAt(s) < dateThreshold) return false;
     if (agentFilter !== null && s.agentId !== agentFilter) return false;
     if (customStart && getChangedAt(s) < customStart) return false;
     if (customEnd && getChangedAt(s) > customEnd) return false;
+    if (dueForWarningIdSet && !dueForWarningIdSet.has(s.id)) return false;
     return true;
   });
 
@@ -635,7 +657,7 @@ export default function AdminSubscriptions() {
       })()
     : null;
 
-  const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null;
+  const hasActiveFilters = statusFilter !== "all" || dateRangeFilter !== "all" || agentFilter !== null || dueForWarningFilter;
 
   const showDateRangeSummary =
     dateRangeFilter === "7d" ||
@@ -762,6 +784,7 @@ export default function AdminSubscriptions() {
     statusFilter !== "all",
     dateRangeFilter !== "all",
     agentFilter !== null,
+    dueForWarningFilter,
   ].filter(Boolean).length;
 
   function clearAllFilters() {
@@ -770,6 +793,7 @@ export default function AdminSubscriptions() {
     setCustomStartDate("");
     setCustomEndDate("");
     setAgentFilter(null);
+    setDueForWarningFilter(false);
     persistDateFilter("all", "", "");
     const params = new URLSearchParams(window.location.search);
     params.delete("range");
@@ -777,6 +801,7 @@ export default function AdminSubscriptions() {
     params.delete("end");
     params.delete("agentId");
     params.delete("status");
+    params.delete("dueForWarning");
     const qs = params.toString();
     setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
   }
@@ -1126,6 +1151,27 @@ export default function AdminSubscriptions() {
                   onClick={() => handleAgentFilterChange(null)}
                   className="ml-0.5 hover:text-primary/70 transition-colors"
                   aria-label="Clear agent filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {dueForWarningFilter && (
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-medium"
+                data-testid="due-for-warning-filter-indicator"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>
+                  Due for expiry warning
+                  {dueForWarning ? ` (${dueForWarning.days}d window)` : ""}
+                </span>
+                <button
+                  data-testid="button-clear-due-for-warning-filter"
+                  onClick={clearDueForWarningFilter}
+                  className="ml-0.5 hover:text-amber-600 transition-colors"
+                  aria-label="Clear due-for-warning filter"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
