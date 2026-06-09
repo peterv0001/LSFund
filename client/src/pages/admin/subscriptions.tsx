@@ -591,6 +591,26 @@ export default function AdminSubscriptions() {
     return true;
   });
 
+  const mrrByStatus = (() => {
+    const statusMrr: Record<string, number> = {};
+    let total = 0;
+    for (const s of filteredSubscriptions) {
+      const amt = Number(s.monthlyAmount);
+      statusMrr[s.status] = (statusMrr[s.status] ?? 0) + amt;
+      total += amt;
+    }
+    const statusOrder = ["active", "paused", "cancelled", "expired"];
+    const orderedStatuses = [
+      ...statusOrder.filter((st) => statusMrr[st] !== undefined),
+      ...Object.keys(statusMrr).filter((st) => !statusOrder.includes(st)),
+    ];
+    const items = orderedStatuses.map((st) => ({ status: st, amount: statusMrr[st] ?? 0 }));
+    return { items, total };
+  })();
+
+  const formatMrr = (amount: number) =>
+    `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
   const selectedAgentSummary = agentFilter !== null
     ? agentSummary.find((a) => a.agentId === agentFilter) ?? (() => {
         const hasNamedAgent = subscriptions.some((s) => s.agentId === agentFilter && s.agent?.firstName);
@@ -1064,7 +1084,7 @@ export default function AdminSubscriptions() {
               </span>
             )}
 
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1" data-testid="container-export-actions">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -1408,6 +1428,48 @@ export default function AdminSubscriptions() {
                       Cancelled
                     </span>
                   </button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* MRR Breakdown Card */}
+          {!isLoading && filteredSubscriptions.length > 0 && (
+            <Card className="mb-4" data-testid="mrr-breakdown-card">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <DollarSign className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-gray-700">
+                    MRR by status
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    (matches CSV export)
+                  </span>
+                  <span
+                    className="ml-auto text-sm font-bold text-gray-900"
+                    data-testid="text-mrr-total"
+                  >
+                    {formatMrr(mrrByStatus.total)} total
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {mrrByStatus.items.map((item) => (
+                    <div
+                      key={item.status}
+                      data-testid={`mrr-status-${item.status}`}
+                      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${
+                        STATUS_COLORS[item.status] ?? "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      <span
+                        className="text-sm font-bold"
+                        data-testid={`text-mrr-amount-${item.status}`}
+                      >
+                        {formatMrr(item.amount)}
+                      </span>
+                      <span className="text-sm capitalize">{item.status}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
