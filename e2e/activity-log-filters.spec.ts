@@ -217,6 +217,13 @@ test.describe("Activity log filters — pre-filtered URL restores filter state",
     await expect(page.getByTestId("input-log-end-date")).toHaveValue("2026-03-31");
   });
 
+  test("navigating to a URL with both startDate and endDate pre-fills both date inputs", async ({ page }) => {
+    await page.goto("/admin/activity?startDate=2026-01-01&endDate=2026-06-30");
+    await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId("input-log-start-date")).toHaveValue("2026-01-01");
+    await expect(page.getByTestId("input-log-end-date")).toHaveValue("2026-06-30");
+  });
+
   test("navigating to a URL with multiple filter params restores all of them", async ({ page }) => {
     await page.goto("/admin/activity?entityType=subscription&actorType=agent&action=create");
     await expect(page.getByTestId("select-entity-type")).toBeVisible({ timeout: 8000 });
@@ -407,5 +414,35 @@ test.describe("Activity log filters — filtered results match filter criteria",
     await expect(page.getByTestId("input-log-search")).toHaveValue("merchant");
     await expect(page.getByTestId("input-log-start-date")).toHaveValue("2026-01-01");
     await expect(page.getByTestId("input-log-end-date")).toHaveValue("2026-12-31");
+  });
+
+  test("applying a start date via the input updates the URL, and the value survives a reload", async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/admin/activity");
+    await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
+
+    // Apply a start date through the date input (debounced, fires after 300 ms)
+    await page.getByTestId("input-log-start-date").fill("2026-01-01");
+    await expect(page).toHaveURL(/startDate=2026-01-01/, { timeout: 3000 });
+
+    // Reload and confirm the date input retains its value and the URL persists
+    await page.reload();
+    await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId("input-log-start-date")).toHaveValue("2026-01-01");
+    await expect(page).toHaveURL(/startDate=2026-01-01/);
+  });
+
+  test("page reload preserves both date range inputs when only dates are applied", async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/admin/activity?startDate=2026-02-01&endDate=2026-08-31");
+    await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
+
+    const urlBeforeReload = page.url();
+    await page.reload();
+
+    expect(page.url()).toBe(urlBeforeReload);
+    await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId("input-log-start-date")).toHaveValue("2026-02-01");
+    await expect(page.getByTestId("input-log-end-date")).toHaveValue("2026-08-31");
   });
 });
