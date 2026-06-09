@@ -1,8 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import "./landing-pages.css";
+
+export { usePageMeta };
 
 export const APPLY_URL = "https://apply.myrmapp.com/multi-step-apply/pg";
 
@@ -59,33 +62,6 @@ export function useLandingForm(campaign: string, destination: Destination) {
   return { formRef, onSubmit, triggerSubmit };
 }
 
-/** Sets the document title and meta description for the duration of the page. */
-export function usePageMeta(title: string, description: string) {
-  useEffect(() => {
-    const previousTitle = document.title;
-    document.title = title;
-
-    let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-    let created = false;
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "description";
-      document.head.appendChild(meta);
-      created = true;
-    }
-    const previousDescription = meta.getAttribute("content");
-    meta.setAttribute("content", description);
-
-    return () => {
-      document.title = previousTitle;
-      if (created) {
-        meta?.remove();
-      } else if (previousDescription !== null) {
-        meta?.setAttribute("content", previousDescription);
-      }
-    };
-  }, [title, description]);
-}
 
 export function ShieldLogo() {
   return (

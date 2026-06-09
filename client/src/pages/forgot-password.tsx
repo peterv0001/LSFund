@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +19,10 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
+  usePageMeta(
+    "Forgot Password | Leader Shield Funding",
+    "Reset your Leader Shield Funding agent portal password.",
+  );
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
 

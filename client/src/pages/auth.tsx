@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +29,12 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const { login, register, isLoggingIn, isRegistering } = useAuth();
   const [location] = useLocation();
+  usePageMeta(
+    isLogin ? "Agent Sign In | Leader Shield Funding" : "Create Agent Account | Leader Shield Funding",
+    isLogin
+      ? "Sign in to your Leader Shield Funding agent portal to manage deals, track commissions, and grow your team."
+      : "Join Leader Shield Funding as an agent. Earn multi-tiered commissions on MCA deals and Merchant Growth Platform subscriptions.",
+  );
 
   const searchParams = new URLSearchParams(window.location.search);
   const referralCode = searchParams.get("ref");

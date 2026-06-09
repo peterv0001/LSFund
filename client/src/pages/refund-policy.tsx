@@ -1,8 +1,13 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CreditCard, XCircle, Clock, HelpCircle, AlertTriangle, Shield } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function RefundPolicyPage() {
+  usePageMeta(
+    "Refund Policy | Leader Shield Funding",
+    "Leader Shield Funding refund and cancellation policy for Merchant Growth Platform subscriptions.",
+  );
   return (
     <div className="min-h-screen bg-background">
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">

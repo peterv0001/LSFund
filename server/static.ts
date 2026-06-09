@@ -33,6 +33,189 @@ function isKnownRoute(pathname: string): boolean {
   return KNOWN_ROUTES.some((pattern) => pattern.test(pathname));
 }
 
+interface RouteMeta {
+  title: string;
+  description: string;
+}
+
+const SITE = "Leader Shield Funding";
+const DOMAIN = "https://leadershieldfunding.com";
+
+const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
+  {
+    pattern: /^\/$/,
+    meta: {
+      title: `Business Funding & Merchant Cash Advance | ${SITE}`,
+      description:
+        "Leader Shield Funding helps businesses access fast merchant cash advances and grow recurring revenue. Join our agent network or apply for capital today.",
+    },
+  },
+  {
+    pattern: /^\/login$/,
+    meta: {
+      title: `Agent Sign In | ${SITE}`,
+      description:
+        "Sign in to your Leader Shield Funding agent portal to manage deals, track commissions, and grow your team.",
+    },
+  },
+  {
+    pattern: /^\/signup$/,
+    meta: {
+      title: `Create Agent Account | ${SITE}`,
+      description:
+        "Join Leader Shield Funding as an agent. Earn multi-tiered commissions on MCA deals and Merchant Growth Platform subscriptions.",
+    },
+  },
+  {
+    pattern: /^\/join\//,
+    meta: {
+      title: `Join Leader Shield Funding`,
+      description:
+        "You've been invited to join Leader Shield Funding. Create your agent account and start earning commissions on MCA deals and subscriptions.",
+    },
+  },
+  {
+    pattern: /^\/forgot-password$/,
+    meta: {
+      title: `Forgot Password | ${SITE}`,
+      description: "Reset your Leader Shield Funding agent portal password.",
+    },
+  },
+  {
+    pattern: /^\/reset-password$/,
+    meta: {
+      title: `Reset Password | ${SITE}`,
+      description:
+        "Create a new password for your Leader Shield Funding agent portal account.",
+    },
+  },
+  {
+    pattern: /^\/privacy$/,
+    meta: {
+      title: `Privacy Policy | ${SITE}`,
+      description:
+        "Leader Shield Funding privacy policy: how we collect, use, and protect your personal information.",
+    },
+  },
+  {
+    pattern: /^\/terms$/,
+    meta: {
+      title: `Terms of Service | ${SITE}`,
+      description:
+        "Leader Shield Funding terms of service governing use of the platform, agent agreements, and commission structures.",
+    },
+  },
+  {
+    pattern: /^\/refund-policy$/,
+    meta: {
+      title: `Refund Policy | ${SITE}`,
+      description:
+        "Leader Shield Funding refund and cancellation policy for Merchant Growth Platform subscriptions.",
+    },
+  },
+  {
+    pattern: /^\/income-disclosure$/,
+    meta: {
+      title: `Income Disclosure Statement | ${SITE}`,
+      description:
+        "FTC-compliant income disclosure for Leader Shield Funding agents. Actual earnings vary based on effort, experience, and market conditions.",
+    },
+  },
+  {
+    pattern: /^\/lp\/declined$/,
+    meta: {
+      title: `The Bank Said No. Your Revenue Says Yes. | ${SITE}`,
+      description:
+        "Get the 24-Hour Funding Checklist: exactly what to prepare so your business can move from application to funded capital in as little as one business day.",
+    },
+  },
+  {
+    pattern: /^\/lp\/consolidation$/,
+    meta: {
+      title: `Too Many Daily Debits? See the Math on One Payment. | ${SITE}`,
+      description:
+        "Get a free consolidation analysis: map every advance you're carrying and see what one structured payment could do for your daily cash flow.",
+    },
+  },
+  {
+    pattern: /^\/lp\/growth$/,
+    meta: {
+      title: `Growth Doesn't Wait for the Bank. | ${SITE}`,
+      description:
+        "Get the Capital ROI Playbook: how operators decide when fast capital beats waiting — with worked examples on inventory turns, marketing payback, and expansion math.",
+    },
+  },
+  {
+    pattern: /^\/lp\/seasonal$/,
+    meta: {
+      title: `Stock the Season Before the Season. | ${SITE}`,
+      description:
+        "Get the Seasonal Capital Calendar: when to secure inventory and staffing capital ahead of your peak — retail, e-commerce, restaurants, and trades.",
+    },
+  },
+  {
+    pattern: /^\/lp\/partners$/,
+    meta: {
+      title: `Your Dialers. Our Paper. | ${SITE} Partner Network`,
+      description:
+        "An institutional MCA partner program for call centers, ISOs, and brokerages: transparent per-deal economics, fast funding payouts, and full compliance coverage.",
+    },
+  },
+  {
+    pattern: /^\/lp\/referral$/,
+    meta: {
+      title: `You Know a Business That Needs Capital. | ${SITE}`,
+      description:
+        "Join the Leader Shield referral partner program: make the introduction and earn 1% of factoring origination on every funded referral. No quotas, no sales role.",
+    },
+  },
+];
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function injectMeta(html: string, meta: RouteMeta, requestPath: string): string {
+  const title = escapeHtml(meta.title);
+  const description = escapeHtml(meta.description);
+  const url = escapeHtml(`${DOMAIN}${requestPath}`);
+
+  let result = html;
+
+  result = result.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
+
+  result = result.replace(
+    /(<meta\s+name="description"\s+content=")[^"]*(")/,
+    `$1${description}$2`,
+  );
+  result = result.replace(
+    /(<meta\s+property="og:title"\s+content=")[^"]*(")/,
+    `$1${title}$2`,
+  );
+  result = result.replace(
+    /(<meta\s+property="og:description"\s+content=")[^"]*(")/,
+    `$1${description}$2`,
+  );
+  result = result.replace(
+    /(<meta\s+property="og:url"\s+content=")[^"]*(")/,
+    `$1${url}$2`,
+  );
+  result = result.replace(
+    /(<meta\s+name="twitter:title"\s+content=")[^"]*(")/,
+    `$1${title}$2`,
+  );
+  result = result.replace(
+    /(<meta\s+name="twitter:description"\s+content=")[^"]*(")/,
+    `$1${description}$2`,
+  );
+
+  return result;
+}
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
@@ -43,9 +226,28 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
+  const indexPath = path.resolve(distPath, "index.html");
+  let indexHtml: string | null = null;
+
+  function getIndexHtml(): string {
+    if (!indexHtml) {
+      indexHtml = fs.readFileSync(indexPath, "utf-8");
+    }
+    return indexHtml;
+  }
+
   app.use("/{*path}", (req, res) => {
     const pathname = req.path;
     const status = isKnownRoute(pathname) ? 200 : 404;
-    res.status(status).sendFile(path.resolve(distPath, "index.html"));
+    const html = getIndexHtml();
+
+    const match = PUBLIC_ROUTE_META.find(({ pattern }) => pattern.test(pathname));
+    if (match) {
+      const injected = injectMeta(html, match.meta, pathname);
+      res.status(status).setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(injected);
+    } else {
+      res.status(status).sendFile(indexPath);
+    }
   });
 }

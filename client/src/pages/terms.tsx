@@ -1,8 +1,13 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Shield } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function TermsOfServicePage() {
+  usePageMeta(
+    "Terms of Service | Leader Shield Funding",
+    "Leader Shield Funding terms of service governing use of the platform, agent agreements, and commission structures.",
+  );
   return (
     <div className="min-h-screen bg-background">
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">

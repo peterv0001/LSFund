@@ -2,8 +2,13 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, ArrowLeft, Lock, Eye, Database, Cookie, UserCheck, Trash2, Globe, Baby, MapPin, Mail } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function PrivacyPolicyPage() {
+  usePageMeta(
+    "Privacy Policy | Leader Shield Funding",
+    "Leader Shield Funding privacy policy: how we collect, use, and protect your personal information.",
+  );
   return (
     <div className="min-h-screen bg-background">
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">

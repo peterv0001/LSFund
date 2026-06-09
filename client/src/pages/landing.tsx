@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -116,6 +117,10 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 export default function LandingPage() {
+  usePageMeta(
+    "Business Funding & Merchant Cash Advance | Leader Shield Funding",
+    "Leader Shield Funding helps businesses access fast merchant cash advances and grow recurring revenue. Join our agent network or apply for capital today.",
+  );
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {

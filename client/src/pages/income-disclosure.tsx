@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, AlertTriangle, BarChart3, Users, TrendingUp, Shield } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import {
   Table,
   TableBody,
@@ -23,6 +24,10 @@ const rankData = [
 ];
 
 export default function IncomeDisclosurePage() {
+  usePageMeta(
+    "Income Disclosure Statement | Leader Shield Funding",
+    "FTC-compliant income disclosure for Leader Shield Funding agents. Actual earnings vary based on effort, experience, and market conditions.",
+  );
   return (
     <div className="min-h-screen bg-background">
       <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border">
