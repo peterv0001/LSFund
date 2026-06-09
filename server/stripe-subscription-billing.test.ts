@@ -476,3 +476,122 @@ describe("PATCH /api/subscriptions/:id/payment-method – retry with card on fil
     await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
   });
 });
+
+// ── POST /api/subscriptions – graceful fallback when STRIPE_PRICE_TIER_* missing ─
+//
+// When a tier's STRIPE_PRICE_TIER_* env var is not configured, the route MUST
+// still succeed: it creates the Stripe Customer and persists the subscription
+// record, but intentionally skips stripe.subscriptions.create (no billing
+// starts). CONFIG.stripePriceIds in routes.ts is snapshotted from process.env
+// at module-load time, so to simulate the missing config we must delete the env
+// var, reset the module registry, and re-import routes.ts into a fresh app.
+describe("POST /api/subscriptions – gracefully skips billing when the tier price ID is missing", () => {
+  const TARGET_TIER = "tier_1" as const;
+  const MISSING_AGENT_EMAIL = `stripe-missing-price-test-${Date.now()}@example.com`;
+  const MISSING_AGENT_PASSWORD = "MissingPricePass1!";
+
+  let missingApp: ReturnType<typeof express>;
+  let missingCookie: string[];
+  let missingAgentId: number;
+  let missingMockStripe: MockStripeClient;
+  let savedPriceId: string | undefined;
+
+  beforeAll(async () => {
+    // Clear the tier price ID before re-importing routes.ts so its CONFIG
+    // snapshot sees an unset STRIPE_PRICE_TIER_1.
+    savedPriceId = process.env.STRIPE_PRICE_TIER_1;
+    delete process.env.STRIPE_PRICE_TIER_1;
+
+    vi.resetModules();
+    // Re-import the (still-mocked) stripe client and routes so the freshly
+    // evaluated CONFIG reflects the missing env var.
+    const stripeClientMod = await import("./stripeClient.js");
+    const routesMod = await import("./routes.js");
+
+    missingMockStripe = buildMockStripeClient();
+    vi.mocked(stripeClientMod.getUncachableStripeClient).mockResolvedValue(
+      missingMockStripe as unknown as Stripe
+    );
+
+    const [agent] = await db
+      .insert(schema.agents)
+      .values({
+        email: MISSING_AGENT_EMAIL,
+        password: await hashPasswordForTest(MISSING_AGENT_PASSWORD),
+        firstName: "Missing",
+        lastName: "Price",
+        currentRank: "agent",
+        highestRank: "agent",
+      })
+      .returning();
+    missingAgentId = agent.id;
+
+    missingApp = express();
+    missingApp.use(express.json());
+    const httpServer = createServer(missingApp);
+    await routesMod.registerRoutes(httpServer, missingApp);
+
+    const loginRes = await request(missingApp)
+      .post("/api/login")
+      .send({ username: MISSING_AGENT_EMAIL, password: MISSING_AGENT_PASSWORD });
+    missingCookie = loginRes.headers["set-cookie"] as unknown as string[];
+  }, 30000);
+
+  afterAll(async () => {
+    // Restore the env var so later module loads / other files are unaffected.
+    if (savedPriceId !== undefined) {
+      process.env.STRIPE_PRICE_TIER_1 = savedPriceId;
+    }
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, missingAgentId));
+    await db.delete(schema.agents).where(eq(schema.agents.id, missingAgentId));
+    vi.resetModules();
+  });
+
+  it("returns 201 and links the Stripe Customer but never calls stripe.subscriptions.create", async () => {
+    const res = await request(missingApp)
+      .post("/api/subscriptions")
+      .set("Cookie", missingCookie)
+      .send({
+        merchantName: "Missing Price Merchant",
+        merchantEmail: "missing-price@example.com",
+        tier: TARGET_TIER,
+        paymentMethodId: "pm_test_visa",
+      })
+      .expect(201);
+
+    // Customer is still created and linked…
+    expect(missingMockStripe.customers.create).toHaveBeenCalledTimes(1);
+    expect(res.body.stripeCustomerId).toBe(MOCK_CUSTOMER_ID);
+
+    // …but no subscription/billing is started because the price ID is missing.
+    expect(missingMockStripe.subscriptions.create).not.toHaveBeenCalled();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, res.body.id));
+  });
+
+  it("persists a stripeCustomerId but leaves stripeSubscriptionId null on the DB record", async () => {
+    const res = await request(missingApp)
+      .post("/api/subscriptions")
+      .set("Cookie", missingCookie)
+      .send({
+        merchantName: "Missing Price DB Merchant",
+        merchantEmail: "missing-price-db@example.com",
+        tier: TARGET_TIER,
+        paymentMethodId: "pm_test_visa",
+      })
+      .expect(201);
+
+    const subId: number = res.body.id;
+
+    const [dbSub] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, subId));
+
+    expect(dbSub).toBeDefined();
+    expect(dbSub.stripeCustomerId).toBe(MOCK_CUSTOMER_ID);
+    expect(dbSub.stripeSubscriptionId).toBeNull();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subId));
+  });
+});
