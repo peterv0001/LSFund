@@ -154,7 +154,8 @@ describe("MCA deal wizard — optional requested funding amount", () => {
     await user.click(screen.getByTestId("button-next-step"));
     await screen.findByRole("heading", { name: "Review & Submit" });
 
-    // The submit button is briefly disarmed on entering the review step.
+    // The submit button is enabled on the review step (no disclosure needed
+    // for a TX merchant, and nothing is pending).
     await waitFor(() =>
       expect(
         (screen.getByTestId("button-submit-application") as HTMLButtonElement)

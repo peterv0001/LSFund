@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useDeals, useCreateDeal } from "@/hooks/use-deals";
 import { Sidebar } from "@/components/Sidebar";
@@ -259,27 +259,6 @@ function MCADealDialog() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
-  // When the wizard advances into the review step (4), the "Next" button is
-  // replaced by the "Submit" button at the same position. Two things protect a
-  // click meant for "Next" from firing an unintended submission:
-  //   1. The two buttons carry distinct `key`s (below), so React tears down the
-  //      Next node and mounts a brand-new Submit node instead of reusing the
-  //      same <button> element. Reuse is the root cause: because nextStep is
-  //      async, setStep(4) runs in a microtask that drains before the click's
-  //      default action, so a reused node would already be type="submit" when
-  //      the browser performs the click's default action.
-  //   2. `submitArmed` only becomes true once step 4 has actually committed
-  //      (a post-click task via useEffect), so even a stray click during the
-  //      same render lands on a disabled button and cannot submit.
-  const [submitArmed, setSubmitArmed] = useState(false);
-
-  useEffect(() => {
-    if (step !== 4) {
-      setSubmitArmed(false);
-      return;
-    }
-    setSubmitArmed(true);
-  }, [step]);
 
   const form = useForm<DealFormData>({
     resolver: zodResolver(dealFormSchema),
@@ -902,14 +881,14 @@ function MCADealDialog() {
                     Cancel
                   </Button>
                   {step < 4 ? (
-                    <Button key="nav-next" type="button" onClick={nextStep} data-testid="button-next-step">
+                    <Button key="wizard-next" type="button" onClick={nextStep} data-testid="button-next-step">
                       Next <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   ) : (
                     <Button
-                      key="nav-submit"
+                      key="wizard-submit"
                       type="submit"
-                      disabled={isPending || !submitArmed || (needsDisclosure && !form.watch("stateDisclosureConfirmed"))}
+                      disabled={isPending || (needsDisclosure && !form.watch("stateDisclosureConfirmed"))}
                       data-testid="button-submit-application"
                     >
                       {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
