@@ -334,7 +334,7 @@ function MCADealDialog() {
   const step2Fields: (keyof DealFormData)[] = [
     "ownerFirstName", "ownerLastName", "ownerPhone", "ownerOwnershipPct", "ownerEmail", "ownerSsn", "ownerDob"
   ];
-  const step3Fields: (keyof DealFormData)[] = ["loanAmount", "avgMonthlyRevenue", "requestedAmount", "gbrAmount"];
+  const step3Fields: (keyof DealFormData)[] = ["loanAmount", "avgMonthlyRevenue", "gbrAmount"];
 
   const fieldStep: Partial<Record<keyof DealFormData, number>> = {
     merchantName: 1, merchantDba: 1, merchantEmail: 1, merchantPhone: 1,
@@ -714,7 +714,7 @@ function MCADealDialog() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label>Requested Funding Amount ($) <span className="text-red-500">*</span></Label>
+                      <Label>Requested Funding Amount ($)</Label>
                       <Input
                         data-testid="input-requested-amount"
                         type="number"

@@ -798,7 +798,10 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   pmfSubmissionStatus: true,
 }).extend({
   loanAmount: z.coerce.number().min(1000, "Loan amount must be at least $1,000"),
-  requestedAmount: z.coerce.number().min(1000).optional(),
+  requestedAmount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().min(1000).optional(),
+  ),
   avgMonthlyRevenue: z.coerce.number().min(0).optional(),
   gbrAmount: z.coerce.number().min(0).optional(),
   ownerOwnershipPct: z.coerce.number().min(0).max(100).optional(),
