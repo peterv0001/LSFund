@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import pg from "pg";
-import { runMigrations, revertMigration, applyMigration, type Migration } from "./migrations.js";
+import {
+  runMigrations,
+  revertMigration,
+  applyMigration,
+  findDuplicatePlacements,
+  formatDuplicatePlacementReport,
+  MigrationDeferredError,
+  DUPLICATE_PLACEMENT_ERROR_PREFIX,
+  migrations,
+  type Migration,
+} from "./migrations.js";
 
 const { Pool } = pg;
 
@@ -477,5 +487,193 @@ describe("applyMigration – ordering check", () => {
     ).resolves.toBeUndefined();
 
     expect(await migrationRecorded(NAME_A)).toBe(true);
+  });
+});
+
+describe("formatDuplicatePlacementReport", () => {
+  it("starts with the recognizable prefix and lists each conflicting slot", () => {
+    const report = formatDuplicatePlacementReport([
+      { placementId: 42, leg: "left", agentIds: [7, 19] },
+      { placementId: 99, leg: "right", agentIds: [3, 4, 5] },
+    ]);
+
+    expect(report.startsWith(DUPLICATE_PLACEMENT_ERROR_PREFIX)).toBe(true);
+    // Both conflicting parent slots are named
+    expect(report).toContain("Parent agent #42, left leg: agents #7, #19");
+    expect(report).toContain("Parent agent #99, right leg: agents #3, #4, #5");
+    // Counts: 2 slots, 5 agents total
+    expect(report).toContain("2 placement slots");
+    expect(report).toContain("5 agents in conflict");
+  });
+
+  it("uses singular wording for a single conflicting slot", () => {
+    const report = formatDuplicatePlacementReport([
+      { placementId: 1, leg: "left", agentIds: [10, 11] },
+    ]);
+    expect(report).toContain("1 placement slot is occupied");
+  });
+});
+
+describe("runMigrations deferral (MigrationDeferredError)", () => {
+  const ts = Date.now();
+  const DEFER_NAME = `test_defer_${ts}`;
+  const AFTER_NAME = `test_after_defer_${ts}`;
+
+  afterEach(async () => {
+    const client = await testPool.connect();
+    try {
+      await client.query(`DELETE FROM schema_migrations WHERE name IN ($1, $2)`, [
+        DEFER_NAME,
+        AFTER_NAME,
+      ]);
+    } finally {
+      client.release();
+    }
+  });
+
+  it("does not crash, leaves the migration pending, and continues to later migrations", async () => {
+    let afterRan = false;
+    const list: Migration[] = [
+      {
+        name: DEFER_NAME,
+        async run() {
+          throw new MigrationDeferredError("deferred for testing");
+        },
+      },
+      {
+        name: AFTER_NAME,
+        async run() {
+          afterRan = true;
+        },
+      },
+    ];
+
+    // Should resolve (not reject) despite the deferral
+    await expect(
+      runMigrations({ pool: testPool, migrations: list })
+    ).resolves.toBeUndefined();
+
+    // Deferred migration stays pending; the later one still applies
+    expect(await migrationRecorded(DEFER_NAME)).toBe(false);
+    expect(afterRan).toBe(true);
+    expect(await migrationRecorded(AFTER_NAME)).toBe(true);
+  });
+});
+
+describe("016 placement uniqueness guard", () => {
+  const M016 = "016_add_agents_placement_leg_unique_index";
+  const m016 = migrations.find((m) => m.name === M016)!;
+  const ts = Date.now();
+  const PARENT = 990000000 + (ts % 1000000); // arbitrary; agents.placement_id has no FK
+  const emailA = `placement_dup_a_${ts}@test.local`;
+  const emailB = `placement_dup_b_${ts}@test.local`;
+  let agentBId: number | null = null;
+
+  async function indexExists(): Promise<boolean> {
+    const client = await testPool.connect();
+    try {
+      const res = await client.query<{ exists: boolean }>(
+        `SELECT EXISTS (
+          SELECT 1 FROM pg_indexes
+          WHERE schemaname = 'public' AND indexname = 'agents_placement_leg_unique_idx'
+        ) AS exists`
+      );
+      return res.rows[0].exists;
+    } finally {
+      client.release();
+    }
+  }
+
+  async function insertAgent(email: string): Promise<number> {
+    const client = await testPool.connect();
+    try {
+      const res = await client.query<{ id: number }>(
+        `INSERT INTO agents (email, password, first_name, last_name, placement_id, leg)
+         VALUES ($1, 'x', 'Test', 'Dup', $2, 'left') RETURNING id`,
+        [email, PARENT]
+      );
+      return res.rows[0].id;
+    } finally {
+      client.release();
+    }
+  }
+
+  beforeAll(async () => {
+    const client = await testPool.connect();
+    try {
+      // Drop the index so we can stage a duplicate, and un-record 016 so the
+      // runner will attempt it again.
+      await client.query(`DROP INDEX IF EXISTS agents_placement_leg_unique_idx`);
+      await client.query(`DELETE FROM schema_migrations WHERE name = $1`, [M016]);
+      await client.query(`DELETE FROM agents WHERE email IN ($1, $2)`, [emailA, emailB]);
+    } finally {
+      client.release();
+    }
+    await insertAgent(emailA);
+    agentBId = await insertAgent(emailB);
+  });
+
+  afterAll(async () => {
+    const client = await testPool.connect();
+    try {
+      await client.query(`DELETE FROM agents WHERE email IN ($1, $2)`, [emailA, emailB]);
+    } finally {
+      client.release();
+    }
+    // Restore the index + record so the rest of the suite/app sees normal state.
+    await runMigrations({ pool: testPool, migrations: [m016] });
+  });
+
+  it("findDuplicatePlacements reports the staged conflict", async () => {
+    const client = await testPool.connect();
+    try {
+      const dupes = await findDuplicatePlacements(client);
+      const mine = dupes.find((d) => d.placementId === PARENT && d.leg === "left");
+      expect(mine).toBeDefined();
+      expect(mine!.agentIds.length).toBe(2);
+    } finally {
+      client.release();
+    }
+  });
+
+  it("defers migration 016 (no crash, left pending, index not created) when duplicates exist", async () => {
+    await expect(
+      runMigrations({ pool: testPool, migrations: [m016] })
+    ).resolves.toBeUndefined();
+
+    expect(await migrationRecorded(M016)).toBe(false);
+    expect(await indexExists()).toBe(false);
+  });
+
+  it("surfaces a clear, prefixed report when an admin tries to apply it directly", async () => {
+    await expect(
+      applyMigration(M016, { pool: testPool, migrations: [m016] })
+    ).rejects.toSatisfy((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      return (
+        err instanceof MigrationDeferredError &&
+        msg.startsWith(DUPLICATE_PLACEMENT_ERROR_PREFIX) &&
+        msg.includes(`#${PARENT}`)
+      );
+    });
+
+    expect(await migrationRecorded(M016)).toBe(false);
+  });
+
+  it("applies cleanly once the duplicate is resolved", async () => {
+    // Resolve the conflict by removing one of the two agents in the slot.
+    const client = await testPool.connect();
+    try {
+      await client.query(`DELETE FROM agents WHERE id = $1`, [agentBId]);
+    } finally {
+      client.release();
+    }
+
+    await expect(
+      applyMigration(M016, { pool: testPool, migrations: [m016] })
+    ).resolves.toBeUndefined();
+
+    expect(await migrationRecorded(M016)).toBe(true);
+    expect(await indexExists()).toBe(true);
   });
 });

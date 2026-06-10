@@ -37,6 +37,85 @@ export type Migration = {
   down?: (client: PoolClient) => Promise<void>;
 };
 
+/**
+ * Thrown by a migration's `run` when it cannot be safely applied yet because of
+ * existing data that must be cleaned up first. Unlike a normal error, this does
+ * NOT crash startup: the migration is rolled back, left pending, and a clear
+ * warning is logged so admins can resolve the underlying data and then apply
+ * the migration (automatically on the next boot, or manually from the admin
+ * migrations panel). The `message` is a human-readable report safe to show admins.
+ */
+export class MigrationDeferredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MigrationDeferredError";
+  }
+}
+
+/** Prefix used to recognize the placement-uniqueness duplicate report message. */
+export const DUPLICATE_PLACEMENT_ERROR_PREFIX =
+  "Cannot apply the binary-tree placement uniqueness index";
+
+export type DuplicatePlacement = {
+  placementId: number;
+  leg: string;
+  agentIds: number[];
+};
+
+/**
+ * Finds binary-tree placement slots that are occupied by more than one agent
+ * — i.e. duplicate (placement_id, leg) pairs. These are the rows that would
+ * make the placement uniqueness index fail to build. The root agent (NULL
+ * placement_id/leg) is excluded by design.
+ */
+export async function findDuplicatePlacements(
+  client: PoolClient
+): Promise<DuplicatePlacement[]> {
+  const result = await client.query<{
+    placement_id: number;
+    leg: string;
+    agent_ids: number[];
+  }>(`
+    SELECT placement_id, leg, array_agg(id ORDER BY id) AS agent_ids
+    FROM agents
+    WHERE placement_id IS NOT NULL AND leg IS NOT NULL
+    GROUP BY placement_id, leg
+    HAVING COUNT(*) > 1
+    ORDER BY placement_id, leg
+  `);
+  return result.rows.map((r) => ({
+    placementId: r.placement_id,
+    leg: r.leg,
+    agentIds: r.agent_ids,
+  }));
+}
+
+/**
+ * Builds a clear, admin-readable report of conflicting placements. The first
+ * line starts with DUPLICATE_PLACEMENT_ERROR_PREFIX so callers (the admin apply
+ * route) can recognize it and surface it verbatim instead of a generic error.
+ */
+export function formatDuplicatePlacementReport(
+  duplicates: DuplicatePlacement[]
+): string {
+  const slotCount = duplicates.length;
+  const agentCount = duplicates.reduce((sum, d) => sum + d.agentIds.length, 0);
+  const lines = duplicates.map(
+    (d) =>
+      `  • Parent agent #${d.placementId}, ${d.leg} leg: agents ${d.agentIds
+        .map((id) => `#${id}`)
+        .join(", ")}`
+  );
+  return (
+    `${DUPLICATE_PLACEMENT_ERROR_PREFIX}: ${slotCount} placement slot${
+      slotCount === 1 ? "" : "s"
+    } ${slotCount === 1 ? "is" : "are"} occupied by more than one agent ` +
+    `(${agentCount} agents in conflict). Each conflict must be resolved by moving the extra ` +
+    `agent(s) to an open slot before this index can be created:\n` +
+    lines.join("\n")
+  );
+}
+
 export const migrations: Migration[] = [
   {
     name: "001_add_paused_at_column",
@@ -383,6 +462,14 @@ export const migrations: Migration[] = [
   {
     name: "016_add_agents_placement_leg_unique_index",
     async run(client) {
+      // Guard: a long-lived database that accumulated duplicate placements from
+      // the old binary-tree bug would make CREATE UNIQUE INDEX fail with a
+      // cryptic unique-violation error and crash startup. Detect those rows
+      // first and defer with a clear, actionable report instead.
+      const duplicates = await findDuplicatePlacements(client);
+      if (duplicates.length > 0) {
+        throw new MigrationDeferredError(formatDuplicatePlacementReport(duplicates));
+      }
       await client.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS agents_placement_leg_unique_idx
         ON agents (placement_id, leg)
@@ -428,6 +515,15 @@ export async function runMigrations(options?: {
           console.log(`[migrations] ${migration.name} applied`);
         } catch (err) {
           await client.query("ROLLBACK");
+          // A deferred migration is not a failure: the data isn't ready yet.
+          // Leave it pending, warn loudly with the actionable report, and keep
+          // booting so admins can log in and resolve the conflict.
+          if (err instanceof MigrationDeferredError) {
+            console.warn(
+              `[migrations] ${migration.name} deferred — left pending, startup continues.\n${err.message}`
+            );
+            continue;
+          }
           console.error(
             `[migrations] ${migration.name} failed — transaction rolled back`,
             err
@@ -499,6 +595,12 @@ export async function applyMigration(
         console.log(`[migrations] ${name} applied`);
       } catch (err) {
         await client.query("ROLLBACK");
+        // A deferred migration is not a failure: re-throw so the caller can
+        // surface the actionable report to the admin, without scary logging.
+        if (err instanceof MigrationDeferredError) {
+          console.warn(`[migrations] ${name} deferred — left pending.\n${err.message}`);
+          throw err;
+        }
         console.error(
           `[migrations] ${name} failed — transaction rolled back`,
           err

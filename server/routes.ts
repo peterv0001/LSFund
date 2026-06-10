@@ -12,7 +12,7 @@ import { pool } from "./db";
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
-import { migrations, revertMigration, applyMigration } from "./migrations";
+import { migrations, revertMigration, applyMigration, DUPLICATE_PLACEMENT_ERROR_PREFIX } from "./migrations";
 import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
@@ -3480,7 +3480,8 @@ export async function registerRoutes(
       const isValidationError =
         message.startsWith(`Migration "${name}" has already been applied`) ||
         message.startsWith(`Cannot apply "${name}"`) ||
-        message.startsWith(`Migration "${name}" not found`);
+        message.startsWith(`Migration "${name}" not found`) ||
+        message.startsWith(DUPLICATE_PLACEMENT_ERROR_PREFIX);
       if (isValidationError) {
         return res.status(400).json({ message });
       }
