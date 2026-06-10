@@ -6,7 +6,7 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown, Star, Zap, DollarSign, Repeat, Users } from "lucide-react";
+import { ArrowRight, Loader2, CheckCircle2, Search, X, ChevronDown, Star, Zap, DollarSign, Repeat, Users, AlertTriangle } from "lucide-react";
 import { BrandLockup } from "@/components/BrandMark";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -232,6 +232,8 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
   const [selectedSponsor, setSelectedSponsor] = useState<SponsorOption | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [referralLocked, setReferralLocked] = useState(!!referralCode);
+  const [referralCleared, setReferralCleared] = useState(false);
+  const [sponsorError, setSponsorError] = useState<string | null>(null);
 
   const registerSchema = api.auth.register.input.extend({
     legalConsent: z.literal(true, {
@@ -287,12 +289,42 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
     form.setValue("referralCode", "");
     setShowDropdown(false);
     setSponsorSearch("");
+    setSponsorError(null);
   };
 
   const handleClearSponsor = () => {
     setSelectedSponsor(null);
     form.setValue("sponsorId", undefined);
     setSponsorSearch("");
+    setSponsorError(null);
+  };
+
+  const submitRegistration = async ({ legalConsent, ...data }: any) => {
+    try {
+      await onSubmit(data);
+    } catch (err: any) {
+      const message = err?.message || "";
+      if (message.includes("referral link is no longer valid")) {
+        setSponsorError(message);
+      } else {
+        toast({
+          title: "Registration failed",
+          description: message || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleContinueWithoutReferral = () => {
+    setSelectedSponsor(null);
+    setReferralLocked(false);
+    setReferralCleared(true);
+    setSponsorSearch("");
+    setSponsorError(null);
+    form.setValue("sponsorId", undefined);
+    form.setValue("referralCode", "");
+    form.handleSubmit(submitRegistration)();
   };
 
   return (
@@ -300,17 +332,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      onSubmit={form.handleSubmit(async ({ legalConsent, ...data }) => {
-        try {
-          await onSubmit(data);
-        } catch (err: any) {
-          toast({
-            title: "Registration failed",
-            description: err?.message || "Something went wrong. Please try again.",
-            variant: "destructive",
-          });
-        }
-      })}
+      onSubmit={form.handleSubmit(submitRegistration)}
       className="space-y-4"
     >
       <div className="grid grid-cols-2 gap-4">
@@ -360,7 +382,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          ) : referralCode ? (
+          ) : referralCode && !referralCleared ? (
             <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg text-sm text-primary">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Sponsor Code Applied: <strong>{referralCode}</strong></span>
@@ -465,6 +487,32 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
           <p className="text-xs text-destructive" data-testid="text-legal-consent-error">{form.formState.errors.legalConsent.message as string}</p>
         )}
       </div>
+
+      {sponsorError && (
+        <div
+          className="flex flex-col gap-3 p-4 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-950/30"
+          data-testid="alert-sponsor-unavailable"
+          role="alert"
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed" data-testid="text-sponsor-unavailable">
+              {sponsorError}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-amber-300 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+            onClick={handleContinueWithoutReferral}
+            disabled={isLoading}
+            data-testid="button-continue-without-referral"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Continue without a referral
+          </Button>
+        </div>
+      )}
 
       <Button type="submit" className="w-full h-12 text-base font-semibold mt-4" disabled={isLoading} data-testid="button-create-account">
         {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
