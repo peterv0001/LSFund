@@ -587,3 +587,123 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     expect(storage.createCommission).not.toHaveBeenCalled();
   });
 });
+
+// ── Unit – handleInvoicePaid applies the subscription decay schedule ───────
+// monthsSinceStart is floor((now - startDate) / 30.44 days). By back-dating
+// startDate to the middle of a decay band we land deterministically inside
+// that band, so the agent commission shrinks as the subscription ages:
+//   months 1-3  → 1.00   (covered by the month-0 tests above)
+//   months 4-6  → 0.75
+//   months 7-9  → 0.50
+//   months 10-12→ 0.25
+//   after 12    → 0.10   (and the type switches to subscription_residual)
+describe('WebhookHandlers.handleInvoicePaid – decay schedule by subscription age', () => {
+  const invoiceData = {
+    lines: { data: [{ period: { end: INVOICE_PERIOD_END } }] },
+  };
+
+  // vi.clearAllMocks() (global beforeEach) clears call history but NOT the
+  // queued mockResolvedValueOnce implementations. The earlier "zero amount"
+  // test queues a getUpline once-value that never gets consumed (createCommission
+  // is skipped), so without a reset it would leak into the first test here and
+  // fire an unexpected upline override. mockReset drains that queue.
+  beforeEach(() => {
+    vi.mocked(storage.getUpline).mockReset();
+  });
+
+  // Returns a startDate that yields the given monthsSinceStart. Adding 0.5 of a
+  // month lands mid-band so Math.floor reliably produces the target value.
+  function startDateForMonths(months: number): Date {
+    const msPerMonth = 30.44 * 24 * 60 * 60 * 1000;
+    return new Date(Date.now() - (months + 0.5) * msPerMonth);
+  }
+
+  function buildSub(months: number, id: number) {
+    return {
+      id,
+      stripeSubscriptionId: `sub_decay_${months}m_test`,
+      agentId: 1,
+      tier: 'tier_1',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: startDateForMonths(months),
+      mcaPairedDealId: null,
+    };
+  }
+
+  it('pays 75% at 4-6 months (tier_1 pool 0.50 × 0.75 × $100 = $37.50)', async () => {
+    const sub = buildSub(4, 301);
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
+
+    await WebhookHandlers.handleInvoicePaid(sub.stripeSubscriptionId, invoiceData);
+
+    expect(storage.createCommission).toHaveBeenCalledTimes(1);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 1,
+        subscriptionId: 301,
+        type: 'subscription_commission',
+        amount: '37.50',
+        status: 'pending',
+      })
+    );
+  });
+
+  it('pays 50% at 7-9 months (tier_1 pool 0.50 × 0.50 × $100 = $25.00)', async () => {
+    const sub = buildSub(7, 302);
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
+
+    await WebhookHandlers.handleInvoicePaid(sub.stripeSubscriptionId, invoiceData);
+
+    expect(storage.createCommission).toHaveBeenCalledTimes(1);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 1,
+        subscriptionId: 302,
+        type: 'subscription_commission',
+        amount: '25.00',
+        status: 'pending',
+      })
+    );
+  });
+
+  it('pays 25% at 10-12 months (tier_1 pool 0.50 × 0.25 × $100 = $12.50)', async () => {
+    const sub = buildSub(10, 303);
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
+
+    await WebhookHandlers.handleInvoicePaid(sub.stripeSubscriptionId, invoiceData);
+
+    expect(storage.createCommission).toHaveBeenCalledTimes(1);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 1,
+        subscriptionId: 303,
+        type: 'subscription_commission',
+        amount: '12.50',
+        status: 'pending',
+      })
+    );
+  });
+
+  it('pays 10% and switches type to subscription_residual after 12 months (0.50 × 0.10 × $100 = $5.00)', async () => {
+    const sub = buildSub(13, 304);
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
+
+    await WebhookHandlers.handleInvoicePaid(sub.stripeSubscriptionId, invoiceData);
+
+    expect(storage.createCommission).toHaveBeenCalledTimes(1);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 1,
+        subscriptionId: 304,
+        type: 'subscription_residual',
+        amount: '5.00',
+        status: 'pending',
+      })
+    );
+  });
+});
