@@ -60,6 +60,14 @@ const PRECOMPRESSED_GZIP_MARKER =
   "this exact text only exists inside the precompressed .gz sibling " +
   "and never in the source asset".repeat(20);
 
+const INDEX_BR_MARKER =
+  "this exact text only exists inside the precompressed index.html.br " +
+  "and never in the source shell".repeat(20);
+
+const INDEX_GZIP_MARKER =
+  "this exact text only exists inside the precompressed index.html.gz " +
+  "and never in the source shell".repeat(20);
+
 beforeAll(async () => {
   distDir = fs.mkdtempSync(path.join(os.tmpdir(), "static-caching-"));
   fs.mkdirSync(path.join(distDir, "assets"));
@@ -73,6 +81,19 @@ beforeAll(async () => {
       `<body><div id="root"></div>` +
       `<!-- ${"filler ".repeat(300)} -->` +
       `</body></html>`,
+  );
+
+  // Precompressed siblings for the SPA shell, as emitted at build time. Their
+  // content is intentionally distinct from a fresh (de)compression of the
+  // source shell so we can prove the precompressed file is served verbatim on
+  // the SPA fallback route.
+  fs.writeFileSync(
+    path.join(distDir, "index.html.br"),
+    zlib.brotliCompressSync(Buffer.from(INDEX_BR_MARKER)),
+  );
+  fs.writeFileSync(
+    path.join(distDir, "index.html.gz"),
+    zlib.gzipSync(Buffer.from(INDEX_GZIP_MARKER)),
   );
 
   // A content-hashed asset large enough to clear compression's default
@@ -367,5 +388,72 @@ describe("production response compression", () => {
     expect(res.status).toBe(200);
     expect(res.headers["content-encoding"]).toBe("gzip");
     expect(res.body.length).toBeLessThan(original.length);
+  });
+});
+
+describe("SPA fallback precompression", () => {
+  it("serves the precompressed index.html.br sibling on SPA routes that need no meta injection", async () => {
+    const res = await request(testApp)
+      .get("/dashboard")
+      .set("Accept-Encoding", "br");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+    // The SPA shell must still load immediately on a redeploy.
+    expect(res.headers["cache-control"]).toBe("no-cache");
+    expect(res.headers["content-type"]).toMatch(/text\/html/);
+    // superagent decodes the br body; it must equal the prebuilt sibling,
+    // proving the source shell was never compressed on the fly.
+    expect(res.text).toBe(INDEX_BR_MARKER);
+  });
+
+  it("serves the precompressed index.html.gz sibling to gzip-only clients on SPA routes", async () => {
+    const res = await request(testApp)
+      .get("/dashboard")
+      .set("Accept-Encoding", "gzip");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+    expect(res.headers["cache-control"]).toBe("no-cache");
+    expect(res.text).toBe(INDEX_GZIP_MARKER);
+  });
+
+  it("prefers the precompressed .br sibling over .gz on SPA routes when both are accepted", async () => {
+    const res = await request(testApp)
+      .get("/dashboard")
+      .set("Accept-Encoding", "gzip, br");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+    expect(res.text).toBe(INDEX_BR_MARKER);
+  });
+
+  it("serves the precompressed shell on unknown client routes with a 404 status", async () => {
+    const res = await request(testApp)
+      .get("/this-route-does-not-exist")
+      .set("Accept-Encoding", "br");
+    expect(res.status).toBe(404);
+    expect(res.headers["content-encoding"]).toBe("br");
+    expect(res.headers["cache-control"]).toBe("no-cache");
+    expect(res.text).toBe(INDEX_BR_MARKER);
+  });
+
+  it("sets a Content-Length matching the precompressed bytes actually sent", async () => {
+    const expected = zlib.brotliCompressSync(Buffer.from(INDEX_BR_MARKER));
+
+    const res = await rawGet("/dashboard", { "Accept-Encoding": "br" });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+    expect(Number(res.headers["content-length"])).toBe(res.body.length);
+    expect(res.body.equals(expected)).toBe(true);
+  });
+
+  it("still injects per-request meta on meta routes instead of the precompressed sibling", async () => {
+    const res = await request(testApp)
+      .get("/login")
+      .set("Accept-Encoding", "br");
+    expect(res.status).toBe(200);
+    expect(res.headers["cache-control"]).toBe("no-cache");
+    // The rewritten meta title must be present, proving the precompressed
+    // sibling (which lacks it) was NOT served for this route.
+    expect(res.text).toContain("Agent Sign In");
+    expect(res.text).not.toContain(INDEX_BR_MARKER);
   });
 });

@@ -4,3 +4,4 @@
 - [Actor badges in agent history](actor-badges-agent-history.md) — per-sub history endpoint nulls agent actorName, so the blue "Agent" badge never shows from real agent actions; stub the response to test it.
 - [Binary tree placement races](binary-tree-placement-races.md) — placement uniqueness needs a DB partial unique index on (placement_id, leg) + retry; app-level find-then-insert can't stop concurrent same-slot signups.
 - [MCA deal wizard submit](mca-deal-wizard-submit.md) — every required field is gated by per-step Next, so onInvalid is only reachable via Back-then-submit; clicking Next into step 4 can race into a real submit (flaky e2e).
+- [SPA catch-all request path](spa-catchall-path.md) — under `app.use("/{*path}")` Express 5 puts the route in baseUrl and req.path becomes the remainder ("/" for /login); use originalUrl for real path.

@@ -377,20 +377,68 @@ export function serveStatic(app: Express, distPathOverride?: string) {
   }
 
   app.use("/{*path}", (req, res) => {
-    const pathname = req.path;
+    // This handler is mounted at the `/{*path}` wildcard, so Express strips the
+    // matched segment into `req.baseUrl` and leaves `req.path` as the remainder
+    // (e.g. "/" for "/login"). Derive the real request path from `originalUrl`
+    // so route detection and meta injection see the full path.
+    let pathname = req.originalUrl.split("?")[0];
+    try {
+      pathname = decodeURIComponent(pathname);
+    } catch {
+      /* keep the raw path if it isn't valid percent-encoding */
+    }
     const status = isKnownRoute(pathname) ? 200 : 404;
-    const html = getIndexHtml();
 
     // The SPA shell must never be cached so new deploys load immediately.
     res.setHeader("Cache-Control", "no-cache");
 
     const match = PUBLIC_ROUTE_META.find(({ pattern }) => pattern.test(pathname));
     if (match) {
-      const injected = injectMeta(html, match.meta, pathname);
+      // Meta routes rewrite the HTML per-request, so the precompressed sibling
+      // can't be reused; let the `compression` middleware gzip the result.
+      const injected = injectMeta(getIndexHtml(), match.meta, pathname);
       res.status(status).setHeader("Content-Type", "text/html; charset=utf-8");
       res.send(injected);
-    } else {
-      res.status(status).sendFile(indexPath);
+      return;
     }
+
+    // The SPA shell is unchanged for these routes, so reuse the precompressed
+    // `index.html.br`/`.gz` siblings emitted at build time instead of paying
+    // runtime compression on the most-hit fallback route.
+    res.status(status).setHeader("Content-Type", "text/html; charset=utf-8");
+
+    let encoding: "br" | "gzip" | null = null;
+    let data: Buffer | null = null;
+
+    if (acceptsBrotli(req)) {
+      const br = readSibling(indexPath, "br");
+      if (br) {
+        encoding = "br";
+        data = br;
+      }
+    }
+    if (!data && acceptsGzip(req)) {
+      const gz = readSibling(indexPath, "gz");
+      if (gz) {
+        encoding = "gzip";
+        data = gz;
+      }
+    }
+
+    if (data && encoding) {
+      res.setHeader("Content-Encoding", encoding);
+      res.setHeader("Vary", "Accept-Encoding");
+      res.setHeader("Content-Length", data.length);
+      if (req.method === "HEAD") {
+        res.end();
+        return;
+      }
+      res.end(data);
+      return;
+    }
+
+    // No precompressed sibling (or client accepts neither br nor gzip): fall
+    // back to the raw file and let `compression` handle gzip if applicable.
+    res.sendFile(indexPath);
   });
 }
