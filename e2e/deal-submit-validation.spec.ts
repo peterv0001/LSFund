@@ -154,6 +154,47 @@ test.describe("MCA application wizard surfaces validation errors instead of fail
     ).toHaveCount(0);
   });
 
+  test("clicking Next from Funding lands on Review and never submits the application", async () => {
+    await openWizard();
+
+    // Walk to step 3 with valid data.
+    await fillStep1Valid("Review Gate Test LLC");
+    await page.locator('[data-testid="button-next-step"]').click();
+    await expect(page.getByText("Owner / Principal Information")).toBeVisible({ timeout: 5000 });
+
+    await fillStep2Valid();
+    await page.locator('[data-testid="button-next-step"]').click();
+    await expect(
+      page.getByRole("heading", { name: "Funding Details" })
+    ).toBeVisible({ timeout: 5000 });
+
+    // Step 3 — fully valid funding details so "Next" advances to Review.
+    await page.locator('[data-testid="input-requested-amount"]').fill("50000");
+    await page.locator('[data-testid="input-avg-monthly-revenue"]').fill("25000");
+    await page.locator('[data-testid="input-loan-amount"]').fill("50000");
+
+    // The click that caused the original bug: Next from Funding could race into
+    // an immediate submit (the Next button's reused DOM node became the submit
+    // button mid-click). It must instead land on the Review step.
+    await page.locator('[data-testid="button-next-step"]').click();
+
+    await expect(
+      page.getByRole("heading", { name: "Review & Submit" })
+    ).toBeVisible({ timeout: 5000 });
+    // It must NOT have skipped straight to the success state.
+    await expect(
+      page.getByRole("heading", { name: "Application Submitted!" })
+    ).toHaveCount(0);
+    // The explicit submit button is present and ready for the user to review-then-submit.
+    await expect(
+      page.locator('[data-testid="button-submit-application"]')
+    ).toBeVisible({ timeout: 5000 });
+
+    // Close the wizard so its modal overlay doesn't leak into the next serial test.
+    await page.locator('[data-testid="button-cancel-deal"]').click();
+    await expect(page.locator('[data-testid="input-merchant-name"]')).toHaveCount(0);
+  });
+
   test("a fully valid application submits successfully and appears in the deals list", async () => {
     test.setTimeout(60000);
     const merchantName = `E2E Valid Merchant ${TS}`;

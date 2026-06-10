@@ -12,11 +12,9 @@ Each step's "Next" button runs `form.trigger(stepFields)` and only advances when
 
 **How to apply (e2e):** to exercise `onInvalid`, fill a step validly, corrupt one field, then click "Back" to land on an earlier step still holding the bad value, then submit the form. You do NOT need to reach step 4 — submitting from any step runs the same `handleSubmit(onSubmit, onInvalid)`.
 
-## Entering Review (step 4) used to race a stray "Next" click into a real submit (now guarded)
-On step 4 the `type="button"` Next button is replaced by the `type="submit"` button at the SAME position in the nav row. When the form was fully valid, clicking Next → `setStep(4)` re-renders and a click (esp. Playwright's auto-retry of an unstable click, worse when the deals table re-renders slowly) could land on the freshly-mounted submit button, firing a real `POST /api/deals` and showing "Application Submitted!" instead of the review step.
+## A "Next"→"Submit" button swap at the same slot can fire an unintended submit
+**Rule:** when one nav button is conditionally replaced by a `type="submit"` button at the same position, give them distinct `key`s so React mounts a fresh node instead of reusing one `<button>` and flipping its `type`. Don't rely on a timed disable.
 
-**Fix:** a `submitArmed` flag in `deals.tsx` keeps the submit button `disabled` for ~400ms after step 4 mounts, so a stray click can't trigger submission. A disabled button ignores the event entirely (intent-via-pointerdown does NOT help — a full click on the swapped button still arms+fires). Playwright's explicit `.click()` on submit just waits for `enabled`, so legit submits are unaffected.
+**Why:** Next and Submit both render as `<Button>` (same type) → React reuses the DOM node. Since the step advance is `async` (`await form.trigger`), `setStep(4)` drains in a microtask BEFORE the click's default action, so the reused node is already `type="submit"` when the browser runs the click default action → real submit, skipping review. The earlier ~400ms `submitArmed` timer "fixed" this but was timing-fragile (risked flaky e2e where the button is disabled at click time).
 
-**Why disable rather than guard onSubmit by time:** time-guarding `onSubmit` would also block the legit submit click that fires moments after the review heading appears. Disabling the button defers the click instead of dropping it.
-
-**How to apply:** the "fully valid" e2e test can now reach step 4 via Next and submit normally. The `onInvalid`-safety-net test still submits via `document.querySelector('[role="dialog"] form').requestSubmit()` from step 2 with invalid data (routes to onInvalid, unaffected by submitArmed).
+**How to apply:** distinct keys (root fix) + `submitArmed` enabled in a `useEffect` keyed on the review step commit (no magic delay) + `onSubmit` gating creation to the review step. e2e: any test that leaves the wizard open must close it (Cancel) — serial-mode Radix dialog overlays otherwise leak and intercept pointer events in the next test.

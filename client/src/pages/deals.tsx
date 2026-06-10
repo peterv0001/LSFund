@@ -260,10 +260,17 @@ function MCADealDialog() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   // When the wizard advances into the review step (4), the "Next" button is
-  // swapped for the "Submit" button at the same position. A click intended for
-  // "Next" can otherwise land on the freshly-mounted submit button and fire an
-  // unintended submission (skipping the review step). Briefly disarm submit on
-  // entering step 4 so a stray click can't trigger it.
+  // replaced by the "Submit" button at the same position. Two things protect a
+  // click meant for "Next" from firing an unintended submission:
+  //   1. The two buttons carry distinct `key`s (below), so React tears down the
+  //      Next node and mounts a brand-new Submit node instead of reusing the
+  //      same <button> element. Reuse is the root cause: because nextStep is
+  //      async, setStep(4) runs in a microtask that drains before the click's
+  //      default action, so a reused node would already be type="submit" when
+  //      the browser performs the click's default action.
+  //   2. `submitArmed` only becomes true once step 4 has actually committed
+  //      (a post-click task via useEffect), so even a stray click during the
+  //      same render lands on a disabled button and cannot submit.
   const [submitArmed, setSubmitArmed] = useState(false);
 
   useEffect(() => {
@@ -271,9 +278,7 @@ function MCADealDialog() {
       setSubmitArmed(false);
       return;
     }
-    setSubmitArmed(false);
-    const t = setTimeout(() => setSubmitArmed(true), 400);
-    return () => clearTimeout(t);
+    setSubmitArmed(true);
   }, [step]);
 
   const form = useForm<DealFormData>({
@@ -373,6 +378,12 @@ function MCADealDialog() {
   };
 
   const onSubmit = async (data: DealFormData) => {
+    // Only the review step (4) may actually create the deal. This guards against
+    // a stray click racing a submit before the user has reviewed the form.
+    if (step !== 4) {
+      setStep(4);
+      return;
+    }
     try {
       const payload = {
         ...data,
@@ -891,11 +902,12 @@ function MCADealDialog() {
                     Cancel
                   </Button>
                   {step < 4 ? (
-                    <Button type="button" onClick={nextStep} data-testid="button-next-step">
+                    <Button key="nav-next" type="button" onClick={nextStep} data-testid="button-next-step">
                       Next <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   ) : (
                     <Button
+                      key="nav-submit"
                       type="submit"
                       disabled={isPending || !submitArmed || (needsDisclosure && !form.watch("stateDisclosureConfirmed"))}
                       data-testid="button-submit-application"
