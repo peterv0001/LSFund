@@ -586,6 +586,74 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
 
     expect(storage.createCommission).not.toHaveBeenCalled();
   });
+
+  it('adds the MCA pairing bonus when a recent subscription is paired with a deal', async () => {
+    const stripeSubId = 'sub_commission_paired_recent_test';
+    // tier_1 pool 0.50 + pairing bonus 0.05 = 0.55 × decay 1.00 × $100 = $55.00.
+    const fakeSubscription = {
+      id: 204,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 1,
+      tier: 'tier_1',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: new Date(),
+      mcaPairedDealId: 42,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getUpline).mockReset();
+    vi.mocked(storage.getUpline).mockResolvedValue([]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    expect(storage.createCommission).toHaveBeenCalledTimes(1);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 1,
+        subscriptionId: 204,
+        type: 'subscription_commission',
+        amount: '55.00',
+        status: 'pending',
+      })
+    );
+  });
+
+  it('does not add the MCA pairing bonus once the subscription is older than 3 months', async () => {
+    const stripeSubId = 'sub_commission_paired_old_test';
+    // Started ~4 months ago: monthsSinceStart is in the 4–6 band → decay 0.75.
+    // Pairing bonus is gated to monthsSinceStart < 3, so it must NOT apply.
+    // tier_1 pool 0.50 × decay 0.75 × $100 = $37.50 (no +0.05 bonus).
+    const fourMonthsAgo = new Date();
+    fourMonthsAgo.setDate(fourMonthsAgo.getDate() - 122);
+    const fakeSubscription = {
+      id: 205,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 1,
+      tier: 'tier_1',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: fourMonthsAgo,
+      mcaPairedDealId: 42,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getUpline).mockReset();
+    vi.mocked(storage.getUpline).mockResolvedValue([]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    expect(storage.createCommission).toHaveBeenCalledTimes(1);
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 1,
+        subscriptionId: 205,
+        type: 'subscription_commission',
+        amount: '37.50',
+        status: 'pending',
+      })
+    );
+  });
 });
 
 // ── Unit – handleInvoicePaid applies the subscription decay schedule ───────
