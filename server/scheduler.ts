@@ -31,6 +31,23 @@ function resolveExpiryCheckIntervalMs(): number {
 
 export const EXPIRY_CHECK_INTERVAL_MS = resolveExpiryCheckIntervalMs();
 
+// Track scheduler timing so the admin System Info panel can report when the
+// expiry checks last ran and when they are next due, without reading logs.
+let lastRunAt: Date | null = null;
+let nextRunAt: Date | null = null;
+
+export function getSchedulerStatus(): { lastRunAt: string | null; nextRunAt: string | null } {
+  return {
+    lastRunAt: lastRunAt ? lastRunAt.toISOString() : null,
+    nextRunAt: nextRunAt ? nextRunAt.toISOString() : null,
+  };
+}
+
+function recordSchedulerRun(): void {
+  lastRunAt = new Date();
+  nextRunAt = new Date(lastRunAt.getTime() + EXPIRY_CHECK_INTERVAL_MS);
+}
+
 export async function resolveExpiryWarningDays(): Promise<number> {
   const savedDays = await storage.getPlatformSetting('expiryWarningDays');
   const rawDays = typeof savedDays === 'number' ? savedDays : 7;
@@ -185,9 +202,11 @@ export async function expireOverdueSubscriptions(): Promise<void> {
 }
 
 export function startScheduler(): void {
+  recordSchedulerRun();
   warnUpcomingExpirations();
   expireOverdueSubscriptions();
   setInterval(() => {
+    recordSchedulerRun();
     warnUpcomingExpirations();
     expireOverdueSubscriptions();
   }, EXPIRY_CHECK_INTERVAL_MS);

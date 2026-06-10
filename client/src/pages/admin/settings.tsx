@@ -52,6 +52,10 @@ type WebhookStatus = {
 
 type SystemInfo = {
   expiryCheckIntervalMs: number;
+  expiryWarningDays: number;
+  nodeEnv: string;
+  schedulerLastRunAt: string | null;
+  schedulerNextRunAt: string | null;
 };
 
 function formatInterval(ms: number): string {
@@ -62,6 +66,13 @@ function formatInterval(ms: number): string {
   if (minutes < 60) return `${minutes % 1 === 0 ? minutes : minutes.toFixed(1)} min`;
   const hours = minutes / 60;
   return `${hours % 1 === 0 ? hours : hours.toFixed(1)} hr`;
+}
+
+function formatTimestamp(iso: string | null): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString();
 }
 
 export default function AdminSettings() {
@@ -564,24 +575,90 @@ export default function AdminSettings() {
                   ) : !systemInfo ? (
                     <p className="text-sm text-gray-500">Unable to load system info.</p>
                   ) : (
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <div>
-                        <p className="font-medium text-gray-700">Subscription expiry check interval</p>
-                        <p className="text-gray-500">
-                          How often the scheduler checks for expiring subscriptions
-                          (<code className="font-mono">EXPIRY_CHECK_INTERVAL_MS</code>)
-                        </p>
+                    <div className="divide-y divide-gray-100">
+                      <div className="flex items-center justify-between gap-3 text-sm pb-4">
+                        <div>
+                          <p className="font-medium text-gray-700">Subscription expiry check interval</p>
+                          <p className="text-gray-500">
+                            How often the scheduler checks for expiring subscriptions
+                            (<code className="font-mono">EXPIRY_CHECK_INTERVAL_MS</code>)
+                          </p>
+                        </div>
+                        <Badge
+                          data-testid="badge-expiry-check-interval"
+                          variant="secondary"
+                          className="font-mono whitespace-nowrap"
+                        >
+                          {formatInterval(systemInfo.expiryCheckIntervalMs)}
+                          <span className="text-gray-400 ml-1">
+                            ({systemInfo.expiryCheckIntervalMs.toLocaleString()} ms)
+                          </span>
+                        </Badge>
                       </div>
-                      <Badge
-                        data-testid="badge-expiry-check-interval"
-                        variant="secondary"
-                        className="font-mono whitespace-nowrap"
-                      >
-                        {formatInterval(systemInfo.expiryCheckIntervalMs)}
-                        <span className="text-gray-400 ml-1">
-                          ({systemInfo.expiryCheckIntervalMs.toLocaleString()} ms)
-                        </span>
-                      </Badge>
+
+                      <div className="flex items-center justify-between gap-3 text-sm py-4">
+                        <div>
+                          <p className="font-medium text-gray-700">Expiry warning window</p>
+                          <p className="text-gray-500">
+                            How many days before expiry agents are warned
+                          </p>
+                        </div>
+                        <Badge
+                          data-testid="badge-expiry-warning-days"
+                          variant="secondary"
+                          className="font-mono whitespace-nowrap"
+                        >
+                          {systemInfo.expiryWarningDays} day{systemInfo.expiryWarningDays !== 1 ? "s" : ""}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 text-sm py-4">
+                        <div>
+                          <p className="font-medium text-gray-700">App environment</p>
+                          <p className="text-gray-500">
+                            Active runtime mode (<code className="font-mono">NODE_ENV</code>)
+                          </p>
+                        </div>
+                        <Badge
+                          data-testid="badge-node-env"
+                          variant={systemInfo.nodeEnv === "production" ? "default" : "secondary"}
+                          className="font-mono whitespace-nowrap"
+                        >
+                          {systemInfo.nodeEnv}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 text-sm py-4">
+                        <div>
+                          <p className="font-medium text-gray-700">Scheduler last run</p>
+                          <p className="text-gray-500">
+                            When the expiry checks last executed
+                          </p>
+                        </div>
+                        <Badge
+                          data-testid="badge-scheduler-last-run"
+                          variant="secondary"
+                          className="font-mono whitespace-nowrap"
+                        >
+                          {formatTimestamp(systemInfo.schedulerLastRunAt)}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 text-sm pt-4">
+                        <div>
+                          <p className="font-medium text-gray-700">Scheduler next run</p>
+                          <p className="text-gray-500">
+                            When the expiry checks are next due
+                          </p>
+                        </div>
+                        <Badge
+                          data-testid="badge-scheduler-next-run"
+                          variant="secondary"
+                          className="font-mono whitespace-nowrap"
+                        >
+                          {formatTimestamp(systemInfo.schedulerNextRunAt)}
+                        </Badge>
+                      </div>
                     </div>
                   )}
                 </CardContent>
