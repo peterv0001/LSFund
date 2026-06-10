@@ -1,47 +1,9 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, readdir, writeFile, stat } from "fs/promises";
+import { rm, readFile } from "fs/promises";
 import path from "path";
-import zlib from "zlib";
 
-// Only precompress payloads worth the bytes; tiny files don't benefit. Keep in
-// sync with BROTLI_MIN_BYTES in server/static.ts.
-const COMPRESS_MIN_BYTES = 1024;
-const COMPRESSIBLE = /\.(js|css|html|json|svg|map|txt|wasm|webmanifest)$/i;
-
-async function precompressAssets(dir: string) {
-  let entries: string[];
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return;
-  }
-
-  let count = 0;
-  for (const entry of entries) {
-    const filePath = path.join(dir, entry);
-    const info = await stat(filePath);
-    if (info.isDirectory()) {
-      await precompressAssets(filePath);
-      continue;
-    }
-    if (!info.isFile() || info.size < COMPRESS_MIN_BYTES) continue;
-    if (!COMPRESSIBLE.test(entry) || /\.(br|gz)$/i.test(entry)) continue;
-
-    const raw = await readFile(filePath);
-
-    const br = zlib.brotliCompressSync(raw, {
-      params: {
-        [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
-        [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length,
-      },
-    });
-    await writeFile(`${filePath}.br`, br);
-
-    count++;
-  }
-  return count;
-}
+import { precompressAssets } from "./precompress.js";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
