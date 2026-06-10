@@ -227,6 +227,16 @@ const BROTLI_MIN_BYTES = 1024;
 // by mtime so each asset is only compressed once.
 const brotliCache = new Map<string, { mtimeMs: number; data: Buffer }>();
 
+function compressInMemory(filePath: string, mtimeMs: number): Buffer {
+  let cached = brotliCache.get(filePath);
+  if (!cached || cached.mtimeMs !== mtimeMs) {
+    const raw = fs.readFileSync(filePath);
+    cached = { mtimeMs, data: zlib.brotliCompressSync(raw) };
+    brotliCache.set(filePath, cached);
+  }
+  return cached.data;
+}
+
 function acceptsBrotli(req: Request): boolean {
   const header = req.headers["accept-encoding"];
   if (!header) return false;
@@ -270,24 +280,33 @@ function brotliStatic(distPath: string): express.RequestHandler {
     }
     if (!stat.isFile() || stat.size < BROTLI_MIN_BYTES) return next();
 
-    let cached = brotliCache.get(filePath);
-    if (!cached || cached.mtimeMs !== stat.mtimeMs) {
-      const raw = fs.readFileSync(filePath);
-      cached = { mtimeMs: stat.mtimeMs, data: zlib.brotliCompressSync(raw) };
-      brotliCache.set(filePath, cached);
+    // Prefer a precompressed `.br` sibling emitted at build time so we never
+    // pay runtime compression cost (and it survives restarts). Fall back to
+    // compressing on the fly and caching in-memory.
+    const precompressedPath = `${filePath}.br`;
+    let data: Buffer;
+    try {
+      const brStat = fs.statSync(precompressedPath);
+      if (brStat.isFile()) {
+        data = fs.readFileSync(precompressedPath);
+      } else {
+        data = compressInMemory(filePath, stat.mtimeMs);
+      }
+    } catch {
+      data = compressInMemory(filePath, stat.mtimeMs);
     }
 
     res.setHeader("Content-Encoding", "br");
     res.setHeader("Vary", "Accept-Encoding");
     res.type(path.extname(filePath) || "application/octet-stream");
     setAssetCacheControl(res, filePath);
-    res.setHeader("Content-Length", cached.data.length);
+    res.setHeader("Content-Length", data.length);
 
     if (req.method === "HEAD") {
       res.end();
       return;
     }
-    res.end(cached.data);
+    res.end(data);
   };
 }
 

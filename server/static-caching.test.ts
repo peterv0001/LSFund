@@ -52,6 +52,10 @@ function rawGet(
   });
 }
 
+const PRECOMPRESSED_MARKER =
+  "this exact text only exists inside the precompressed .br sibling " +
+  "and never in the source asset".repeat(20);
+
 beforeAll(async () => {
   distDir = fs.mkdtempSync(path.join(os.tmpdir(), "static-caching-"));
   fs.mkdirSync(path.join(distDir, "assets"));
@@ -76,6 +80,18 @@ beforeAll(async () => {
   fs.writeFileSync(
     path.join(distDir, "assets", "index-def67890.css"),
     `.lsf{color:#0A1628;background:#F6F8FB;}`.repeat(200),
+  );
+
+  // A hashed asset that has a precompressed `.br` sibling (as emitted at build
+  // time). The `.br` content is intentionally distinct from a fresh brotli of
+  // the source so we can prove the precompressed file is served verbatim.
+  fs.writeFileSync(
+    path.join(distDir, "assets", "prebuilt-aaa11111.js"),
+    `console.log("source that should never be compressed at runtime");`.repeat(200),
+  );
+  fs.writeFileSync(
+    path.join(distDir, "assets", "prebuilt-aaa11111.js.br"),
+    zlib.brotliCompressSync(Buffer.from(PRECOMPRESSED_MARKER)),
   );
 
   // Mirror the production wiring: compression before the static handler.
@@ -227,5 +243,20 @@ describe("production response compression", () => {
     expect(res.status).toBe(200);
     expect(res.headers["content-encoding"]).toBe("br");
     expect(res.body.length).toBeLessThan(original.length);
+  });
+
+  it("serves a precompressed .br sibling verbatim instead of compressing on the fly", async () => {
+    const res = await request(testApp)
+      .get("/assets/prebuilt-aaa11111.js")
+      .set("Accept-Encoding", "br");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+    expect(res.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable",
+    );
+
+    // superagent transparently decodes the br body; it must match the prebuilt
+    // sibling, proving the source was never compressed on the fly.
+    expect(res.text).toBe(PRECOMPRESSED_MARKER);
   });
 });
