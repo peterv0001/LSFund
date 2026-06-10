@@ -3,3 +3,4 @@
 - [Writing to prod DB](writing-to-prod-db.md) — prod is read-only via executeSql; sandbox hides process.env. To mutate live prod: request prod conn string secret, run a pg script via bash.
 - [Actor badges in agent history](actor-badges-agent-history.md) — per-sub history endpoint nulls agent actorName, so the blue "Agent" badge never shows from real agent actions; stub the response to test it.
 - [Binary tree placement races](binary-tree-placement-races.md) — placement uniqueness needs a DB partial unique index on (placement_id, leg) + retry; app-level find-then-insert can't stop concurrent same-slot signups.
+- [MCA deal wizard submit](mca-deal-wizard-submit.md) — every required field is gated by per-step Next, so onInvalid is only reachable via Back-then-submit; clicking Next into step 4 can race into a real submit (flaky e2e).
