@@ -127,4 +127,74 @@ test.describe("All Activity timeline — search input is debounced", () => {
     expect(searchRequests.length).toBe(1);
     expect(searchRequests[0]).toContain(`search=${SEARCH_TOKEN}`);
   });
+
+  test("clearing the search restores the full timeline without re-applying the filter", async ({
+    page,
+  }) => {
+    await openActivityTab(page);
+
+    // Baseline: both merchants are present in the unfiltered timeline.
+    const timeline = page.getByTestId("all-activity-timeline");
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+    await expect(timeline.getByText(MERCHANT_MATCH).first()).toBeVisible();
+    await expect(timeline.getByText(MERCHANT_OTHER).first()).toBeVisible();
+
+    // Narrow the timeline down to just the matching merchant first.
+    const input = page.getByTestId("input-activity-search");
+    await input.click();
+    await input.pressSequentially(SEARCH_TOKEN, { delay: 40 });
+
+    await page.waitForResponse(
+      (res) =>
+        res.url().includes("/api/subscriptions/history") &&
+        /[?&]search=/.test(res.url()) &&
+        res.status() === 200,
+      { timeout: 8000 }
+    );
+
+    await expect(timeline.getByText(MERCHANT_MATCH).first()).toBeVisible({
+      timeout: 8000,
+    });
+    await expect(timeline.getByText(MERCHANT_OTHER)).toHaveCount(0);
+
+    // Track every history request made from this point on. The "remove filter"
+    // path should fire at most one additional debounced request — never one per
+    // deleted character. (The unfiltered result is cached from the initial load,
+    // so React Query may legitimately restore it from cache with zero requests;
+    // what we guard against is the debounce firing repeatedly.)
+    const clearRequests: string[] = [];
+    page.on("request", (req) => {
+      if (req.url().includes("/api/subscriptions/history")) {
+        clearRequests.push(req.url());
+      }
+    });
+
+    // Clear the search box by deleting the typed token character-by-character,
+    // faster than the 300ms debounce — the reverse of the typing flow.
+    await input.click();
+    for (let i = 0; i < SEARCH_TOKEN.length; i++) {
+      await page.keyboard.press("Backspace");
+      await page.waitForTimeout(40);
+    }
+    await expect(input).toHaveValue("");
+
+    // The full, unfiltered timeline should return: the previously-hidden entry
+    // reappears alongside the one that matched the search.
+    await expect(timeline.getByText(MERCHANT_MATCH).first()).toBeVisible({
+      timeout: 8000,
+    });
+    await expect(timeline.getByText(MERCHANT_OTHER).first()).toBeVisible({
+      timeout: 8000,
+    });
+    await expect(entries(page).first()).toBeVisible();
+
+    // Allow time for any (incorrect) per-character requests to arrive, then
+    // confirm clearing fired at most one request and none of them carried a
+    // `search` param (i.e. the filter was truly removed, not re-applied).
+    await page.waitForTimeout(600);
+    expect(clearRequests.length).toBeLessThanOrEqual(1);
+    for (const url of clearRequests) {
+      expect(/[?&]search=/.test(url)).toBe(false);
+    }
+  });
 });
