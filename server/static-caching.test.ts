@@ -5,13 +5,54 @@ import request from "supertest";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import http from "http";
+import zlib from "zlib";
 
 import { serveStatic } from "./static.js";
 
 let distDir: string;
 let testApp: ReturnType<typeof express>;
+let server: http.Server;
 
-beforeAll(() => {
+// supertest's superagent transparently decodes `Content-Encoding: br`, which
+// would hide whether the bytes on the wire are valid Brotli or smaller than the
+// source. Fetch over a raw socket so we see the actual compressed payload.
+function rawGet(
+  urlPath: string,
+  headers: Record<string, string>,
+): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      reject(new Error("test server is not listening on a TCP port"));
+      return;
+    }
+    const req = http.request(
+      {
+        host: "127.0.0.1",
+        port: address.port,
+        path: urlPath,
+        method: "GET",
+        headers,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode ?? 0,
+            headers: res.headers,
+            body: Buffer.concat(chunks),
+          }),
+        );
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+beforeAll(async () => {
   distDir = fs.mkdtempSync(path.join(os.tmpdir(), "static-caching-"));
   fs.mkdirSync(path.join(distDir, "assets"));
 
@@ -41,9 +82,16 @@ beforeAll(() => {
   testApp = express();
   testApp.use(compression());
   serveStatic(testApp, distDir);
+
+  await new Promise<void>((resolve) => {
+    server = testApp.listen(0, "127.0.0.1", resolve);
+  });
 });
 
-afterAll(() => {
+afterAll(async () => {
+  await new Promise<void>((resolve, reject) => {
+    server.close((err) => (err ? reject(err) : resolve()));
+  });
   fs.rmSync(distDir, { recursive: true, force: true });
 });
 
@@ -133,5 +181,51 @@ describe("production response compression", () => {
       .set("Accept-Encoding", "gzip");
     expect(res.status).toBe(200);
     expect(res.headers["content-encoding"]).toBe("gzip");
+  });
+
+  it("serves a Brotli body that decompresses back to the original JS asset", async () => {
+    const original = fs.readFileSync(
+      path.join(distDir, "assets", "index-abc12345.js"),
+    );
+
+    const res = await rawGet("/assets/index-abc12345.js", {
+      "Accept-Encoding": "br",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+
+    // Content-Length must describe the compressed bytes actually sent.
+    expect(Number(res.headers["content-length"])).toBe(res.body.length);
+
+    const decoded = zlib.brotliDecompressSync(res.body);
+    expect(decoded.equals(original)).toBe(true);
+  });
+
+  it("serves a Brotli body that decompresses back to the original CSS asset", async () => {
+    const original = fs.readFileSync(
+      path.join(distDir, "assets", "index-def67890.css"),
+    );
+
+    const res = await rawGet("/assets/index-def67890.css", {
+      "Accept-Encoding": "br",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+
+    const decoded = zlib.brotliDecompressSync(res.body);
+    expect(decoded.equals(original)).toBe(true);
+  });
+
+  it("sends a Brotli payload smaller than the uncompressed asset", async () => {
+    const original = fs.readFileSync(
+      path.join(distDir, "assets", "index-abc12345.js"),
+    );
+
+    const res = await rawGet("/assets/index-abc12345.js", {
+      "Accept-Encoding": "br",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+    expect(res.body.length).toBeLessThan(original.length);
   });
 });
