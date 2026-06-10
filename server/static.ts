@@ -42,7 +42,7 @@ interface RouteMeta {
 const SITE = "Leader Shield Funding";
 const DOMAIN = "https://leadershieldfunding.com";
 
-const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
+export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
   {
     pattern: /^\/$/,
     meta: {

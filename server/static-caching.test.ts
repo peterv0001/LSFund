@@ -8,11 +8,28 @@ import path from "path";
 import http from "http";
 import zlib from "zlib";
 
-import { serveStatic } from "./static.js";
+import { serveStatic, PUBLIC_ROUTE_META } from "./static.js";
 
 let distDir: string;
 let testApp: ReturnType<typeof express>;
 let server: http.Server;
+
+// Mirror escapeHtml() in static.ts so the fixture and assertions compare against
+// the exact bytes the server writes into the <title> and <meta> tags.
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// The homepage's meta. In production the built index.html already carries these
+// SEO defaults, and express.static serves "/" verbatim from that file (the
+// meta-injecting catch-all only handles non-root routes). The fixture mirrors
+// that so "/" returns the homepage meta exactly like production.
+const HOME_META = PUBLIC_ROUTE_META.find(({ pattern }) => pattern.test("/"))!
+  .meta;
 
 // supertest's superagent transparently decodes `Content-Encoding: br`, which
 // would hide whether the bytes on the wire are valid Brotli or smaller than the
@@ -76,8 +93,8 @@ beforeAll(async () => {
   // meaningful compression test, while keeping the tags injectMeta rewrites.
   fs.writeFileSync(
     path.join(distDir, "index.html"),
-    `<!doctype html><html><head><title>Leader Shield Funding</title>` +
-      `<meta name="description" content="placeholder" /></head>` +
+    `<!doctype html><html><head><title>${escapeHtml(HOME_META.title)}</title>` +
+      `<meta name="description" content="${escapeHtml(HOME_META.description)}" /></head>` +
       `<body><div id="root"></div>` +
       `<!-- ${"filler ".repeat(300)} -->` +
       `</body></html>`,
@@ -456,4 +473,71 @@ describe("SPA fallback precompression", () => {
     expect(res.text).toContain("Agent Sign In");
     expect(res.text).not.toContain(INDEX_BR_MARKER);
   });
+});
+
+describe("public route SEO meta isolation", () => {
+  // A representative concrete path for every entry in PUBLIC_ROUTE_META. The
+  // assertions below require every meta entry to be matched by exactly one of
+  // these, so adding a new public route without a sample here fails the suite.
+  const ROUTE_SAMPLES: string[] = [
+    "/",
+    "/login",
+    "/signup",
+    "/join/ABC123",
+    "/forgot-password",
+    "/reset-password",
+    "/privacy",
+    "/terms",
+    "/refund-policy",
+    "/income-disclosure",
+    "/lp/declined",
+    "/lp/consolidation",
+    "/lp/growth",
+    "/lp/seasonal",
+    "/lp/partners",
+    "/lp/referral",
+  ];
+
+  const homeTitleTag = `<title>${escapeHtml(HOME_META.title)}</title>`;
+  const homeDescriptionTag = `content="${escapeHtml(HOME_META.description)}"`;
+
+  it("has a representative sample path for every PUBLIC_ROUTE_META entry", () => {
+    // Every meta entry must be exercised by at least one sample so this guard
+    // can never silently skip a route that was added later.
+    for (const { pattern } of PUBLIC_ROUTE_META) {
+      const matched = ROUTE_SAMPLES.some((p) => pattern.test(p));
+      expect(
+        matched,
+        `no ROUTE_SAMPLES path matches ${pattern} — add one so the SEO guard covers it`,
+      ).toBe(true);
+    }
+  });
+
+  for (const samplePath of ROUTE_SAMPLES) {
+    it(`serves ${samplePath} with its own title/description, not the homepage's`, async () => {
+      const match = PUBLIC_ROUTE_META.find(({ pattern }) =>
+        pattern.test(samplePath),
+      );
+      expect(
+        match,
+        `${samplePath} should match a PUBLIC_ROUTE_META entry`,
+      ).toBeTruthy();
+      const { meta } = match!;
+
+      const res = await request(testApp).get(samplePath);
+      expect(res.status).toBe(200);
+
+      // The route's own title and description must be injected verbatim.
+      expect(res.text).toContain(`<title>${escapeHtml(meta.title)}</title>`);
+      expect(res.text).toContain(`content="${escapeHtml(meta.description)}"`);
+
+      if (samplePath !== "/") {
+        // The core bug: when the catch-all read req.path (always "/" under the
+        // wildcard mount) every page got the homepage's meta. Any non-home page
+        // must NOT carry the homepage's title or description.
+        expect(res.text).not.toContain(homeTitleTag);
+        expect(res.text).not.toContain(homeDescriptionTag);
+      }
+    });
+  }
 });
