@@ -173,6 +173,18 @@ test.describe("MCA application wizard surfaces validation errors instead of fail
     await page.locator('[data-testid="input-avg-monthly-revenue"]').fill("25000");
     await page.locator('[data-testid="input-loan-amount"]').fill("50000");
 
+    // Network-level guard: the regression we're protecting against is the wizard
+    // creating the deal on its own when the user only meant to advance to Review.
+    // Record every deal-creation request so we can assert none fired before the
+    // user explicitly clicks Submit. This is stronger than the UI check below —
+    // it catches an auto-submit even if the success view rendering ever changes.
+    const dealCreateRequests: string[] = [];
+    page.on("request", (req) => {
+      if (req.method() === "POST" && new URL(req.url()).pathname === "/api/deals") {
+        dealCreateRequests.push(req.url());
+      }
+    });
+
     // The click that caused the original bug: Next from Funding could race into
     // an immediate submit (the Next button's reused DOM node became the submit
     // button mid-click). It must instead land on the Review step.
@@ -189,6 +201,12 @@ test.describe("MCA application wizard surfaces validation errors instead of fail
     await expect(
       page.locator('[data-testid="button-submit-application"]')
     ).toBeVisible({ timeout: 5000 });
+
+    // Give any stray submit a chance to surface on the wire, then assert that
+    // advancing into Review fired NO deal-creation request. The deal must only
+    // be created after the user explicitly clicks Submit on the review step.
+    await page.waitForTimeout(500);
+    expect(dealCreateRequests).toEqual([]);
 
     // Close the wizard so its modal overlay doesn't leak into the next serial test.
     await page.locator('[data-testid="button-cancel-deal"]').click();
