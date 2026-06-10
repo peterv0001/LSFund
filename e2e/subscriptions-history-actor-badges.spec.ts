@@ -3,6 +3,8 @@ import { test, expect } from "@playwright/test";
 const TS = Date.now();
 const AGENT_EMAIL = `e2e-actorbadge-${TS}@example.com`;
 const AGENT_PASSWORD = "E2eTestPass1!";
+const AGENT_FIRST = "E2E";
+const AGENT_LAST = "Tester";
 
 /**
  * Register and log in using the browser context's own request object so that
@@ -13,8 +15,8 @@ async function setupAgent(page: import("@playwright/test").Page): Promise<void> 
 
   await ctx.request.post("/api/register", {
     data: {
-      firstName: "E2E",
-      lastName: "Tester",
+      firstName: AGENT_FIRST,
+      lastName: AGENT_LAST,
       email: AGENT_EMAIL,
       password: AGENT_PASSWORD,
       referralCode: "",
@@ -28,56 +30,16 @@ async function setupAgent(page: import("@playwright/test").Page): Promise<void> 
   expect(loginRes.ok()).toBeTruthy();
 }
 
-/**
- * Crafted history entries covering all three badge cases:
- *  - an admin-actor entry (purple "Admin" badge)
- *  - an agent-actor entry (blue "Agent" badge)
- *  - an entry with no actorType/actorName (no badge at all)
- *
- * The /api/subscriptions/:id/history endpoint normally never populates an
- * actorName for agent-actor rows, so we stub the response to exercise the
- * full badge-wiring inside SubscriptionHistoryTimeline deterministically.
- */
-const ADMIN_ENTRY_ID = 990001;
-const AGENT_ENTRY_ID = 990002;
-const NOACTOR_ENTRY_ID = 990003;
-
-const MOCK_HISTORY = [
-  {
-    id: ADMIN_ENTRY_ID,
-    action: "cancel",
-    description: "Cancelled subscription",
-    createdAt: new Date("2026-01-02T10:00:00Z").toISOString(),
-    actorType: "admin",
-    actorName: "Admin Casey Reviewer",
-  },
-  {
-    id: AGENT_ENTRY_ID,
-    action: "pause",
-    description: "Paused subscription",
-    createdAt: new Date("2026-01-03T10:00:00Z").toISOString(),
-    actorType: "agent",
-    actorName: "Jordan Agent",
-  },
-  {
-    id: NOACTOR_ENTRY_ID,
-    action: "create",
-    description: "Created subscription",
-    createdAt: new Date("2026-01-01T10:00:00Z").toISOString(),
-    actorType: null,
-    actorName: null,
-  },
-];
-
 test.describe("Subscription history timeline – actor badges", () => {
   test.beforeEach(async ({ page }) => {
     await setupAgent(page);
   });
 
-  test("renders the Admin and Agent badges and omits the badge for actor-less entries", async ({
+  test("shows the blue 'Agent' badge for the agent's own subscription action", async ({
     page,
   }) => {
-    // Create a real subscription so its row + history toggle render.
+    // A real agent action: logging a new subscription writes an agent-actor
+    // history row. No stubbing — we drive the live endpoint end to end.
     const subRes = await page.context().request.post("/api/subscriptions", {
       data: { merchantName: `Actor Badge Merchant ${TS}`, tier: "tier_1" },
     });
@@ -86,14 +48,21 @@ test.describe("Subscription history timeline – actor badges", () => {
     const subId = sub.id as number;
     expect(typeof subId).toBe("number");
 
-    // Stub this subscription's history with our crafted entries.
-    await page.route(`**/api/subscriptions/${subId}/history`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(MOCK_HISTORY),
-      });
-    });
+    // Fetch the real history so we can target the agent-actor entry by its id.
+    const historyRes = await page
+      .context()
+      .request.get(`/api/subscriptions/${subId}/history`);
+    expect(historyRes.ok()).toBeTruthy();
+    const history = (await historyRes.json()) as Array<{
+      id: number;
+      actorType: string | null;
+      actorName: string | null;
+    }>;
+
+    const agentEntry = history.find((h) => h.actorType === "agent");
+    expect(agentEntry, "expected an agent-actor history entry").toBeTruthy();
+    // The endpoint must now populate the agent's own name (no longer null).
+    expect(agentEntry!.actorName).toBe(`${AGENT_FIRST} ${AGENT_LAST}`);
 
     await page.goto("/subscriptions");
 
@@ -102,29 +71,20 @@ test.describe("Subscription history timeline – actor badges", () => {
     await expect(toggleBtn).toBeVisible({ timeout: 8000 });
     await toggleBtn.click();
 
-    // The history list should render once the (stubbed) entries load.
     await expect(page.getByTestId(`history-list-${subId}`)).toBeVisible({
       timeout: 8000,
     });
 
-    // Admin-actor entry → purple "Admin" badge.
-    const adminBadge = page.getByTestId(`badge-history-actortype-${ADMIN_ENTRY_ID}`);
-    await expect(adminBadge).toBeVisible();
-    await expect(adminBadge).toHaveText("Admin");
-    await expect(adminBadge).toHaveClass(/text-purple-700/);
+    // Agent-actor entry → blue "Agent" badge with the agent's own name.
+    const entry = page.getByTestId(`history-entry-${agentEntry!.id}`);
+    await expect(entry).toBeVisible();
+    await expect(entry).toContainText(`by ${AGENT_FIRST} ${AGENT_LAST}`);
 
-    // Agent-actor entry → blue "Agent" badge.
-    const agentBadge = page.getByTestId(`badge-history-actortype-${AGENT_ENTRY_ID}`);
+    const agentBadge = page.getByTestId(
+      `badge-history-actortype-${agentEntry!.id}`
+    );
     await expect(agentBadge).toBeVisible();
     await expect(agentBadge).toHaveText("Agent");
     await expect(agentBadge).toHaveClass(/text-blue-700/);
-
-    // Entry with no actorType/actorName → the entry renders but no badge does.
-    await expect(
-      page.getByTestId(`history-entry-${NOACTOR_ENTRY_ID}`)
-    ).toBeVisible();
-    await expect(
-      page.getByTestId(`badge-history-actortype-${NOACTOR_ENTRY_ID}`)
-    ).toHaveCount(0);
   });
 });

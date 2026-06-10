@@ -1628,12 +1628,14 @@ export async function registerRoutes(
       }
       const { logs } = await storage.getActivityLogs(1, 100, { entityType: 'subscription', entityId: subId });
 
-      const adminActorIds = Array.from(new Set(logs.filter(l => l.actorType === 'admin').map(l => l.actorId)));
-      const adminMap: Record<number, string> = {};
+      const lookupActorIds = Array.from(
+        new Set(logs.filter(l => l.actorType === 'admin' || l.actorType === 'agent').map(l => l.actorId))
+      );
+      const actorMap: Record<number, string> = {};
       await Promise.all(
-        adminActorIds.map(async (aid) => {
+        lookupActorIds.map(async (aid) => {
           const actor = await storage.getAgent(aid);
-          if (actor) adminMap[aid] = `${actor.firstName} ${actor.lastName}`;
+          if (actor) actorMap[aid] = `${actor.firstName} ${actor.lastName}`;
         })
       );
 
@@ -1646,8 +1648,10 @@ export async function registerRoutes(
         actorName: actorType === 'system'
           ? 'System'
           : actorType === 'admin'
-            ? `Admin ${adminMap[actorId] ?? `#${actorId}`}`
-            : null,
+            ? `Admin ${actorMap[actorId] ?? `#${actorId}`}`
+            : actorType === 'agent'
+              ? actorMap[actorId] ?? `#${actorId}`
+              : null,
       }));
       res.json(safeLog);
     } catch (err) {

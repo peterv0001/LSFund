@@ -24,6 +24,7 @@ export const ACTOR_BADGE_STYLES: Record<
 };
 
 export function getActorBadge(actorType: string | null | undefined) {
-  if (!actorType) return null;
-  return actorType === "admin" ? ACTOR_BADGE_STYLES.admin : ACTOR_BADGE_STYLES.agent;
+  if (actorType === "admin") return ACTOR_BADGE_STYLES.admin;
+  if (actorType === "agent") return ACTOR_BADGE_STYLES.agent;
+  return null;
 }

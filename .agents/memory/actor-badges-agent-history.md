@@ -1,26 +1,25 @@
 ---
 name: Actor badges in agent subscription history
-description: Why the blue "Agent" badge never shows in the live per-subscription history view
+description: How the blue "Agent" badge is wired in the live per-subscription history view
 ---
 
 The per-subscription history endpoint (`GET /api/subscriptions/:id/history` in
-`server/routes.ts`) only computes `actorName` for `system` and `admin` actor
-types; for `agent`-actor rows it returns `actorName: null`.
+`server/routes.ts`) populates `actorName` for `system`, `admin`, AND `agent`
+actor types (agent/admin names looked up via `storage.getAgent`). A real agent
+action — e.g. logging a new subscription (`POST /api/subscriptions`) — writes an
+`agent`-actor row, so the agent's own name now flows through.
 
-`SubscriptionHistoryTimeline` in `client/src/pages/subscriptions.tsx` only
-renders the actor badge inside a `{log.actorName && (...)}` guard. So even
-though `getActorBadge('agent')` (in `client/src/lib/action-styles.ts`) returns
-the blue "Agent" badge, a real agent action can NEVER show that badge in this
-view, because its `actorName` is always null.
+`SubscriptionHistoryTimeline` in `client/src/pages/subscriptions.tsx` renders
+the actor badge inside a `{log.actorName && (...)}` guard, then calls
+`getActorBadge(log.actorType)` (in `client/src/lib/action-styles.ts`).
 
-Quirk: `getActorBadge` returns the AGENT badge for any non-admin truthy
-actorType, including `system` — so `system` rows (actorName "System") render a
-blue "Agent" badge.
+`getActorBadge` returns the purple "Admin" badge for `admin`, the blue "Agent"
+badge for `agent`, and `null` otherwise — so `system` rows show "by System"
+with NO badge (previously they mislabeled as "Agent").
 
-**Why:** matters for e2e/UI tests and any work touching the agent history badge.
-A test that wants to see all three badge states deterministically must stub the
-history response (e.g. Playwright `page.route`), not rely on real agent actions.
+**Why:** matters for any work touching the agent history badge. The badge for an
+agent's own action is now reachable via a real action, so e2e tests can drive a
+real subscription create instead of stubbing the history response.
 
-**How to apply:** if a task wants the Agent badge to appear for the agent's own
-actions in the live view, the endpoint must be changed to populate agent
-actorName (and the system→Agent mislabel likely fixed too).
+**How to apply:** to assert the Agent badge in e2e, create a subscription as the
+agent, GET the history to grab the agent-actor entry id, then check the badge.
