@@ -1034,6 +1034,17 @@ export const api = {
           }),
         },
       },
+      sendWarnings: {
+        method: 'POST' as const,
+        path: '/api/admin/subscriptions/send-warnings',
+        responses: {
+          200: z.object({
+            days: z.number(),
+            total: z.number(),
+            sent: z.number(),
+          }),
+        },
+      },
     },
 
     // Holdback Management

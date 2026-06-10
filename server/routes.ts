@@ -17,7 +17,7 @@ import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
-import { resolveExpiryWarningDays, EXPIRY_CHECK_INTERVAL_MS, getSchedulerStatus } from "./scheduler";
+import { resolveExpiryWarningDays, EXPIRY_CHECK_INTERVAL_MS, getSchedulerStatus, sendDueExpiryWarnings } from "./scheduler";
 import rateLimit from "express-rate-limit";
 
 // Extend Express User type
@@ -2139,6 +2139,20 @@ export async function registerRoutes(
     } catch (err) {
       console.error('[Admin] Failed to compute subscriptions due for warning:', err);
       res.status(500).json({ message: 'Failed to compute subscriptions due for warning' });
+    }
+  });
+
+  // Runs the same warning flow the hourly scheduler uses for the subscriptions
+  // currently in the warning window, on demand. After this runs, the matching
+  // subscriptions have expiryWarningSentAt set, so the due-for-warning preview
+  // count drops to 0.
+  app.post("/api/admin/subscriptions/send-warnings", requireAdmin, async (_req, res) => {
+    try {
+      const result = await sendDueExpiryWarnings();
+      res.json(result);
+    } catch (err) {
+      console.error('[Admin] Failed to send subscription expiry warnings:', err);
+      res.status(500).json({ message: 'Failed to send subscription expiry warnings' });
     }
   });
 

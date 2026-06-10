@@ -25,6 +25,7 @@ import { emailService } from "./email.js";
 import {
   expireOverdueSubscriptions,
   warnUpcomingExpirations,
+  sendDueExpiryWarnings,
   EXPIRY_CHECK_INTERVAL_MS,
 } from "./scheduler.js";
 
@@ -783,5 +784,84 @@ describe("warnUpcomingExpirations – warning is never sent twice for the same s
     expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledOnce();
     // Both runs still consult the query; the guard lives there.
     expect(mockStorage.getSubscriptionsDueForWarning).toHaveBeenCalledTimes(2);
+  });
+});
+
+// =========================================================
+// sendDueExpiryWarnings — admin "Send warnings now" helper
+// =========================================================
+//
+// Backs the admin-only POST endpoint. It runs the same per-subscription send
+// the scheduler uses (notification + email + markSubscriptionWarningSent) for
+// everything currently in the warning window, and reports how many were sent so
+// the settings preview can refresh its count.
+
+describe("sendDueExpiryWarnings – admin on-demand send", () => {
+  it("returns zero sent and skips all side effects when nothing is due", async () => {
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([]);
+
+    const result = await sendDueExpiryWarnings();
+
+    expect(result.total).toBe(0);
+    expect(result.sent).toBe(0);
+    expect(mockStorage.getAgent).not.toHaveBeenCalled();
+    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).not.toHaveBeenCalled();
+    expect(mockStorage.markSubscriptionWarningSent).not.toHaveBeenCalled();
+  });
+
+  it("reports the resolved warning window days from the platform setting", async () => {
+    mockStorage.getPlatformSetting.mockResolvedValue(14);
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([]);
+
+    const result = await sendDueExpiryWarnings();
+
+    expect(result.days).toBe(14);
+    expect(mockStorage.getSubscriptionsDueForWarning).toHaveBeenCalledWith(14);
+  });
+
+  it("sends notification + email and marks each due subscription as warned", async () => {
+    const sub1 = makeWarningSubscription({ id: 321, agentId: 1, merchantName: "Alpha Inc" });
+    const sub2 = makeWarningSubscription({ id: 322, agentId: 2, merchantName: "Beta LLC" });
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub1, sub2]);
+
+    const result = await sendDueExpiryWarnings();
+
+    expect(result.total).toBe(2);
+    expect(result.sent).toBe(2);
+    expect(mockEmailService.sendSubscriptionExpiringWarningEmail).toHaveBeenCalledTimes(2);
+    expect(mockStorage.createNotification).toHaveBeenCalledTimes(2);
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledWith(sub1.id);
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledWith(sub2.id);
+  });
+
+  it("counts only the subscriptions that were actually sent (skips missing agents)", async () => {
+    const sub1 = makeWarningSubscription({ id: 331, agentId: 1, merchantName: "Has Agent" });
+    const sub2 = makeWarningSubscription({ id: 332, agentId: 999, merchantName: "No Agent" });
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub1, sub2]);
+    mockStorage.getAgent.mockImplementation(async (id: number) =>
+      id === sub1.agentId ? mockAgent : null
+    );
+
+    const result = await sendDueExpiryWarnings();
+
+    expect(result.total).toBe(2);
+    expect(result.sent).toBe(1);
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledOnce();
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledWith(sub1.id);
+  });
+
+  it("continues to the next subscription when one fails to mark", async () => {
+    const sub1 = makeWarningSubscription({ id: 341, merchantName: "Failing Corp" });
+    const sub2 = makeWarningSubscription({ id: 342, merchantName: "Healthy LLC" });
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub1, sub2]);
+    mockStorage.markSubscriptionWarningSent
+      .mockRejectedValueOnce(new Error("DB write failed"))
+      .mockResolvedValue(undefined);
+
+    const result = await sendDueExpiryWarnings();
+
+    expect(result.total).toBe(2);
+    expect(result.sent).toBe(1);
+    expect(mockStorage.markSubscriptionWarningSent).toHaveBeenCalledTimes(2);
   });
 });

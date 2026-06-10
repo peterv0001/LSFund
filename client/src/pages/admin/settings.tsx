@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Clock,
+  Send,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +174,27 @@ export default function AdminSettings() {
     const days = Math.max(1, Math.min(90, Math.round(expiryWarningDays)));
     saveMutation.mutate({ expiryWarningDays: days });
   }
+
+  const sendWarningsMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", api.admin.subscriptions.sendWarnings.path).then(
+        (r) => r.json() as Promise<{ days: number; total: number; sent: number }>,
+      ),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: [api.admin.subscriptions.dueForWarning.path] });
+      toast({
+        title:
+          result.sent > 0
+            ? `Sent ${result.sent} warning email${result.sent !== 1 ? "s" : ""}`
+            : "No warnings to send",
+        description:
+          result.sent > 0
+            ? "Agents have been notified for subscriptions in the current warning window."
+            : "There are no subscriptions in the warning window right now.",
+      });
+    },
+    onError: () => toast({ title: "Failed to send warnings", variant: "destructive" }),
+  });
 
   function updateRankReq(rank: string, field: "personalVolume" | "weakLegVolume", value: string) {
     setRankReqs((prev) => ({
@@ -353,7 +375,30 @@ export default function AdminSettings() {
                         </span>{" "}
                         before expiry.
                       </p>
-                    ) : (
+                    ) : null}
+                    {warningPreview && warningPreview.count > 0 ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3"
+                        onClick={() => sendWarningsMutation.mutate()}
+                        disabled={sendWarningsMutation.isPending}
+                        data-testid="button-send-warnings-now"
+                      >
+                        {sendWarningsMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Sending…
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Send warnings now
+                          </>
+                        )}
+                      </Button>
+                    ) : null}
+                    {!warningPreviewLoading && (!warningPreview || warningPreview.count === 0) ? (
                       <p className="text-sm text-gray-500" data-testid="text-warning-preview-empty">
                         No active subscriptions currently fall within the{" "}
                         <span className="font-medium">
@@ -362,7 +407,7 @@ export default function AdminSettings() {
                         </span>{" "}
                         warning window.
                       </p>
-                    )}
+                    ) : null}
                     <p className="mt-1 text-xs text-gray-400">
                       Save a new lead time above to refresh this preview.
                     </p>
