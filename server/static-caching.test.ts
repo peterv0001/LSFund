@@ -98,4 +98,40 @@ describe("production response compression", () => {
     expect(res.status).toBe(200);
     expect(res.headers["content-encoding"]).toBe("gzip");
   });
+
+  it("Brotli-compresses JS assets when the client accepts br", async () => {
+    const res = await request(testApp)
+      .get("/assets/index-abc12345.js")
+      .set("Accept-Encoding", "br");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+    // Brotli responses must keep the year-long immutable caching.
+    expect(res.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable",
+    );
+  });
+
+  it("Brotli-compresses CSS assets when the client accepts br", async () => {
+    const res = await request(testApp)
+      .get("/assets/index-def67890.css")
+      .set("Accept-Encoding", "br");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+  });
+
+  it("prefers Brotli over gzip when the client accepts both", async () => {
+    const res = await request(testApp)
+      .get("/assets/index-abc12345.js")
+      .set("Accept-Encoding", "br, gzip");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+  });
+
+  it("falls back to gzip when the client does not accept Brotli", async () => {
+    const res = await request(testApp)
+      .get("/assets/index-abc12345.js")
+      .set("Accept-Encoding", "gzip");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+  });
 });

@@ -1,6 +1,7 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request } from "express";
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 
 const KNOWN_ROUTES = [
   /^\/$/,
@@ -216,6 +217,80 @@ function injectMeta(html: string, meta: RouteMeta, requestPath: string): string 
   return result;
 }
 
+// Only Brotli-compress payloads worth the CPU; tiny files don't benefit and
+// matches the spirit of compression's default ~1KB threshold.
+const BROTLI_MIN_BYTES = 1024;
+
+// Brotli yields noticeably smaller files than gzip for modern browsers. The
+// `compression` middleware only emits gzip/deflate, so we serve precompressed
+// Brotli ourselves for on-disk static files. Results are cached in-memory keyed
+// by mtime so each asset is only compressed once.
+const brotliCache = new Map<string, { mtimeMs: number; data: Buffer }>();
+
+function acceptsBrotli(req: Request): boolean {
+  const header = req.headers["accept-encoding"];
+  if (!header) return false;
+  const value = Array.isArray(header) ? header.join(",") : header;
+  return /(^|,)\s*br\s*(;|,|$)/i.test(value);
+}
+
+function setAssetCacheControl(res: express.Response, filePath: string) {
+  // Mirror express.static's setHeaders so Brotli responses get the same
+  // caching as their uncompressed counterparts.
+  if (filePath.endsWith("index.html")) {
+    res.setHeader("Cache-Control", "no-cache");
+  } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  }
+}
+
+function brotliStatic(distPath: string): express.RequestHandler {
+  return (req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    if (!acceptsBrotli(req)) return next();
+
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(req.path);
+    } catch {
+      return next();
+    }
+
+    const filePath = path.join(distPath, pathname);
+    // Guard against path traversal escaping the build directory.
+    if (filePath !== distPath && !filePath.startsWith(distPath + path.sep)) {
+      return next();
+    }
+
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(filePath);
+    } catch {
+      return next();
+    }
+    if (!stat.isFile() || stat.size < BROTLI_MIN_BYTES) return next();
+
+    let cached = brotliCache.get(filePath);
+    if (!cached || cached.mtimeMs !== stat.mtimeMs) {
+      const raw = fs.readFileSync(filePath);
+      cached = { mtimeMs: stat.mtimeMs, data: zlib.brotliCompressSync(raw) };
+      brotliCache.set(filePath, cached);
+    }
+
+    res.setHeader("Content-Encoding", "br");
+    res.setHeader("Vary", "Accept-Encoding");
+    res.type(path.extname(filePath) || "application/octet-stream");
+    setAssetCacheControl(res, filePath);
+    res.setHeader("Content-Length", cached.data.length);
+
+    if (req.method === "HEAD") {
+      res.end();
+      return;
+    }
+    res.end(cached.data);
+  };
+}
+
 export function serveStatic(app: Express, distPathOverride?: string) {
   const distPath = distPathOverride ?? path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
@@ -223,6 +298,10 @@ export function serveStatic(app: Express, distPathOverride?: string) {
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
+
+  // Serve Brotli when the client advertises `Accept-Encoding: br`; falls
+  // through to express.static + gzip (`compression`) otherwise.
+  app.use(brotliStatic(distPath));
 
   app.use(
     express.static(distPath, {
