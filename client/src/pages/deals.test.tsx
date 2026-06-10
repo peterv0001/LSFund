@@ -75,10 +75,14 @@ async function fill(
 
 // Drives the wizard from step 1 through to step 3 with all gating fields valid.
 // `requestedAmount` is intentionally left blank so callers can assert the
-// step-3 gate and submit fallback behave when it is omitted. A non-disclosure
-// state (TX) is chosen so the review step does not require the extra disclosure
-// checkbox.
-async function advanceToStep3(user: ReturnType<typeof userEvent.setup>) {
+// step-3 gate and submit fallback behave when it is omitted. The business state
+// defaults to a non-disclosure state (TX) so the review step does not require
+// the extra disclosure checkbox; pass a regulated state (e.g. "CA") to exercise
+// the disclosure gate.
+async function advanceToStep3(
+  user: ReturnType<typeof userEvent.setup>,
+  state = "TX",
+) {
   await user.click(screen.getByTestId("button-submit-deal"));
   await screen.findByTestId("input-merchant-name");
 
@@ -88,7 +92,7 @@ async function advanceToStep3(user: ReturnType<typeof userEvent.setup>) {
   await fill(user, "input-business-address", "123 Main St");
   await fill(user, "input-business-city", "Austin");
   await user.click(screen.getByTestId("select-business-state"));
-  await user.click(await screen.findByRole("option", { name: "TX" }));
+  await user.click(await screen.findByRole("option", { name: state }));
   await fill(user, "input-business-zip", "73301");
   await user.click(screen.getByTestId("button-next-step"));
 
@@ -173,5 +177,71 @@ describe("MCA deal wizard — optional requested funding amount", () => {
     };
     expect(payload.loanAmount).toBe(50000);
     expect(payload.requestedAmount).toBe(50000);
+  });
+});
+
+describe("MCA deal wizard — regulated-state disclosure gate", () => {
+  it("keeps Submit disabled for a regulated state (CA) until the disclosure box is checked", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderPage();
+
+    await advanceToStep3(user, "CA");
+    await user.click(screen.getByTestId("button-next-step"));
+    await screen.findByRole("heading", { name: "Review & Submit" });
+
+    // The disclosure acknowledgment must be present for a regulated state.
+    const disclosure = screen.getByTestId(
+      "checkbox-state-disclosure",
+    ) as HTMLInputElement;
+    expect(disclosure).toBeTruthy();
+    expect(disclosure.checked).toBe(false);
+
+    const submit = screen.getByTestId(
+      "button-submit-application",
+    ) as HTMLButtonElement;
+
+    // Even after the submit button is otherwise armed, it stays disabled while
+    // the disclosure box is unchecked.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(submit.disabled).toBe(true);
+
+    // Checking the box releases the gate.
+    await user.click(disclosure);
+    await waitFor(() => expect(submit.disabled).toBe(false));
+
+    await user.click(submit);
+    await waitFor(() => expect(dealState.createDeal).toHaveBeenCalledTimes(1));
+
+    const payload = dealState.createDeal.mock.calls[0][0] as unknown as {
+      businessState: string;
+      stateDisclosureConfirmed: boolean;
+    };
+    expect(payload.businessState).toBe("CA");
+    expect(payload.stateDisclosureConfirmed).toBe(true);
+  });
+
+  it("shows no disclosure box for a non-regulated state (TX) and allows submission", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderPage();
+
+    await advanceToStep3(user, "TX");
+    await user.click(screen.getByTestId("button-next-step"));
+    await screen.findByRole("heading", { name: "Review & Submit" });
+
+    // No disclosure acknowledgment for a non-regulated state.
+    expect(screen.queryByTestId("checkbox-state-disclosure")).toBeNull();
+
+    const submit = screen.getByTestId(
+      "button-submit-application",
+    ) as HTMLButtonElement;
+    await waitFor(() => expect(submit.disabled).toBe(false));
+
+    await user.click(submit);
+    await waitFor(() => expect(dealState.createDeal).toHaveBeenCalledTimes(1));
+
+    const payload = dealState.createDeal.mock.calls[0][0] as unknown as {
+      businessState: string;
+    };
+    expect(payload.businessState).toBe("TX");
   });
 });
