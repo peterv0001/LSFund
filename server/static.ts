@@ -237,11 +237,19 @@ function compressInMemory(filePath: string, mtimeMs: number): Buffer {
   return cached.data;
 }
 
-function acceptsBrotli(req: Request): boolean {
+function acceptsEncoding(req: Request, encoding: string): boolean {
   const header = req.headers["accept-encoding"];
   if (!header) return false;
   const value = Array.isArray(header) ? header.join(",") : header;
-  return /(^|,)\s*br\s*(;|,|$)/i.test(value);
+  return new RegExp(`(^|,)\\s*${encoding}\\s*(;|,|$)`, "i").test(value);
+}
+
+function acceptsBrotli(req: Request): boolean {
+  return acceptsEncoding(req, "br");
+}
+
+function acceptsGzip(req: Request): boolean {
+  return acceptsEncoding(req, "gzip");
 }
 
 function setAssetCacheControl(res: express.Response, filePath: string) {
@@ -254,10 +262,26 @@ function setAssetCacheControl(res: express.Response, filePath: string) {
   }
 }
 
-function brotliStatic(distPath: string): express.RequestHandler {
+function readSibling(filePath: string, ext: string): Buffer | null {
+  const siblingPath = `${filePath}.${ext}`;
+  try {
+    const siblingStat = fs.statSync(siblingPath);
+    if (siblingStat.isFile()) {
+      return fs.readFileSync(siblingPath);
+    }
+  } catch {
+    /* no sibling on disk */
+  }
+  return null;
+}
+
+function precompressedStatic(distPath: string): express.RequestHandler {
   return (req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next();
-    if (!acceptsBrotli(req)) return next();
+
+    const wantsBrotli = acceptsBrotli(req);
+    const wantsGzip = acceptsGzip(req);
+    if (!wantsBrotli && !wantsGzip) return next();
 
     let pathname: string;
     try {
@@ -280,23 +304,26 @@ function brotliStatic(distPath: string): express.RequestHandler {
     }
     if (!stat.isFile() || stat.size < BROTLI_MIN_BYTES) return next();
 
-    // Prefer a precompressed `.br` sibling emitted at build time so we never
-    // pay runtime compression cost (and it survives restarts). Fall back to
-    // compressing on the fly and caching in-memory.
-    const precompressedPath = `${filePath}.br`;
+    let encoding: "br" | "gzip";
     let data: Buffer;
-    try {
-      const brStat = fs.statSync(precompressedPath);
-      if (brStat.isFile()) {
-        data = fs.readFileSync(precompressedPath);
-      } else {
-        data = compressInMemory(filePath, stat.mtimeMs);
-      }
-    } catch {
-      data = compressInMemory(filePath, stat.mtimeMs);
+
+    if (wantsBrotli) {
+      // Prefer a precompressed `.br` sibling emitted at build time so we never
+      // pay runtime compression cost (and it survives restarts). Fall back to
+      // compressing on the fly and caching in-memory.
+      encoding = "br";
+      data = readSibling(filePath, "br") ?? compressInMemory(filePath, stat.mtimeMs);
+    } else {
+      // Gzip-only clients: serve a precompressed `.gz` sibling if one exists so
+      // we avoid runtime gzip cost. If there's no sibling, fall through to
+      // express.static + the `compression` middleware, which gzips on the fly.
+      const gz = readSibling(filePath, "gz");
+      if (!gz) return next();
+      encoding = "gzip";
+      data = gz;
     }
 
-    res.setHeader("Content-Encoding", "br");
+    res.setHeader("Content-Encoding", encoding);
     res.setHeader("Vary", "Accept-Encoding");
     res.type(path.extname(filePath) || "application/octet-stream");
     setAssetCacheControl(res, filePath);
@@ -318,9 +345,11 @@ export function serveStatic(app: Express, distPathOverride?: string) {
     );
   }
 
-  // Serve Brotli when the client advertises `Accept-Encoding: br`; falls
-  // through to express.static + gzip (`compression`) otherwise.
-  app.use(brotliStatic(distPath));
+  // Serve precompressed assets: Brotli when the client accepts `br`, otherwise
+  // a precompressed `.gz` sibling for gzip-only clients. Requests with no
+  // matching precompressed file fall through to express.static + on-the-fly
+  // gzip (`compression`).
+  app.use(precompressedStatic(distPath));
 
   app.use(
     express.static(distPath, {

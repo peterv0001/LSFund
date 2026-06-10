@@ -56,6 +56,10 @@ const PRECOMPRESSED_MARKER =
   "this exact text only exists inside the precompressed .br sibling " +
   "and never in the source asset".repeat(20);
 
+const PRECOMPRESSED_GZIP_MARKER =
+  "this exact text only exists inside the precompressed .gz sibling " +
+  "and never in the source asset".repeat(20);
+
 beforeAll(async () => {
   distDir = fs.mkdtempSync(path.join(os.tmpdir(), "static-caching-"));
   fs.mkdirSync(path.join(distDir, "assets"));
@@ -92,6 +96,12 @@ beforeAll(async () => {
   fs.writeFileSync(
     path.join(distDir, "assets", "prebuilt-aaa11111.js.br"),
     zlib.brotliCompressSync(Buffer.from(PRECOMPRESSED_MARKER)),
+  );
+  // Its `.gz` sibling is likewise distinct from a fresh gzip of the source so
+  // we can prove the gzip-only path serves the precompressed file verbatim.
+  fs.writeFileSync(
+    path.join(distDir, "assets", "prebuilt-aaa11111.js.gz"),
+    zlib.gzipSync(Buffer.from(PRECOMPRESSED_GZIP_MARKER)),
   );
 
   // Mirror the production wiring: compression before the static handler.
@@ -260,7 +270,63 @@ describe("production response compression", () => {
     expect(res.text).toBe(PRECOMPRESSED_MARKER);
   });
 
-  it("serves a gzip body that decompresses back to the original JS asset", async () => {
+  it("serves a precompressed .gz sibling to gzip-only clients", async () => {
+    const res = await request(testApp)
+      .get("/assets/prebuilt-aaa11111.js")
+      .set("Accept-Encoding", "gzip");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+    expect(res.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable",
+    );
+
+    // superagent transparently decodes the gzip body; it must match the
+    // prebuilt sibling, proving the source was never gzipped on the fly.
+    expect(res.text).toBe(PRECOMPRESSED_GZIP_MARKER);
+  });
+
+  it("prefers the precompressed .br sibling over .gz when the client accepts both", async () => {
+    const res = await request(testApp)
+      .get("/assets/prebuilt-aaa11111.js")
+      .set("Accept-Encoding", "gzip, br");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("br");
+    expect(res.text).toBe(PRECOMPRESSED_MARKER);
+  });
+
+  it("falls back to on-the-fly gzip when no .gz sibling exists", async () => {
+    // index-abc12345.js has no precompressed sibling, so a gzip-only client
+    // must still get gzip — served live by the compression middleware.
+    const res = await request(testApp)
+      .get("/assets/index-abc12345.js")
+      .set("Accept-Encoding", "gzip");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+
+    const original = fs.readFileSync(
+      path.join(distDir, "assets", "index-abc12345.js"),
+    );
+    expect(res.text).toBe(original.toString());
+  });
+
+  it("serves a precompressed .gz body whose Content-Length matches the bytes sent", async () => {
+    const expected = zlib.gzipSync(Buffer.from(PRECOMPRESSED_GZIP_MARKER));
+
+    const res = await rawGet("/assets/prebuilt-aaa11111.js", {
+      "Accept-Encoding": "gzip",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+    expect(Number(res.headers["content-length"])).toBe(res.body.length);
+    // The bytes on the wire are the prebuilt sibling verbatim, not a fresh
+    // runtime gzip of the source.
+    expect(res.body.equals(expected)).toBe(true);
+
+    const decoded = zlib.gunzipSync(res.body);
+    expect(decoded.toString()).toBe(PRECOMPRESSED_GZIP_MARKER);
+  });
+
+  it("serves an on-the-fly gzip body that decompresses back to the original JS asset", async () => {
     const original = fs.readFileSync(
       path.join(distDir, "assets", "index-abc12345.js"),
     );
@@ -275,7 +341,7 @@ describe("production response compression", () => {
     expect(decoded.equals(original)).toBe(true);
   });
 
-  it("serves a gzip body that decompresses back to the original CSS asset", async () => {
+  it("serves an on-the-fly gzip body that decompresses back to the original CSS asset", async () => {
     const original = fs.readFileSync(
       path.join(distDir, "assets", "index-def67890.css"),
     );
@@ -290,7 +356,7 @@ describe("production response compression", () => {
     expect(decoded.equals(original)).toBe(true);
   });
 
-  it("sends a gzip payload smaller than the uncompressed asset", async () => {
+  it("sends an on-the-fly gzip payload smaller than the uncompressed asset", async () => {
     const original = fs.readFileSync(
       path.join(distDir, "assets", "index-abc12345.js"),
     );

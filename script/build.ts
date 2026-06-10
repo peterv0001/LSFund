@@ -43,7 +43,7 @@ async function buildAll() {
 
   console.log("precompressing static assets...");
   const compressed = await precompressAssets(path.resolve("dist/public"));
-  console.log(`precompressed ${compressed ?? 0} static assets (.br)`);
+  console.log(`precompressed ${compressed ?? 0} static assets (.br + .gz)`);
 
   console.log("building server...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));

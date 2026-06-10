@@ -36,6 +36,11 @@ export async function precompressAssets(dir: string): Promise<number> {
     });
     await writeFile(`${filePath}.br`, br);
 
+    // Also emit a gzip sibling for browsers that don't support Brotli, so the
+    // server never pays runtime gzip cost for these assets.
+    const gz = zlib.gzipSync(raw, { level: zlib.constants.Z_BEST_COMPRESSION });
+    await writeFile(`${filePath}.gz`, gz);
+
     count++;
   }
   return count;
