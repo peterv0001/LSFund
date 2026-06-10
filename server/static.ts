@@ -224,7 +224,20 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        // Vite emits content-hashed filenames under /assets, so they can be
+        // cached forever. index.html must never be cached so new deploys are
+        // picked up immediately.
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-cache");
+        } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    }),
+  );
 
   const indexPath = path.resolve(distPath, "index.html");
   let indexHtml: string | null = null;
@@ -240,6 +253,9 @@ export function serveStatic(app: Express) {
     const pathname = req.path;
     const status = isKnownRoute(pathname) ? 200 : 404;
     const html = getIndexHtml();
+
+    // The SPA shell must never be cached so new deploys load immediately.
+    res.setHeader("Cache-Control", "no-cache");
 
     const match = PUBLIC_ROUTE_META.find(({ pattern }) => pattern.test(pathname));
     if (match) {

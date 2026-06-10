@@ -30,6 +30,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Split large, rarely-changing libraries into their own chunks so they
+        // stay cached across app deploys and don't bloat the initial bundle.
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "wouter", "@tanstack/react-query"],
+          animation: ["framer-motion"],
+        },
+      },
+    },
   },
   server: {
     fs: {
