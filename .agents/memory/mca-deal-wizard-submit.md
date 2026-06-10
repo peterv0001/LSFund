@@ -12,9 +12,11 @@ Each step's "Next" button runs `form.trigger(stepFields)` and only advances when
 
 **How to apply (e2e):** to exercise `onInvalid`, fill a step validly, corrupt one field, then click "Back" to land on an earlier step still holding the bad value, then submit the form. You do NOT need to reach step 4 — submitting from any step runs the same `handleSubmit(onSubmit, onInvalid)`.
 
-## Clicking "Next" from Funding (step 3) into Review (step 4) can race into a real submit
-On step 4 the `type="button"` Next button is replaced by the `type="submit"` button at the SAME position in the nav row. When the form is fully valid, clicking Next → `setStep(4)` re-renders and a click can land on the freshly-mounted submit button, firing a real `POST /api/deals` and showing "Application Submitted!" instead of the review step. This is timing-sensitive (worsens when the deals table behind the dialog is slow to render, e.g. many existing deals) so it presents as a flaky/sometimes-deterministic failure of any test that reaches step 4 via Next (e.g. the "fully valid" e2e test).
+## Entering Review (step 4) used to race a stray "Next" click into a real submit (now guarded)
+On step 4 the `type="button"` Next button is replaced by the `type="submit"` button at the SAME position in the nav row. When the form was fully valid, clicking Next → `setStep(4)` re-renders and a click (esp. Playwright's auto-retry of an unstable click, worse when the deals table re-renders slowly) could land on the freshly-mounted submit button, firing a real `POST /api/deals` and showing "Application Submitted!" instead of the review step.
 
-**Why:** this looks like a genuine app UX bug (Next sometimes submits the application, skipping the review step), not just a test artifact — the deal really gets created.
+**Fix:** a `submitArmed` flag in `deals.tsx` keeps the submit button `disabled` for ~400ms after step 4 mounts, so a stray click can't trigger submission. A disabled button ignores the event entirely (intent-via-pointerdown does NOT help — a full click on the swapped button still arms+fires). Playwright's explicit `.click()` on submit just waits for `enabled`, so legit submits are unaffected.
 
-**How to apply:** make robust e2e tests avoid the step-3→4 Next boundary; trigger submit via `document.querySelector('[role="dialog"] form').requestSubmit()` from step 2/3 instead.
+**Why disable rather than guard onSubmit by time:** time-guarding `onSubmit` would also block the legit submit click that fires moments after the review heading appears. Disabling the button defers the click instead of dropping it.
+
+**How to apply:** the "fully valid" e2e test can now reach step 4 via Next and submit normally. The `onInvalid`-safety-net test still submits via `document.querySelector('[role="dialog"] form').requestSubmit()` from step 2 with invalid data (routes to onInvalid, unaffected by submitArmed).

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useDeals, useCreateDeal } from "@/hooks/use-deals";
 import { Sidebar } from "@/components/Sidebar";
@@ -259,6 +259,22 @@ function MCADealDialog() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  // When the wizard advances into the review step (4), the "Next" button is
+  // swapped for the "Submit" button at the same position. A click intended for
+  // "Next" can otherwise land on the freshly-mounted submit button and fire an
+  // unintended submission (skipping the review step). Briefly disarm submit on
+  // entering step 4 so a stray click can't trigger it.
+  const [submitArmed, setSubmitArmed] = useState(false);
+
+  useEffect(() => {
+    if (step !== 4) {
+      setSubmitArmed(false);
+      return;
+    }
+    setSubmitArmed(false);
+    const t = setTimeout(() => setSubmitArmed(true), 400);
+    return () => clearTimeout(t);
+  }, [step]);
 
   const form = useForm<DealFormData>({
     resolver: zodResolver(dealFormSchema),
@@ -881,7 +897,7 @@ function MCADealDialog() {
                   ) : (
                     <Button
                       type="submit"
-                      disabled={isPending || (needsDisclosure && !form.watch("stateDisclosureConfirmed"))}
+                      disabled={isPending || !submitArmed || (needsDisclosure && !form.watch("stateDisclosureConfirmed"))}
                       data-testid="button-submit-application"
                     >
                       {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
