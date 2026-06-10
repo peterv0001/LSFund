@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { insertDealSchema } from "@shared/schema";
@@ -243,5 +243,59 @@ describe("MCA deal wizard — regulated-state disclosure gate", () => {
       businessState: string;
     };
     expect(payload.businessState).toBe("TX");
+  });
+});
+
+// On entering the review step (4), the "Submit" button takes the place of the
+// "Next" button at the same position. Two things keep a stray click meant for
+// "Next" from firing a deal before the agent has reviewed it:
+//   1. The Next and Submit buttons carry distinct React `key`s, so React mounts
+//      a brand-new Submit node rather than reusing the Next node — a click that
+//      lands during the Next->Submit swap cannot carry over into a submission.
+//   2. onSubmit refuses to create a deal unless the wizard is on the review
+//      step; an early submit only advances the wizard instead of submitting.
+// These tests lock both guards in so they can't regress and let agents skip the
+// review step.
+describe("MCA deal wizard — accidental-submit guard", () => {
+  async function advanceToReviewStep(user: ReturnType<typeof userEvent.setup>) {
+    await advanceToStep3(user);
+    await user.click(screen.getByTestId("button-next-step"));
+    await screen.findByRole("heading", { name: "Review & Submit" });
+  }
+
+  it("does not submit a deal merely by advancing into the review step", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderPage();
+
+    await advanceToReviewStep(user);
+
+    // Reaching the review step must not, by itself, create a deal — only an
+    // explicit click on the now-distinct Submit button should.
+    expect(dealState.createDeal).not.toHaveBeenCalled();
+    expect(
+      (screen.getByTestId("button-submit-application") as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  it("advances to review instead of creating a deal when submitted early", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    renderPage();
+
+    // Stop on step 3 (before the review step) with all gating fields valid.
+    await advanceToStep3(user);
+    expect(
+      screen.queryByRole("heading", { name: "Review & Submit" }),
+    ).toBeNull();
+
+    // Submitting the form before reaching step 4 must not create a deal; the
+    // onSubmit guard advances the wizard to the review step instead.
+    const formEl = screen
+      .getByTestId("input-loan-amount")
+      .closest("form") as HTMLFormElement;
+    fireEvent.submit(formEl);
+
+    await screen.findByRole("heading", { name: "Review & Submit" });
+    expect(dealState.createDeal).not.toHaveBeenCalled();
   });
 });

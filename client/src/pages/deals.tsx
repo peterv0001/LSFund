@@ -259,6 +259,13 @@ function MCADealDialog() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  // When the wizard advances into the review step (4), the "Next" button is
+  // replaced by the "Submit" button at the same position. The two buttons carry
+  // distinct `key`s (see the navigation below), so React tears down the Next
+  // node and mounts a brand-new Submit node instead of reusing the same
+  // <button> element. This prevents a click meant for "Next" from carrying over
+  // into an unintended submission. The onSubmit handler additionally refuses to
+  // create a deal unless the wizard is actually on the review step.
 
   const form = useForm<DealFormData>({
     resolver: zodResolver(dealFormSchema),
