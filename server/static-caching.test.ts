@@ -259,4 +259,47 @@ describe("production response compression", () => {
     // sibling, proving the source was never compressed on the fly.
     expect(res.text).toBe(PRECOMPRESSED_MARKER);
   });
+
+  it("serves a gzip body that decompresses back to the original JS asset", async () => {
+    const original = fs.readFileSync(
+      path.join(distDir, "assets", "index-abc12345.js"),
+    );
+
+    const res = await rawGet("/assets/index-abc12345.js", {
+      "Accept-Encoding": "gzip",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+
+    const decoded = zlib.gunzipSync(res.body);
+    expect(decoded.equals(original)).toBe(true);
+  });
+
+  it("serves a gzip body that decompresses back to the original CSS asset", async () => {
+    const original = fs.readFileSync(
+      path.join(distDir, "assets", "index-def67890.css"),
+    );
+
+    const res = await rawGet("/assets/index-def67890.css", {
+      "Accept-Encoding": "gzip",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+
+    const decoded = zlib.gunzipSync(res.body);
+    expect(decoded.equals(original)).toBe(true);
+  });
+
+  it("sends a gzip payload smaller than the uncompressed asset", async () => {
+    const original = fs.readFileSync(
+      path.join(distDir, "assets", "index-abc12345.js"),
+    );
+
+    const res = await rawGet("/assets/index-abc12345.js", {
+      "Accept-Encoding": "gzip",
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+    expect(res.body.length).toBeLessThan(original.length);
+  });
 });
