@@ -167,6 +167,59 @@ const templates = {
     `,
   }),
 
+  teamInvitation: (data: { inviterName: string; prospectName: string; acceptUrl: string }) => ({
+    subject: `${data.inviterName} invited you to join Leader Shield Funding`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <h1 style="color: #C9A24B; margin: 0; font-size: 28px;">Leader Shield Funding</h1>
+      <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0;">You've been invited</p>
+    </div>
+
+    <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.prospectName},</h2>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        <strong>${data.inviterName}</strong> has invited you to join their team on Leader Shield Funding —
+        an elite network of MCA professionals building two revenue streams.
+      </p>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        Click the button below to accept your invitation and set up your account. It only takes a minute.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.acceptUrl}" style="display: inline-block; background: linear-gradient(135deg, #C9A24B 0%, #A07B22 100%); color: #0A1628; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Accept Invitation →
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 14px; line-height: 1.6; margin: 20px 0;">
+        This invitation will expire in <strong>14 days</strong>. If you weren't expecting this email, you can safely ignore it.
+      </p>
+
+      <p style="color: #a0aec0; font-size: 12px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        If the button above doesn't work, copy and paste this link into your browser:<br/>
+        <a href="${data.acceptUrl}" style="color: #0A1628; word-break: break-all;">${data.acceptUrl}</a>
+      </p>
+    </div>
+
+    <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
   subscriptionPaused: (data: { firstName: string; merchantName: string; tier: string; effectiveDate: string; dashboardUrl: string }) => ({
     subject: `⏸ Subscription Paused: ${data.merchantName}`,
     html: `
@@ -772,6 +825,28 @@ export const emailService = {
       console.log(`[Email] Password reset email sent to ${to}`);
     } catch (error) {
       console.error('[Email] Failed to send password reset email:', error);
+    }
+  },
+
+  async sendTeamInvitationEmail(to: string, data: { inviterName: string; prospectName: string; acceptUrl: string }) {
+    if (!process.env.RESEND_API_KEY) {
+      console.log('[Email] Skipping team invitation email - RESEND_API_KEY not set');
+      return;
+    }
+
+    try {
+      const template = templates.teamInvitation(data);
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+
+      console.log(`[Email] Team invitation email sent to ${to}`);
+    } catch (error) {
+      console.error('[Email] Failed to send team invitation email:', error);
     }
   },
 

@@ -484,6 +484,43 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped unique index on binary-tree placement");
     },
   },
+  {
+    name: "017_create_agent_invitations",
+    async run(client) {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'cancelled', 'expired');
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
+      `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS agent_invitations (
+          id SERIAL PRIMARY KEY,
+          inviter_id INTEGER NOT NULL,
+          first_name TEXT NOT NULL,
+          last_name TEXT NOT NULL,
+          email TEXT NOT NULL,
+          placement_leg TEXT NOT NULL DEFAULT 'auto',
+          token TEXT NOT NULL UNIQUE,
+          status invitation_status NOT NULL DEFAULT 'pending',
+          expires_at TIMESTAMP NOT NULL,
+          accepted_agent_id INTEGER,
+          created_at TIMESTAMP NOT NULL DEFAULT now(),
+          updated_at TIMESTAMP NOT NULL DEFAULT now()
+        )
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS agent_invitations_inviter_idx
+        ON agent_invitations (inviter_id)
+      `);
+      console.log("[migrations] Created agent_invitations table");
+    },
+    async down(client) {
+      await client.query(`DROP TABLE IF EXISTS agent_invitations`);
+      await client.query(`DROP TYPE IF EXISTS invitation_status`);
+      console.log("[migrations] Dropped agent_invitations table");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

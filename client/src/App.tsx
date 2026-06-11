@@ -26,6 +26,8 @@ const LpReferral = lazy(() => import("@/pages/lp/referral"));
 const AuthPage = lazy(() => import("@/pages/auth"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const AcceptInvitePage = lazy(() => import("@/pages/accept-invite"));
+const InvitePage = lazy(() => import("@/pages/invite"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const TeamPage = lazy(() => import("@/pages/team"));
 const DealsPage = lazy(() => import("@/pages/deals"));
@@ -137,6 +139,9 @@ function Router() {
       <Route path="/reset-password">
         {user ? <Redirect to="/dashboard" /> : <ResetPasswordPage />}
       </Route>
+      <Route path="/invite/accept">
+        <AcceptInvitePage />
+      </Route>
 
       {/* Public Ad Landing Pages (no auth guard, always public) */}
       <Route path="/lp/declined" component={LpDeclined} />
@@ -158,6 +163,7 @@ function Router() {
       <Route path="/income-disclosure" component={IncomeDisclosurePage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/team" component={() => <ProtectedRoute component={TeamPage} />} />
+      <Route path="/invite" component={() => <ProtectedRoute component={InvitePage} />} />
       <Route path="/deals" component={() => <ProtectedRoute component={DealsPage} />} />
       <Route path="/earnings" component={() => <ProtectedRoute component={EarningsPage} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={SettingsPage} />} />

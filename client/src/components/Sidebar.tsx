@@ -15,7 +15,8 @@ import {
   X,
   BarChart3,
   UserPlus,
-  RefreshCw
+  RefreshCw,
+  Mail
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { BrandMark, BrandLockup } from "@/components/BrandMark";
@@ -53,6 +54,7 @@ export function Sidebar() {
     { href: "/training", label: "Training", icon: BookOpen },
     { href: "/leads", label: "My Leads", icon: UserPlus },
     { href: "/team", label: "My Team", icon: Users },
+    { href: "/invite", label: "Invite", icon: Mail },
     { href: "/deals", label: "Deals", icon: Briefcase },
     { href: "/subscriptions", label: "Subscriptions", icon: RefreshCw },
     { href: "/earnings", label: "Earnings", icon: DollarSign },

@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { Agent, AgentWithTeam, emailPreferencesSchema } from "@shared/schema";
+import { Agent, AgentWithTeam, AgentInvitation, emailPreferencesSchema } from "@shared/schema";
 import { z } from "zod";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -527,6 +527,312 @@ export async function registerRoutes(
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ==================== TEAM INVITATIONS ====================
+  // An authenticated agent invites a prospect by email. The placement slot is
+  // NOT reserved here — it is resolved at acceptance via createAgentWithPlacement
+  // under the inviter. Tokens are random and stored hashed (sha256); only the
+  // raw token ever leaves the server, inside the email link.
+
+  const INVITATION_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
+  // Strip the (hashed) token before returning an invitation to a client.
+  const sanitizeInvitation = (inv: AgentInvitation) => {
+    const { token, ...rest } = inv;
+    return rest;
+  };
+
+  function invitationAcceptUrl(req: Request, rawToken: string): string {
+    const base = process.env.APP_URL || `https://${req.get('host')}`;
+    return `${base}/invite/accept?token=${rawToken}`;
+  }
+
+  // Resolves the current state of an invitation for token-gated public routes.
+  // Returns either an error message (with HTTP status) or the live invitation.
+  async function resolveInvitationByRawToken(
+    rawToken: string,
+  ): Promise<{ error: string } | { invitation: AgentInvitation }> {
+    const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+    const invitation = await storage.getAgentInvitationByToken(hashedToken);
+
+    if (!invitation) {
+      return { error: "This invitation link is invalid." };
+    }
+    if (invitation.status === "cancelled") {
+      return { error: "This invitation has been cancelled." };
+    }
+    if (invitation.status === "accepted") {
+      return { error: "This invitation has already been used." };
+    }
+    if (invitation.status === "expired" || new Date() > invitation.expiresAt) {
+      if (invitation.status !== "expired") {
+        await storage.updateAgentInvitation(invitation.id, { status: "expired" });
+      }
+      return { error: "This invitation has expired. Ask your sponsor to send a new one." };
+    }
+    return { invitation };
+  }
+
+  // Create an invitation
+  app.post(api.invitations.create.path, requireAuth, authLimiter, async (req, res) => {
+    try {
+      const input = api.invitations.create.input.parse(req.body);
+      const inviter = await storage.getAgent(req.user!.id);
+
+      if (!inviter || inviter.status !== "active") {
+        return res.status(403).json({ message: "Your account is not active, so you can't send invitations right now." });
+      }
+
+      const email = input.email.toLowerCase();
+
+      const existingAgent = await storage.getAgentByEmail(email);
+      if (existingAgent) {
+        return res.status(400).json({ message: "Someone with this email already has an account." });
+      }
+
+      // Avoid stacking duplicate pending invitations to the same prospect.
+      const existingInvites = await storage.getAgentInvitationsByInviter(inviter.id);
+      const duplicatePending = existingInvites.find(
+        (inv) => inv.email === email && inv.status === "pending" && new Date() <= inv.expiresAt,
+      );
+      if (duplicatePending) {
+        return res.status(400).json({ message: "You already have a pending invitation to this email." });
+      }
+
+      const rawToken = randomBytes(32).toString("hex");
+      const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+      const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
+
+      const invitation = await storage.createAgentInvitation({
+        inviterId: inviter.id,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email,
+        placementLeg: input.placementLeg,
+        token: hashedToken,
+        expiresAt,
+      });
+
+      emailService.sendTeamInvitationEmail(email, {
+        inviterName: `${inviter.firstName} ${inviter.lastName}`,
+        prospectName: input.firstName,
+        acceptUrl: invitationAcceptUrl(req, rawToken),
+      }).catch(console.error);
+
+      res.status(201).json(sanitizeInvitation(invitation));
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // List the authenticated agent's sent invitations
+  app.get(api.invitations.list.path, requireAuth, async (req, res) => {
+    const invitations = await storage.getAgentInvitationsByInviter(req.user!.id);
+    // Lazily reflect expiry in the returned status without a write on the read path.
+    const now = new Date();
+    const result = invitations.map((inv) => {
+      const view = inv.status === "pending" && now > inv.expiresAt
+        ? { ...inv, status: "expired" as const }
+        : inv;
+      return sanitizeInvitation(view);
+    });
+    res.json(result);
+  });
+
+  // Resend a pending invitation (rotates token + expiry)
+  app.post(api.invitations.resend.path, requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) {
+        return res.status(400).json({ message: "Invalid invitation id" });
+      }
+
+      const invitation = await storage.getAgentInvitation(id);
+      if (!invitation || invitation.inviterId !== req.user!.id) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+
+      if (invitation.status === "accepted") {
+        return res.status(400).json({ message: "This invitation has already been accepted." });
+      }
+      if (invitation.status === "cancelled") {
+        return res.status(400).json({ message: "This invitation has been cancelled." });
+      }
+
+      const inviter = await storage.getAgent(req.user!.id);
+      if (!inviter || inviter.status !== "active") {
+        return res.status(403).json({ message: "Your account is not active, so you can't resend invitations right now." });
+      }
+
+      const rawToken = randomBytes(32).toString("hex");
+      const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+      const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
+
+      const updated = await storage.updateAgentInvitation(id, {
+        token: hashedToken,
+        expiresAt,
+        status: "pending",
+      });
+
+      emailService.sendTeamInvitationEmail(invitation.email, {
+        inviterName: `${inviter.firstName} ${inviter.lastName}`,
+        prospectName: invitation.firstName,
+        acceptUrl: invitationAcceptUrl(req, rawToken),
+      }).catch(console.error);
+
+      res.json(sanitizeInvitation(updated));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Cancel a pending invitation
+  app.post(api.invitations.cancel.path, requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) {
+        return res.status(400).json({ message: "Invalid invitation id" });
+      }
+
+      const invitation = await storage.getAgentInvitation(id);
+      if (!invitation || invitation.inviterId !== req.user!.id) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+
+      if (invitation.status === "accepted") {
+        return res.status(400).json({ message: "This invitation has already been accepted and can't be cancelled." });
+      }
+      if (invitation.status === "cancelled") {
+        return res.json(sanitizeInvitation(invitation));
+      }
+
+      const updated = await storage.updateAgentInvitation(id, { status: "cancelled" });
+      res.json(sanitizeInvitation(updated));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Public: look up an invitation by raw token (prefills the accept page)
+  app.get(api.invitations.lookup.path, passwordLimiter, async (req, res) => {
+    try {
+      const rawToken = String(req.params.token || "");
+      const resolved = await resolveInvitationByRawToken(rawToken);
+      if ("error" in resolved) {
+        return res.status(400).json({ message: resolved.error });
+      }
+
+      const { invitation } = resolved;
+      const inviter = await storage.getAgent(invitation.inviterId);
+      if (!inviter || inviter.status !== "active") {
+        return res.status(400).json({ message: "The person who invited you is no longer active. Please contact support." });
+      }
+
+      res.json({
+        firstName: invitation.firstName,
+        lastName: invitation.lastName,
+        email: invitation.email,
+        inviterName: `${inviter.firstName} ${inviter.lastName}`,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Public: accept an invitation, creating the agent under the inviter
+  app.post(api.invitations.accept.path, authLimiter, async (req, res) => {
+    try {
+      const input = api.invitations.accept.input.parse(req.body);
+      const resolved = await resolveInvitationByRawToken(input.token);
+      if ("error" in resolved) {
+        return res.status(400).json({ message: resolved.error });
+      }
+
+      const { invitation } = resolved;
+
+      const inviter = await storage.getAgent(invitation.inviterId);
+      if (!inviter || inviter.status !== "active") {
+        return res.status(400).json({ message: "The person who invited you is no longer active. Please contact support." });
+      }
+
+      // Guard against an account being created for this email after the invite.
+      const existingAgent = await storage.getAgentByEmail(invitation.email);
+      if (existingAgent) {
+        await storage.updateAgentInvitation(invitation.id, { status: "expired" });
+        return res.status(400).json({ message: "An account with this email already exists. Please log in instead." });
+      }
+
+      const hashedPassword = await hashPassword(input.password);
+      const strategy = (['left', 'right', 'auto'].includes(invitation.placementLeg)
+        ? invitation.placementLeg
+        : 'auto') as 'left' | 'right' | 'auto';
+
+      const agent = await storage.createAgentWithPlacement(
+        {
+          email: invitation.email,
+          password: hashedPassword,
+          firstName: invitation.firstName,
+          lastName: invitation.lastName,
+          currentRank: 'agent' as const,
+          status: 'active' as const,
+          isAdmin: false,
+          isSuperAdmin: false,
+        },
+        inviter.id,
+        strategy,
+      );
+
+      await storage.updateAgentInvitation(invitation.id, {
+        status: "accepted",
+        acceptedAgentId: agent.id,
+      });
+
+      await storage.createNotification({
+        agentId: agent.id,
+        type: 'system',
+        title: 'Welcome to Leader Shield Funding!',
+        message: 'Your account has been created. Start by completing your profile and exploring the platform.',
+        isRead: false,
+        emailSent: false,
+      });
+
+      emailService.sendWelcomeEmail(agent.email, agent.firstName).catch(console.error);
+
+      await storage.createNotification({
+        agentId: inviter.id,
+        type: 'team_signup',
+        title: 'New Team Member!',
+        message: `${agent.firstName} ${agent.lastName} accepted your invitation and joined your team!`,
+        isRead: false,
+        emailSent: false,
+      });
+      const inviterPrefs = (inviter.emailPreferences as { emailOnTeamSignup?: boolean } | null) ?? {};
+      if (inviterPrefs.emailOnTeamSignup !== false) {
+        emailService.sendTeamSignupEmail(inviter.email, {
+          firstName: inviter.firstName,
+          newMemberName: `${agent.firstName} ${agent.lastName}`,
+        }).catch(console.error);
+      }
+
+      req.login(agent, (err) => {
+        if (err) throw err;
+        res.status(200).json(sanitizeAgentSelf(agent));
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error(err);
       res.status(500).json({ message: "Internal server error" });
     }
   });

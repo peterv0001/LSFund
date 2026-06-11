@@ -14,6 +14,7 @@ import {
   notifications,
   announcements,
   resources,
+  agentInvitations,
   rankEnum 
 } from './schema';
 
@@ -267,6 +268,87 @@ export const api = {
             createdAt: z.string(),
           })),
         }),
+      },
+    },
+  },
+
+  // === TEAM INVITATIONS ===
+  invitations: {
+    // Authenticated agent sends an invitation by email.
+    create: {
+      method: 'POST' as const,
+      path: '/api/invitations',
+      input: z.object({
+        firstName: z.string().min(1, "First name is required").max(100),
+        lastName: z.string().min(1, "Last name is required").max(100),
+        email: z.string().email("Enter a valid email").max(200),
+        placementLeg: z.enum(['left', 'right', 'auto']).default('auto'),
+      }),
+      responses: {
+        201: z.custom<typeof agentInvitations.$inferSelect>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
+    // List the authenticated agent's sent invitations.
+    list: {
+      method: 'GET' as const,
+      path: '/api/invitations',
+      responses: {
+        200: z.array(z.custom<typeof agentInvitations.$inferSelect>()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    // Resend a pending invitation (rotates token + expiry).
+    resend: {
+      method: 'POST' as const,
+      path: '/api/invitations/:id/resend',
+      responses: {
+        200: z.custom<typeof agentInvitations.$inferSelect>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+    // Cancel a pending invitation.
+    cancel: {
+      method: 'POST' as const,
+      path: '/api/invitations/:id/cancel',
+      responses: {
+        200: z.custom<typeof agentInvitations.$inferSelect>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+    // Public: look up an invitation by raw token to prefill the accept page.
+    lookup: {
+      method: 'GET' as const,
+      path: '/api/invitations/lookup/:token',
+      responses: {
+        200: z.object({
+          firstName: z.string(),
+          lastName: z.string(),
+          email: z.string(),
+          inviterName: z.string(),
+        }),
+        400: errorSchemas.validation,
+      },
+    },
+    // Public: accept an invitation, creating the agent under the inviter.
+    accept: {
+      method: 'POST' as const,
+      path: '/api/invitations/accept',
+      input: z.object({
+        token: z.string().min(1),
+        password: z.string().min(8, "Password must be at least 8 characters"),
+        legalConsent: z.literal(true, {
+          errorMap: () => ({ message: "You must accept the terms to continue" }),
+        }),
+      }),
+      responses: {
+        200: z.custom<typeof agents.$inferSelect>(),
+        400: errorSchemas.validation,
       },
     },
   },

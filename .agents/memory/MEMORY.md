@@ -5,3 +5,4 @@
 - [Binary tree placement races](binary-tree-placement-races.md) — placement uniqueness needs a DB partial unique index on (placement_id, leg) + retry; app-level find-then-insert can't stop concurrent same-slot signups.
 - [MCA deal wizard submit](mca-deal-wizard-submit.md) — every required field is gated by per-step Next, so onInvalid is only reachable via Back-then-submit; clicking Next into step 4 can race into a real submit (flaky e2e).
 - [SPA catch-all request path](spa-catchall-path.md) — under `app.use("/{*path}")` Express 5 puts the route in baseUrl and req.path becomes the remainder ("/" for /login); use originalUrl for real path.
+- [Dev server has no file watch](dev-server-no-watch.md) — `tsx server/index.ts` doesn't restart on server edits; new routes 404/serve SPA in preview while vitest passes. Restart workflow after server/ changes.

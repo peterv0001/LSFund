@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, date, pgEnum, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, date, pgEnum, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -24,6 +24,7 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", ['active', '
 export const subscriptionBillingStatusEnum = pgEnum("subscription_billing_status", ['pending', 'active', 'past_due', 'failed', 'cancelled']);
 export const holdbackStatusEnum = pgEnum("holdback_status", ['held', 'partially_released', 'released', 'clawed_back']);
 export const fulfillmentTierLevelEnum = pgEnum("fulfillment_tier_level", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
+export const invitationStatusEnum = pgEnum("invitation_status", ['pending', 'accepted', 'cancelled', 'expired']);
 
 // === TABLE DEFINITIONS ===
 
@@ -99,6 +100,27 @@ export const agents = pgTable("agents", {
   placementLegUniqueIdx: uniqueIndex("agents_placement_leg_unique_idx")
     .on(table.placementId, table.leg)
     .where(sql`${table.placementId} IS NOT NULL AND ${table.leg} IS NOT NULL`),
+}));
+
+// Pending email invitations an agent sends to enroll a new teammate. The
+// placement slot is NOT reserved at invite time — it is resolved when the
+// prospect accepts (via createAgentWithPlacement under the inviter). The token
+// is stored hashed (sha256); the raw token only ever lives in the email link.
+export const agentInvitations = pgTable("agent_invitations", {
+  id: serial("id").primaryKey(),
+  inviterId: integer("inviter_id").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull(),
+  placementLeg: text("placement_leg").notNull().default("auto"), // 'left' | 'right' | 'auto'
+  token: text("token").notNull().unique(), // sha256 hash of the raw token
+  status: invitationStatusEnum("status").default("pending").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAgentId: integer("accepted_agent_id"), // set when the prospect signs up
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  inviterIdx: index("agent_invitations_inviter_idx").on(table.inviterId),
 }));
 
 export const dealProgramTypeEnum = pgEnum("deal_program_type", ['pmf_funding', 'iso_broker', 'iso_referral']);
@@ -932,6 +954,14 @@ export const insertFulfillmentTierSchema = createInsertSchema(fulfillmentTiers).
   updatedAt: true,
 });
 
+export const insertAgentInvitationSchema = createInsertSchema(agentInvitations).omit({
+  id: true,
+  status: true,
+  acceptedAgentId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // === EXPLICIT TYPES ===
 
 export type Agent = typeof agents.$inferSelect;
@@ -978,6 +1008,9 @@ export type InsertHoldback = z.infer<typeof insertHoldbackSchema>;
 
 export type FulfillmentTier = typeof fulfillmentTiers.$inferSelect;
 export type InsertFulfillmentTier = z.infer<typeof insertFulfillmentTierSchema>;
+
+export type AgentInvitation = typeof agentInvitations.$inferSelect;
+export type InsertAgentInvitation = z.infer<typeof insertAgentInvitationSchema>;
 
 // Request types
 export type CreateDealRequest = InsertDeal;

@@ -2,11 +2,12 @@ import { db } from "./db";
 import { 
   agents, deals, commissions, payouts, notifications, announcements, resources, rankQualifications, activityLog,
   courseModules, courseProgress, leads, leadRequests, subscriptions, holdbacks, fulfillmentTiers, platformSettings,
-  adminExportTemplates,
+  adminExportTemplates, agentInvitations,
   type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource,
   type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress,
   type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest,
-  type Subscription, type Holdback, type FulfillmentTier, type AdminExportTemplate
+  type Subscription, type Holdback, type FulfillmentTier, type AdminExportTemplate,
+  type AgentInvitation, type InsertAgentInvitation
 } from "@shared/schema";
 import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum, SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -312,6 +313,40 @@ export class DatabaseStorage {
     await db.update(agents)
       .set({ resetToken: null, resetTokenExpiry: null, updatedAt: new Date() })
       .where(eq(agents.id, agentId));
+  }
+
+  // === AGENT INVITATIONS ===
+
+  async createAgentInvitation(data: InsertAgentInvitation): Promise<AgentInvitation> {
+    const [invitation] = await db.insert(agentInvitations).values({
+      ...data,
+      email: data.email.toLowerCase(),
+    }).returning();
+    return invitation;
+  }
+
+  async getAgentInvitation(id: number): Promise<AgentInvitation | undefined> {
+    const [invitation] = await db.select().from(agentInvitations).where(eq(agentInvitations.id, id));
+    return invitation;
+  }
+
+  async getAgentInvitationByToken(token: string): Promise<AgentInvitation | undefined> {
+    const [invitation] = await db.select().from(agentInvitations).where(eq(agentInvitations.token, token));
+    return invitation;
+  }
+
+  async getAgentInvitationsByInviter(inviterId: number): Promise<AgentInvitation[]> {
+    return await db.select().from(agentInvitations)
+      .where(eq(agentInvitations.inviterId, inviterId))
+      .orderBy(desc(agentInvitations.createdAt));
+  }
+
+  async updateAgentInvitation(id: number, data: Partial<AgentInvitation>): Promise<AgentInvitation> {
+    const [updated] = await db.update(agentInvitations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(agentInvitations.id, id))
+      .returning();
+    return updated;
   }
 
   async searchAgentsForSponsor(query: string): Promise<{ id: number; firstName: string; lastName: string; maskedEmail: string; referralCode: string | null }[]> {
