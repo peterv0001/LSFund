@@ -397,7 +397,7 @@ export default function PrivacyPolicyPage() {
                     <p className="font-semibold text-primary">Leader Shield Funding, LLC</p>
                     <p className="text-muted-foreground">Privacy Officer</p>
                     <p className="text-muted-foreground">Email: privacy@leadershieldfunding.com</p>
-                    <p className="text-muted-foreground">Address: [Company Address]</p>
+                    <p className="text-muted-foreground">Address: 777 Brickell Ave, Miami, FL 33131</p>
                     <p className="text-muted-foreground">Phone: [Company Phone Number]</p>
                   </div>
                   <p className="text-muted-foreground leading-relaxed mt-4">

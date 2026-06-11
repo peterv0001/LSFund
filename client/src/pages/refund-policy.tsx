@@ -230,7 +230,7 @@ export default function RefundPolicyPage() {
               <p><span className="font-semibold text-foreground">Email:</span> support@leadershieldnetwork.com</p>
               <p><span className="font-semibold text-foreground">Billing Inquiries:</span> billing@leadershieldnetwork.com</p>
               <p><span className="font-semibold text-foreground">Legal Escalations:</span> legal@leadershieldnetwork.com</p>
-              <p><span className="font-semibold text-foreground">Mailing Address:</span> Leader Shield Funding LLC, [Business Address], [City, State ZIP]</p>
+              <p><span className="font-semibold text-foreground">Mailing Address:</span> Leader Shield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
             </div>
           </section>
 

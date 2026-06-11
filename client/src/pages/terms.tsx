@@ -255,7 +255,7 @@ export default function TermsOfServicePage() {
               <p><strong className="text-foreground">Leader Shield Funding Legal Department</strong></p>
               <p>Email: legal@leadershieldnetwork.com</p>
               <p>Phone: 1-800-LEADER-1</p>
-              <p>Address: Leader Shield Funding LLC, Wilmington, DE 19801</p>
+              <p>Address: Leader Shield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
             </div>
           </section>
         </div>
