@@ -86,7 +86,7 @@ export default function RefundPolicyPage() {
                 <span className="font-semibold text-foreground">Monthly Subscriptions:</span> Cancellations take effect at the end of the current billing cycle. You will continue to have access to the platform and its features until the end of your paid period. No partial-month refunds will be issued.
               </li>
               <li>
-                <span className="font-semibold text-foreground">How to Cancel:</span> You may cancel your subscription by contacting our support team at support@leadershieldnetwork.com, through your account settings in the Merchant Growth Platform portal, or by calling our customer service line. Written confirmation of cancellation will be provided via email.
+                <span className="font-semibold text-foreground">How to Cancel:</span> You may cancel your subscription by contacting our support team at support@leadershieldfunding.com, through your account settings in the Merchant Growth Platform portal, or by calling our customer service line. Written confirmation of cancellation will be provided via email.
               </li>
               <li>
                 <span className="font-semibold text-foreground">Automatic Renewal:</span> All subscriptions automatically renew at the end of each billing period unless cancelled prior to the renewal date. It is your responsibility to cancel before the renewal date to avoid being charged for the next billing cycle.
@@ -148,7 +148,7 @@ export default function RefundPolicyPage() {
             </p>
             <ol className="list-decimal pl-6 space-y-3 text-muted-foreground">
               <li>
-                <span className="font-semibold text-foreground">Submit a Request:</span> Email support@leadershieldnetwork.com with the subject line "Refund Request" or submit a ticket through the support portal. Include your account email, subscription tier, date of purchase, and reason for the refund request.
+                <span className="font-semibold text-foreground">Submit a Request:</span> Email support@leadershieldfunding.com with the subject line "Refund Request" or submit a ticket through the support portal. Include your account email, subscription tier, date of purchase, and reason for the refund request.
               </li>
               <li>
                 <span className="font-semibold text-foreground">Review Period:</span> Our billing team will review your request within 5 business days and may request additional information if needed.
@@ -157,7 +157,7 @@ export default function RefundPolicyPage() {
                 <span className="font-semibold text-foreground">Decision & Processing:</span> If approved, refunds will be processed to the original payment method within 10 business days. You will receive an email confirmation once the refund has been processed.
               </li>
               <li>
-                <span className="font-semibold text-foreground">Disputes:</span> If your refund request is denied and you disagree with the decision, you may escalate the matter by contacting legal@leadershieldnetwork.com.
+                <span className="font-semibold text-foreground">Disputes:</span> If your refund request is denied and you disagree with the decision, you may escalate the matter by contacting legal@leadershieldfunding.com.
               </li>
             </ol>
           </section>
@@ -227,9 +227,9 @@ export default function RefundPolicyPage() {
               request a refund, please contact us:
             </p>
             <div className="space-y-2 text-muted-foreground ml-4">
-              <p><span className="font-semibold text-foreground">Email:</span> support@leadershieldnetwork.com</p>
-              <p><span className="font-semibold text-foreground">Billing Inquiries:</span> billing@leadershieldnetwork.com</p>
-              <p><span className="font-semibold text-foreground">Legal Escalations:</span> legal@leadershieldnetwork.com</p>
+              <p><span className="font-semibold text-foreground">Email:</span> support@leadershieldfunding.com</p>
+              <p><span className="font-semibold text-foreground">Billing Inquiries:</span> billing@leadershieldfunding.com</p>
+              <p><span className="font-semibold text-foreground">Legal Escalations:</span> legal@leadershieldfunding.com</p>
               <p><span className="font-semibold text-foreground">Mailing Address:</span> Leader Shield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
             </div>
           </section>

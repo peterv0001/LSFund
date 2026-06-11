@@ -168,7 +168,7 @@ export default function TermsOfServicePage() {
 
             <h3 className="text-lg font-semibold text-primary mt-6 mb-3">8.1 Informal Resolution</h3>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Before initiating any formal dispute resolution process, you agree to first attempt to resolve any dispute informally by contacting the Company at legal@leadershieldnetwork.com. The parties will attempt in good faith to resolve the dispute within 30 days.
+              Before initiating any formal dispute resolution process, you agree to first attempt to resolve any dispute informally by contacting the Company at legal@leadershieldfunding.com. The parties will attempt in good faith to resolve the dispute within 30 days.
             </p>
 
             <h3 className="text-lg font-semibold text-primary mt-6 mb-3">8.2 Binding Arbitration</h3>
@@ -253,7 +253,7 @@ export default function TermsOfServicePage() {
             </p>
             <div className="bg-muted/30 border border-border rounded-md p-6 text-muted-foreground space-y-2">
               <p><strong className="text-foreground">Leader Shield Funding Legal Department</strong></p>
-              <p>Email: legal@leadershieldnetwork.com</p>
+              <p>Email: legal@leadershieldfunding.com</p>
               <p>Phone: 1-800-LEADER-1</p>
               <p>Address: Leader Shield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
             </div>

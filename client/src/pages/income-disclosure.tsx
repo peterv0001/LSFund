@@ -267,7 +267,7 @@ export default function IncomeDisclosurePage() {
             </p>
             <div className="text-sm text-muted-foreground space-y-1">
               <p>Leader Shield Funding, LLC — Compliance Department</p>
-              <p>Email: compliance@leadershieldnetwork.com</p>
+              <p>Email: compliance@leadershieldfunding.com</p>
               <p>Phone: 1-800-555-0199</p>
             </div>
           </CardContent>
