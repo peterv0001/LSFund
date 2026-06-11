@@ -4,6 +4,7 @@ import { rm, readFile } from "fs/promises";
 import path from "path";
 
 import { precompressAssets } from "./precompress.js";
+import { assertLandingBundleWithinBudget } from "./bundle-budget.js";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -39,7 +40,21 @@ async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
   console.log("building client...");
-  await viteBuild();
+  const clientBuild = await viteBuild();
+  const rollupOutput = Array.isArray(clientBuild) ? clientBuild[0] : clientBuild;
+  if (rollupOutput && "output" in rollupOutput) {
+    // Guard the mobile home page ("/"): fail the build if the landing route's
+    // first-paint JS grows past budget or eagerly pulls in the animation /
+    // below-the-fold chunks (see script/bundle-budget.ts).
+    const report = assertLandingBundleWithinBudget(rollupOutput);
+    console.log(
+      `landing "/" first-paint JS (route-specific): ${report.landingDeltaBytes} bytes — within budget`,
+    );
+  } else {
+    throw new Error(
+      "build: vite build did not return a Rollup output; cannot enforce the landing bundle budget",
+    );
+  }
 
   console.log("precompressing static assets...");
   const compressed = await precompressAssets(path.resolve("dist/public"));
