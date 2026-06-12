@@ -6,6 +6,7 @@ import {
   LpFooter,
   LpHeader,
   useLandingForm,
+  useLandingView,
   usePageMeta,
 } from "./lp-common";
 
@@ -23,6 +24,7 @@ export default function LpLeaks() {
     "Missed calls, unanswered chats, leads that never get a follow-up. The Merchant Growth Platform captures every inquiry 24/7 and follows up automatically — from $397/mo.",
   );
   const { formRef, onSubmit, triggerSubmit, submitted } = useLandingForm("lp-platform-leaks", "thanks");
+  useLandingView("leaks");
 
   return (
     <div className="lp-page" data-testid="page-lp-leaks">

@@ -552,6 +552,19 @@ export const leadRequests = pgTable("lead_requests", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// === LANDING PAGE VIEWS ===
+// Lightweight, privacy-safe view tracking for agent-shared landing pages.
+// Records only which agent's link was opened, which page, and when — no IP,
+// no cookie, no visitor PII. One row per recorded visit.
+export const landingPageViews = pgTable("landing_page_views", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  page: text("page").notNull(), // 'platform' | 'leaks' | 'scale'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  agentPageIdx: index("landing_page_views_agent_page_idx").on(table.agentId, table.page),
+}));
+
 // === PLATFORM SETTINGS ===
 
 export const platformSettings = pgTable("platform_settings", {
@@ -915,6 +928,11 @@ export const insertLeadRequestSchema = createInsertSchema(leadRequests).omit({
   leadsAssigned: true,
 });
 
+export const insertLandingPageViewSchema = createInsertSchema(landingPageViews).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const updateLeadStatusSchema = z.object({
   status: z.enum(['new', 'contacted', 'warm', 'hot', 'qualified', 'submitted', 'closed_won', 'closed_lost', 'ai_followup']),
   notes: z.string().optional(),
@@ -999,6 +1017,9 @@ export type InsertLead = z.infer<typeof insertLeadSchema>;
 
 export type LeadRequest = typeof leadRequests.$inferSelect;
 export type InsertLeadRequest = z.infer<typeof insertLeadRequestSchema>;
+
+export type LandingPageView = typeof landingPageViews.$inferSelect;
+export type InsertLandingPageView = z.infer<typeof insertLandingPageViewSchema>;
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;

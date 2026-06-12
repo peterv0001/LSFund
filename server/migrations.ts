@@ -539,6 +539,28 @@ export const migrations: Migration[] = [
       );
     },
   },
+  {
+    name: "019_create_landing_page_views",
+    async run(client) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS landing_page_views (
+          id SERIAL PRIMARY KEY,
+          agent_id INTEGER NOT NULL,
+          page TEXT NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT now()
+        )
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS landing_page_views_agent_page_idx
+        ON landing_page_views (agent_id, page)
+      `);
+      console.log("[migrations] Created landing_page_views table");
+    },
+    async down(client) {
+      await client.query(`DROP TABLE IF EXISTS landing_page_views`);
+      console.log("[migrations] Dropped landing_page_views table");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

@@ -5,6 +5,7 @@ import {
   LpFooter,
   LpHeader,
   useLandingForm,
+  useLandingView,
   usePageMeta,
 } from "./lp-common";
 
@@ -14,6 +15,7 @@ export default function LpScale() {
     "Revenue Scale AI is a full AI marketing-and-sales department: an AI Caller that books meetings, AI-managed paid ads, content across Meta, LinkedIn and X — $1,497/mo instead of payroll.",
   );
   const { formRef, onSubmit, triggerSubmit, submitted } = useLandingForm("lp-platform-scale", "thanks");
+  useLandingView("scale");
 
   return (
     <div className="lp-page" data-testid="page-lp-scale">

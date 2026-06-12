@@ -50,6 +50,16 @@ export default function Dashboard() {
     },
   });
 
+  type ShareStat = { views: number; leads: number };
+  const { data: shareStats } = useQuery<Record<'platform' | 'leaks' | 'scale', ShareStat>>({
+    queryKey: ['share-stats'],
+    queryFn: async () => {
+      const res = await fetch(api.agents.shareStats.path, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch share stats');
+      return res.json();
+    },
+  });
+
   const { data: subscriptions = [] } = useQuery<{ id: number; status: string; endDate: string | null }[]>({
     queryKey: ["/api/subscriptions"],
   });
@@ -406,7 +416,8 @@ export default function Dashboard() {
             </div>
             <p className="text-sm text-gray-500 mb-5">
               Share these landing pages with business owners. Every link is tagged with your referral
-              code, so leads who sign up are credited to you automatically.
+              code, so leads who sign up are credited to you automatically. Views and leads below show
+              how each page is performing.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {platformShareLinks.map((lp) => (
@@ -417,6 +428,20 @@ export default function Dashboard() {
                 >
                   <h4 className="font-semibold text-sm mb-1">{lp.title}</h4>
                   <p className="text-xs text-gray-500 mb-3 flex-1">{lp.blurb}</p>
+                  <div className="flex items-center gap-4 mb-3" data-testid={`stats-share-${lp.key}`}>
+                    <div className="flex flex-col">
+                      <span className="font-mono text-lg font-bold leading-none" data-testid={`text-views-${lp.key}`}>
+                        {shareStats?.[lp.key as 'platform' | 'leaks' | 'scale']?.views ?? 0}
+                      </span>
+                      <span className="text-[11px] uppercase tracking-wide text-gray-400 mt-1">Views</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-mono text-lg font-bold leading-none" data-testid={`text-leads-${lp.key}`}>
+                        {shareStats?.[lp.key as 'platform' | 'leaks' | 'scale']?.leads ?? 0}
+                      </span>
+                      <span className="text-[11px] uppercase tracking-wide text-gray-400 mt-1">Leads</span>
+                    </div>
+                  </div>
                   <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
                     <div className="font-mono text-xs text-gray-600 truncate" data-testid={`text-share-url-${lp.key}`}>
                       {buildShareLink(lp.path)}

@@ -916,6 +916,35 @@ export async function registerRoutes(
     res.json({ found: false });
   });
 
+  // Public landing-page view tracking. Records a lightweight, privacy-safe
+  // view event when a shared link (?ref=CODE) is opened. Only an exact, active
+  // referral-code match credits the agent; anything else is silently dropped so
+  // bad codes never create noise. No visitor PII (IP, cookie) is stored.
+  app.post(api.public.landingView.path, landingLeadLimiter, async (req, res) => {
+    try {
+      const { ref, page } = api.public.landingView.input.parse(req.body);
+      const code = ref.trim();
+      if (code) {
+        const agent = await storage.getAgentByReferralCodeStrict(code);
+        if (
+          agent &&
+          agent.referralCode &&
+          agent.referralCode.toUpperCase() === code.toUpperCase() &&
+          agent.status === "active"
+        ) {
+          await storage.recordLandingPageView({ agentId: agent.id, page });
+          return res.json({ recorded: true });
+        }
+      }
+      res.json({ recorded: false });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // ==================== AGENT ROUTES ====================
   // Static GET routes must be registered before the dynamic GET /api/agents/:id
   // route, otherwise Express matches e.g. /api/agents/dashboard with id="dashboard"
@@ -1053,6 +1082,12 @@ export async function registerRoutes(
         createdAt: r.createdAt.toISOString(),
       })),
     });
+  });
+
+  // Per-page traffic for the agent's shared landing pages (views + leads).
+  app.get(api.agents.shareStats.path, requireAuth, async (req, res) => {
+    const stats = await storage.getShareStats(req.user!.id);
+    res.json(stats);
   });
 
   // Dynamic routes after all static /api/agents/* routes

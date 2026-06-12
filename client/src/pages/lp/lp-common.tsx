@@ -20,6 +20,31 @@ export function getAgentRef(): string {
   return (p.get("ref") || p.get("agent") || "").trim();
 }
 
+type SharePage = "platform" | "leaks" | "scale";
+
+/**
+ * Fire a lightweight, privacy-safe view ping when an agent-shared landing page
+ * mounts. Only sends when the visitor arrived via a referral link (?ref=CODE).
+ * Deduped per browser session so a refresh or in-app navigation doesn't inflate
+ * the count. The post is best-effort: a failure simply records no view.
+ */
+export function useLandingView(page: SharePage) {
+  useEffect(() => {
+    const ref = getAgentRef();
+    if (!ref) return;
+    const dedupeKey = `lsf_lpview_${page}_${ref.toUpperCase()}`;
+    try {
+      if (sessionStorage.getItem(dedupeKey)) return;
+      sessionStorage.setItem(dedupeKey, "1");
+    } catch {
+      // sessionStorage unavailable (private mode): still record the view.
+    }
+    apiRequest("POST", api.public.landingView.path, { ref, page }).catch(() => {
+      // Best effort: never surface a tracking failure to the visitor.
+    });
+  }, [page]);
+}
+
 /**
  * Handles the "save lead, then send the visitor onward" flow shared by every
  * landing page. The save is best-effort and time-boxed so the redirect always

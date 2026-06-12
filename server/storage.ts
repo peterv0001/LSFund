@@ -2,10 +2,10 @@ import { db } from "./db";
 import { 
   agents, deals, commissions, payouts, notifications, announcements, resources, rankQualifications, activityLog,
   courseModules, courseProgress, leads, leadRequests, subscriptions, holdbacks, fulfillmentTiers, platformSettings,
-  adminExportTemplates, agentInvitations,
+  adminExportTemplates, agentInvitations, landingPageViews,
   type Agent, type InsertAgent, type Deal, type Commission, type AgentWithTeam, type Payout, type Notification, type Announcement, type Resource,
   type CourseModule, type InsertCourseModule, type CourseProgress, type InsertCourseProgress,
-  type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest,
+  type Lead, type InsertLead, type LeadRequest, type InsertLeadRequest, type InsertLandingPageView,
   type Subscription, type Holdback, type FulfillmentTier, type AdminExportTemplate,
   type AgentInvitation, type InsertAgentInvitation
 } from "@shared/schema";
@@ -1431,6 +1431,46 @@ export class DatabaseStorage {
     return await db.select().from(leads)
       .where(isNull(leads.assignedAgentId))
       .orderBy(desc(leads.createdAt));
+  }
+
+  async recordLandingPageView(view: InsertLandingPageView): Promise<void> {
+    await db.insert(landingPageViews).values(view);
+  }
+
+  // Per-page traffic for an agent's three shared landing pages: how many times
+  // each link was opened (views) and how many leads it produced. Lead counts
+  // come from leads assigned to the agent whose source matches the page's
+  // campaign tag (source = `landing:<campaign>`).
+  async getShareStats(agentId: number): Promise<Record<'platform' | 'leaks' | 'scale', { views: number; leads: number }>> {
+    const campaignByPage: Record<'platform' | 'leaks' | 'scale', string> = {
+      platform: 'landing:lp-platform-overview',
+      leaks: 'landing:lp-platform-leaks',
+      scale: 'landing:lp-platform-scale',
+    };
+
+    const viewRows = await db
+      .select({ page: landingPageViews.page, cnt: count() })
+      .from(landingPageViews)
+      .where(eq(landingPageViews.agentId, agentId))
+      .groupBy(landingPageViews.page);
+
+    const leadRows = await db
+      .select({ source: leads.source, cnt: count() })
+      .from(leads)
+      .where(eq(leads.assignedAgentId, agentId))
+      .groupBy(leads.source);
+
+    const viewByPage = new Map(viewRows.map((r) => [r.page, Number(r.cnt)]));
+    const leadBySource = new Map(leadRows.map((r) => [r.source, Number(r.cnt)]));
+
+    const result = {} as Record<'platform' | 'leaks' | 'scale', { views: number; leads: number }>;
+    for (const page of ['platform', 'leaks', 'scale'] as const) {
+      result[page] = {
+        views: viewByPage.get(page) ?? 0,
+        leads: leadBySource.get(campaignByPage[page]) ?? 0,
+      };
+    }
+    return result;
   }
 
   async getAllLeads(page: number = 1, pageSize: number = 50, filters?: {

@@ -172,6 +172,21 @@ export const api = {
         200: z.object({ found: z.boolean(), name: z.string().optional() }),
       },
     },
+    // Record a lightweight, privacy-safe view of an agent-shared landing page.
+    // Only an exact, active referral-code match credits the agent; everything
+    // else is silently ignored. No visitor PII is stored.
+    landingView: {
+      method: 'POST' as const,
+      path: '/api/public/landing-view',
+      input: z.object({
+        ref: z.string().min(1).max(100),
+        page: z.enum(['platform', 'leaks', 'scale']),
+      }),
+      responses: {
+        200: z.object({ recorded: z.boolean() }),
+        400: errorSchemas.validation,
+      },
+    },
   },
 
   // === AGENTS (Agent Portal) ===
@@ -284,6 +299,19 @@ export const api = {
             lastName: z.string(),
             createdAt: z.string(),
           })),
+        }),
+      },
+    },
+    // Per-page traffic for the agent's shared landing pages: how many times
+    // each link was opened (views) and how many leads it produced.
+    shareStats: {
+      method: 'GET' as const,
+      path: '/api/agents/share-stats',
+      responses: {
+        200: z.object({
+          platform: z.object({ views: z.number(), leads: z.number() }),
+          leaks: z.object({ views: z.number(), leads: z.number() }),
+          scale: z.object({ views: z.number(), leads: z.number() }),
         }),
       },
     },

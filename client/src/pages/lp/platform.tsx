@@ -6,6 +6,7 @@ import {
   LpFooter,
   LpHeader,
   useLandingForm,
+  useLandingView,
   usePageMeta,
 } from "./lp-common";
 
@@ -26,6 +27,7 @@ export default function LpPlatform() {
     "lp-platform-overview",
     "thanks",
   );
+  useLandingView("platform");
 
   return (
     <div className="lp-page" data-testid="page-lp-platform">
