@@ -12,7 +12,7 @@ import { pool } from "./db";
 import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
-import { migrations, revertMigration, applyMigration, DUPLICATE_PLACEMENT_ERROR_PREFIX } from "./migrations";
+import { migrations, revertMigration, applyMigration, DUPLICATE_PLACEMENT_ERROR_PREFIX, findDuplicatePlacements, formatDuplicatePlacementReport } from "./migrations";
 import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
@@ -3744,6 +3744,25 @@ export async function registerRoutes(
       res.json(list);
     } catch {
       res.status(500).json({ message: "Failed to fetch migrations" });
+    }
+  });
+
+  // Admin: Report duplicate binary-tree placements that block migration 016
+  // (the placement uniqueness index). Returns an empty list when there are no
+  // conflicts so the panel can proactively warn admins before they click Apply.
+  app.get("/api/admin/migrations/duplicate-placements", requireAdmin, async (req, res) => {
+    const client = await pool.connect();
+    try {
+      const duplicates = await findDuplicatePlacements(client);
+      res.json({
+        duplicates,
+        report: duplicates.length > 0 ? formatDuplicatePlacementReport(duplicates) : null,
+      });
+    } catch (err) {
+      console.error("[migrations] failed to check duplicate placements", err);
+      res.status(500).json({ message: "Failed to check duplicate placements" });
+    } finally {
+      client.release();
     }
   });
 

@@ -35,6 +35,19 @@ type MigrationEntry = {
   appliedAt: string | null;
 };
 
+type DuplicatePlacement = {
+  placementId: number;
+  leg: string;
+  agentIds: number[];
+};
+
+type DuplicatePlacementsResponse = {
+  duplicates: DuplicatePlacement[];
+  report: string | null;
+};
+
+const PLACEMENT_UNIQUE_MIGRATION = "016_add_agents_placement_leg_unique_index";
+
 export default function AdminMigrations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -43,8 +56,13 @@ export default function AdminMigrations() {
     queryKey: ["/api/admin/migrations"],
   });
 
+  const { data: duplicatePlacements } = useQuery<DuplicatePlacementsResponse>({
+    queryKey: ["/api/admin/migrations/duplicate-placements"],
+  });
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/admin/migrations"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/migrations/duplicate-placements"] });
   };
 
   const revertMutation = useMutation({
@@ -501,6 +519,40 @@ export default function AdminMigrations() {
                               ) : (
                                 <p className="text-xs text-gray-400 mt-0.5">Not yet applied</p>
                               )}
+                              {m.name === PLACEMENT_UNIQUE_MIGRATION &&
+                                duplicatePlacements &&
+                                duplicatePlacements.duplicates.length > 0 && (
+                                  <div
+                                    className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800"
+                                    data-testid={`warning-duplicate-placements-${m.name}`}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium">
+                                          Waiting on data cleanup —{" "}
+                                          {duplicatePlacements.duplicates.length} placement slot
+                                          {duplicatePlacements.duplicates.length === 1 ? "" : "s"}{" "}
+                                          {duplicatePlacements.duplicates.length === 1 ? "is" : "are"}{" "}
+                                          occupied by more than one agent. Move the extra agent(s) to an
+                                          open slot before this index can be created.
+                                        </p>
+                                        <ul className="mt-1.5 space-y-1" data-testid={`list-duplicate-placements-${m.name}`}>
+                                          {duplicatePlacements.duplicates.map((d) => (
+                                            <li
+                                              key={`${d.placementId}-${d.leg}`}
+                                              className="text-xs font-mono"
+                                              data-testid={`duplicate-placement-${d.placementId}-${d.leg}`}
+                                            >
+                                              Parent agent #{d.placementId}, {d.leg} leg: agents{" "}
+                                              {d.agentIds.map((id) => `#${id}`).join(", ")}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                             </div>
                             {isBlocked ? (
                               <Tooltip>
