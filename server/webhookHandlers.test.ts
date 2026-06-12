@@ -566,6 +566,85 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     );
   });
 
+  it('pays both L1 and L2 sponsor overrides at month 0 (no decay)', async () => {
+    const stripeSubId = 'sub_commission_l1_l2_test';
+    // tier_4 pool 0.50 × decay 1.00. Override rates: l1 0.10, l2 0.05.
+    const fakeSubscription = {
+      id: 204,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 5,
+      tier: 'tier_4',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: new Date(),
+      mcaPairedDealId: null,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    // L1 = id 7, L2 = id 8.
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any, { id: 8 } as any]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    // One commission for the agent, one override each for L1 and L2.
+    expect(storage.createCommission).toHaveBeenCalledTimes(3);
+    // L1: $100 × 0.50 × 0.10 × 1.00 = $5.00.
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 7,
+        subscriptionId: 204,
+        type: 'subscription_residual',
+        amount: '5.00',
+        sourceAgentId: 5,
+        status: 'pending',
+      })
+    );
+    // L2: $100 × 0.50 × 0.05 × 1.00 = $2.50.
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 8,
+        subscriptionId: 204,
+        type: 'subscription_residual',
+        amount: '2.50',
+        sourceAgentId: 5,
+        status: 'pending',
+      })
+    );
+  });
+
+  it('shrinks the L1 upline override by decay for an aged subscription', async () => {
+    const stripeSubId = 'sub_commission_upline_aged_test';
+    // ~7.5 months old → monthsSinceStart 7 → decayRate 0.50 (months7to9 bucket).
+    const agedStartDate = new Date(Date.now() - 7.5 * 30.44 * 24 * 60 * 60 * 1000);
+    const fakeSubscription = {
+      id: 205,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 5,
+      tier: 'tier_4',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: agedStartDate,
+      mcaPairedDealId: null,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    // L1 decayed: $100 × 0.50 × 0.10 × 0.50 = $2.50 (half the month-0 $5.00).
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 7,
+        subscriptionId: 205,
+        type: 'subscription_residual',
+        amount: '2.50',
+        sourceAgentId: 5,
+        status: 'pending',
+      })
+    );
+  });
+
   it('does not create any commission when the calculated amount is zero', async () => {
     const stripeSubId = 'sub_commission_zero_test';
     const fakeSubscription = {
