@@ -530,6 +530,15 @@
   background: var(--brass-2);
 }
 
+.lp-page .btn-dark {
+  background: var(--ink);
+  color: #fff;
+}
+
+.lp-page .btn-dark:hover {
+  background: var(--ink-2);
+}
+
 .lp-page .btn svg {
   width: 17px;
   height: 17px;
@@ -922,6 +931,647 @@
   padding: 9px 16px;
 }
 
+/* === Agent attribution banner === */
+.lp-page .agentbar {
+  display: none;
+  background: var(--brass-soft);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--brass-ink);
+  text-align: center;
+  padding: 9px 16px;
+}
+
+.lp-page .agentbar.show {
+  display: block;
+}
+
+/* === Lead form thank-you === */
+.lp-page .lead-thanks {
+  text-align: center;
+}
+
+.lp-page .lead-thanks .fc-eyebrow {
+  justify-content: center;
+}
+
+.lp-page .lead-thanks-check {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--brass-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 18px auto 16px;
+}
+
+.lp-page .lead-thanks-check svg {
+  width: 26px;
+  height: 26px;
+  color: var(--green);
+}
+
+/* === Merchant Growth Platform: pricing tiers (overview) === */
+.lp-page .tiers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.lp-page .tier {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform .2s, box-shadow .2s;
+}
+
+.lp-page .tier:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.lp-page .tier.pop {
+  border: 2px solid var(--brass);
+  box-shadow: var(--shadow-lg);
+}
+
+.lp-page .tier .flag {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--brass);
+  color: var(--ink);
+  padding: 5px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.lp-page .tier .flag.best {
+  background: var(--green);
+  color: #fff;
+}
+
+.lp-page .tier .tname {
+  font-size: 18px;
+  margin-bottom: 3px;
+}
+
+.lp-page .tier .trole {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--steel);
+  margin-bottom: 16px;
+}
+
+.lp-page .tier .price {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 32px;
+  letter-spacing: -.02em;
+}
+
+.lp-page .tier .price small {
+  font-size: 14px;
+  color: var(--steel);
+  font-weight: 400;
+}
+
+.lp-page .tier .price.tbd {
+  font-size: 20px;
+  color: var(--steel);
+}
+
+.lp-page .tier .pitch {
+  font-size: 13.5px;
+  color: var(--steel);
+  margin: 12px 0 18px;
+  line-height: 1.55;
+  flex: 0;
+}
+
+.lp-page .tier ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+  flex: 1;
+}
+
+.lp-page .tier li {
+  display: flex;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.lp-page .tier li svg {
+  width: 16px;
+  height: 16px;
+  color: var(--green);
+  flex: none;
+  margin-top: 3px;
+}
+
+.lp-page .tier li.plus {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.lp-page .tier li.plus svg {
+  color: var(--brass-ink);
+}
+
+.lp-page .tier .btn {
+  margin-top: auto;
+  padding: 13px 18px;
+  font-size: 14.5px;
+}
+
+.lp-page .tier-note {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--steel);
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* === Platform pillars (dark) === */
+.lp-page .pillars {
+  background: var(--ink);
+  color: #fff;
+}
+
+.lp-page .pillars .wrap {
+  padding-top: 88px;
+  padding-bottom: 88px;
+}
+
+.lp-page .pillars .sec-head h2 {
+  color: #fff;
+}
+
+.lp-page .pillars .sec-head p {
+  color: #AFBCD0;
+}
+
+.lp-page .pgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.lp-page .pcard {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--r-md);
+  padding: 28px;
+}
+
+.lp-page .pcard .ic {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--brass-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.lp-page .pcard .ic svg {
+  width: 22px;
+  height: 22px;
+  color: var(--brass-2);
+}
+
+.lp-page .pcard h3 {
+  font-size: 17.5px;
+  color: #fff;
+  margin-bottom: 9px;
+}
+
+.lp-page .pcard p {
+  font-size: 14.5px;
+  color: #A9B6CB;
+}
+
+/* === Capital cross-sell band === */
+.lp-page .capital {
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.lp-page .capital .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.lp-page .capital .l {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.lp-page .capital .ic {
+  width: 50px;
+  height: 50px;
+  border-radius: 13px;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.lp-page .capital .ic svg {
+  width: 24px;
+  height: 24px;
+  color: var(--brass-2);
+}
+
+.lp-page .capital h3 {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.lp-page .capital p {
+  font-size: 14px;
+  color: var(--steel);
+  max-width: 54ch;
+}
+
+.lp-page .capital .btn {
+  width: auto;
+}
+
+/* === Leaks hero panel (leaks page) === */
+.lp-page .leaks {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--r-md);
+  padding: 24px;
+  max-width: 430px;
+}
+
+.lp-page .leaks .k {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #8493AB;
+  margin-bottom: 14px;
+}
+
+.lp-page .leak-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-dark);
+  font-size: 14px;
+  color: #C2CDDD;
+}
+
+.lp-page .leak-row:last-child {
+  border: none;
+}
+
+.lp-page .leak-row svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.lp-page .leak-row.bad svg {
+  color: #E08484;
+}
+
+.lp-page .leak-row.good svg {
+  color: var(--green-2);
+}
+
+.lp-page .leak-row.good {
+  color: #fff;
+  font-weight: 500;
+}
+
+/* === Leak fixes grid === */
+.lp-page .fixes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.lp-page .fcard {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 28px;
+}
+
+.lp-page .fcard .leakname {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #B23232;
+  margin-bottom: 12px;
+}
+
+.lp-page .fcard h3 {
+  font-size: 17.5px;
+  margin-bottom: 9px;
+}
+
+.lp-page .fcard p {
+  font-size: 14.5px;
+  color: var(--steel);
+}
+
+/* === Two-plan path (dark, leaks page) === */
+.lp-page .path {
+  background: var(--ink);
+  color: #fff;
+}
+
+.lp-page .path .wrap {
+  padding-top: 84px;
+  padding-bottom: 84px;
+}
+
+.lp-page .path .sec-head h2 {
+  color: #fff;
+}
+
+.lp-page .path .sec-head p {
+  color: #AFBCD0;
+}
+
+.lp-page .plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.lp-page .plan {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--r-md);
+  padding: 30px;
+  position: relative;
+}
+
+.lp-page .plan.pop {
+  border: 2px solid var(--brass);
+}
+
+.lp-page .plan .flag {
+  position: absolute;
+  top: -13px;
+  left: 30px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--brass);
+  color: var(--ink);
+  padding: 5px 14px;
+  border-radius: 999px;
+}
+
+.lp-page .plan h3 {
+  color: #fff;
+  font-size: 19px;
+  margin-bottom: 4px;
+}
+
+.lp-page .plan .price {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 30px;
+  color: var(--brass-2);
+  letter-spacing: -.02em;
+  margin: 8px 0 14px;
+}
+
+.lp-page .plan .price small {
+  font-size: 14px;
+  color: #8493AB;
+  font-weight: 400;
+}
+
+.lp-page .plan ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.lp-page .plan li {
+  display: flex;
+  gap: 9px;
+  font-size: 14px;
+  color: #C9D4E2;
+}
+
+.lp-page .plan li svg {
+  width: 16px;
+  height: 16px;
+  color: var(--green-2);
+  flex: none;
+  margin-top: 3px;
+}
+
+.lp-page .plan .for {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #8493AB;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
+/* === Department comparison panel (scale page) === */
+.lp-page .dept {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--r-md);
+  padding: 24px;
+  max-width: 440px;
+}
+
+.lp-page .dept .k {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #8493AB;
+  margin-bottom: 14px;
+}
+
+.lp-page .dept-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-dark);
+  font-size: 14px;
+  color: #C2CDDD;
+  gap: 16px;
+}
+
+.lp-page .dept-row:last-child {
+  border: none;
+}
+
+.lp-page .dept-row .v {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  text-align: right;
+  flex: none;
+}
+
+.lp-page .dept-row.total {
+  color: #fff;
+  font-weight: 600;
+}
+
+.lp-page .dept-row.total .v {
+  color: var(--brass-2);
+  font-size: 17px;
+}
+
+.lp-page .dept .fine {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: #6F7E96;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+/* === Department roles grid (scale page) === */
+.lp-page .roles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.lp-page .rcard {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 28px;
+}
+
+.lp-page .rcard .role {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--brass-ink);
+  margin-bottom: 12px;
+}
+
+.lp-page .rcard h3 {
+  font-size: 17.5px;
+  margin-bottom: 9px;
+}
+
+.lp-page .rcard p {
+  font-size: 14.5px;
+  color: var(--steel);
+}
+
+/* === Stack band (dark, scale page) === */
+.lp-page .stack {
+  background: var(--ink);
+  color: #fff;
+}
+
+.lp-page .stack .wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 52px;
+  align-items: center;
+  padding-top: 84px;
+  padding-bottom: 84px;
+}
+
+.lp-page .stack h2 {
+  color: #fff;
+  font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+  margin-top: 16px;
+}
+
+.lp-page .stack p {
+  color: #AFBCD0;
+  font-size: 16.5px;
+  margin-top: 14px;
+  max-width: 46ch;
+}
+
+.lp-page .stack p b {
+  color: #fff;
+}
+
+.lp-page .slist {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.lp-page .slist li {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--r-sm);
+  font-size: 14.5px;
+  color: #C9D4E2;
+  align-items: center;
+}
+
+.lp-page .slist svg {
+  width: 19px;
+  height: 19px;
+  color: var(--brass-2);
+  flex: none;
+}
+
+.lp-page .slist .mono {
+  margin-left: auto;
+  font-size: 12px;
+  color: #8493AB;
+  white-space: nowrap;
+}
+
 /* === Final CTA === */
 .lp-page .final {
   text-align: center;
@@ -929,6 +1579,34 @@
 
 .lp-page .final.on-paper {
   background: var(--paper);
+}
+
+/* Dark final CTA variant (overview page) */
+.lp-page .final.on-ink {
+  background: var(--ink);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.lp-page .final.on-ink::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(700px 420px at 50% -20%, rgba(201, 162, 75, .18), transparent 60%);
+}
+
+.lp-page .final.on-ink .wrap {
+  position: relative;
+  z-index: 2;
+}
+
+.lp-page .final.on-ink h2 {
+  color: #fff;
+}
+
+.lp-page .final.on-ink p {
+  color: #AFBCD0;
 }
 
 .lp-page .final .wrap {
@@ -975,12 +1653,19 @@
   color: #8A99AF;
 }
 
+@media (max-width: 1020px) {
+  .lp-page .tiers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 920px) {
   .lp-page .hero .wrap,
   .lp-page .calm .wrap,
   .lp-page .proof .wrap,
   .lp-page .fit .wrap,
-  .lp-page .who .wrap {
+  .lp-page .who .wrap,
+  .lp-page .stack .wrap {
     grid-template-columns: 1fr;
     gap: 40px;
     padding-top: 52px;
@@ -989,7 +1674,11 @@
 
   .lp-page .inside,
   .lp-page .igrid,
-  .lp-page .how {
+  .lp-page .how,
+  .lp-page .pgrid,
+  .lp-page .fixes,
+  .lp-page .roles,
+  .lp-page .plans {
     grid-template-columns: 1fr;
   }
 
@@ -997,8 +1686,19 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  .lp-page .capital .wrap {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .lp-page .section {
     padding: 68px 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .lp-page .tiers {
+    grid-template-columns: 1fr;
   }
 }
 

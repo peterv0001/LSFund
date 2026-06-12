@@ -21,6 +21,9 @@ const LpGrowth = lazy(() => import("@/pages/lp/growth"));
 const LpSeasonal = lazy(() => import("@/pages/lp/seasonal"));
 const LpCallCenterIso = lazy(() => import("@/pages/lp/callcenter-iso"));
 const LpReferral = lazy(() => import("@/pages/lp/referral"));
+const LpPlatform = lazy(() => import("@/pages/lp/platform"));
+const LpLeaks = lazy(() => import("@/pages/lp/leaks"));
+const LpScale = lazy(() => import("@/pages/lp/scale"));
 
 // Agent Portal Pages
 const AuthPage = lazy(() => import("@/pages/auth"));
@@ -150,6 +153,9 @@ function Router() {
       <Route path="/lp/seasonal" component={LpSeasonal} />
       <Route path="/lp/partners" component={LpCallCenterIso} />
       <Route path="/lp/referral" component={LpReferral} />
+      <Route path="/lp/platform" component={LpPlatform} />
+      <Route path="/lp/leaks" component={LpLeaks} />
+      <Route path="/lp/scale" component={LpScale} />
 
       {/* Public Legal Pages */}
       <Route path="/privacy" component={PrivacyPolicyPage} />

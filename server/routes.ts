@@ -844,7 +844,7 @@ export async function registerRoutes(
   app.post(api.public.landingLead.path, landingLeadLimiter, async (req, res) => {
     try {
       const input = api.public.landingLead.input.parse(req.body);
-      const { campaign, name, email, phone, company, industry, ...extra } = input;
+      const { campaign, name, email, phone, company, industry, business, agent_ref, ...extra } = input;
 
       const enrichmentData: Record<string, unknown> = { campaign };
       for (const [key, value] of Object.entries(extra)) {
@@ -853,16 +853,41 @@ export async function registerRoutes(
         }
       }
 
-      await storage.createLead({
+      // Resolve agent attribution from the shared link's referral code.
+      // Only an exact, active referral-code match assigns the lead — a numeric
+      // id or stale code falls through and the lead is saved unassigned.
+      let assignedAgentId: number | null = null;
+      if (agent_ref) {
+        const ref = agent_ref.trim();
+        if (ref) {
+          const referrer = await storage.getAgentByReferralCodeStrict(ref);
+          if (
+            referrer &&
+            referrer.referralCode &&
+            referrer.referralCode.toUpperCase() === ref.toUpperCase() &&
+            referrer.status === "active"
+          ) {
+            assignedAgentId = referrer.id;
+            enrichmentData.agent_ref = referrer.referralCode;
+          }
+        }
+      }
+
+      const lead = await storage.createLead({
         contactName: name,
         contactEmail: email,
         contactPhone: phone ?? null,
-        companyName: company ?? null,
+        companyName: company ?? business ?? null,
         industry: industry ?? null,
         enrichmentData,
         source: `landing:${campaign}`,
         status: "new",
+        assignedAgentId,
       });
+
+      if (assignedAgentId) {
+        await storage.updateLead(lead.id, { assignedAt: new Date() });
+      }
 
       res.json({ success: true });
     } catch (err) {
@@ -871,6 +896,24 @@ export async function registerRoutes(
       }
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // Public advisor lookup: resolve a referral code to an advisor's first name
+  // so shared landing pages can show a "shared by your advisor" banner.
+  // Only exact, active referral-code matches resolve (no numeric-id enumeration).
+  app.get(api.public.advisor.path, landingLeadLimiter, async (req, res) => {
+    const code = String(req.params.code || "").trim();
+    if (!code) return res.json({ found: false });
+    const agent = await storage.getAgentByReferralCodeStrict(code);
+    if (
+      agent &&
+      agent.referralCode &&
+      agent.referralCode.toUpperCase() === code.toUpperCase() &&
+      agent.status === "active"
+    ) {
+      return res.json({ found: true, name: agent.firstName });
+    }
+    res.json({ found: false });
   });
 
   // ==================== AGENT ROUTES ====================

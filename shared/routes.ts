@@ -149,10 +149,27 @@ export const api = {
         volume: z.string().max(100).optional(),
         role: z.string().max(200).optional(),
         referral_capacity: z.string().max(100).optional(),
+        // Agent attribution: referral code from a shared landing-page link
+        agent_ref: z.string().max(100).optional(),
+        // Merchant Growth Platform landing-page fields
+        business: z.string().max(200).optional(),
+        bottleneck: z.string().max(200).optional(),
+        leak: z.string().max(200).optional(),
+        growth_goal: z.string().max(200).optional(),
+        tier_interest: z.string().max(100).optional(),
       }),
       responses: {
         200: z.object({ success: z.boolean() }),
         400: errorSchemas.validation,
+      },
+    },
+    // Resolve an agent referral code to a display name so shared landing
+    // pages can show a "shared by your advisor" banner. Returns minimal data.
+    advisor: {
+      method: 'GET' as const,
+      path: '/api/public/advisor/:code',
+      responses: {
+        200: z.object({ found: z.boolean(), name: z.string().optional() }),
       },
     },
   },

@@ -62,6 +62,14 @@ export class DatabaseStorage {
     return agent;
   }
 
+  // Strict referral-code lookup: matches ONLY by referral code, never by
+  // numeric id. Use this on public/unauthenticated surfaces (shared landing
+  // pages, advisor lookup) so a numeric agent id cannot be enumerated.
+  async getAgentByReferralCodeStrict(code: string): Promise<Agent | undefined> {
+    const [agent] = await db.select().from(agents).where(eq(agents.referralCode, code));
+    return agent;
+  }
+
   async getReferralStats(agentId: number): Promise<{
     totalReferrals: number;
     thisMonthReferrals: number;

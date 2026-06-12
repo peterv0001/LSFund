@@ -109,6 +109,42 @@ export default function Dashboard() {
     });
   };
 
+  const shareCode = referralData?.referralCode || user?.referralCode || "";
+
+  const platformShareLinks = [
+    {
+      key: "platform",
+      path: "/lp/platform",
+      title: "Platform Overview",
+      blurb: "The full AI marketing department, with all four plans and pricing.",
+    },
+    {
+      key: "leaks",
+      path: "/lp/leaks",
+      title: "The Leaks Page",
+      blurb: "For businesses already getting inquiries that slip through the cracks.",
+    },
+    {
+      key: "scale",
+      path: "/lp/scale",
+      title: "The Scale Page",
+      blurb: "Revenue Scale AI — pitch growth without adding headcount.",
+    },
+  ];
+
+  const buildShareLink = (path: string) => {
+    const base = `${window.location.origin}${path}`;
+    return shareCode ? `${base}?ref=${encodeURIComponent(shareCode)}` : base;
+  };
+
+  const copyShareLink = (path: string, title: string) => {
+    navigator.clipboard.writeText(buildShareLink(path));
+    toast({
+      title: "Link Copied!",
+      description: `${title} link is ready to share — it credits your account automatically.`,
+    });
+  };
+
   const mcaEarnings = (stats?.byType?.['mac_primary'] || 0) +
     (stats?.byType?.['mac_sponsor_l1'] || 0) +
     (stats?.byType?.['mac_sponsor_l2'] || 0) +
@@ -360,6 +396,43 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="mt-8 bg-white rounded-2xl border border-gray-100 shadow-sm p-6" data-testid="section-platform-share-links">
+            <div className="flex items-center gap-2 mb-1">
+              <Share2 className="w-5 h-5 text-primary" />
+              <h3 className="font-bold text-lg">Merchant Growth Platform Pages</h3>
+            </div>
+            <p className="text-sm text-gray-500 mb-5">
+              Share these landing pages with business owners. Every link is tagged with your referral
+              code, so leads who sign up are credited to you automatically.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {platformShareLinks.map((lp) => (
+                <div
+                  key={lp.key}
+                  className="border border-gray-100 rounded-xl p-4 flex flex-col"
+                  data-testid={`card-share-${lp.key}`}
+                >
+                  <h4 className="font-semibold text-sm mb-1">{lp.title}</h4>
+                  <p className="text-xs text-gray-500 mb-3 flex-1">{lp.blurb}</p>
+                  <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
+                    <div className="font-mono text-xs text-gray-600 truncate" data-testid={`text-share-url-${lp.key}`}>
+                      {buildShareLink(lp.path)}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="gap-2 w-full"
+                    onClick={() => copyShareLink(lp.path, lp.title)}
+                    data-testid={`button-copy-share-${lp.key}`}
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy Link
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
 
