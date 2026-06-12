@@ -188,3 +188,67 @@ describe("scheduler respects the configured expiryWarningDays setting", () => {
     expect(notWarned.expiryWarningSentAt).toBeNull();
   });
 });
+
+// =========================================================
+// Scheduler clamps an out-of-range expiryWarningDays setting
+//
+// resolveExpiryWarningDays() clamps the saved setting into the 1–90 range
+// (Math.min(90, Math.max(1, Math.round(rawDays))) in server/scheduler.ts).
+// These tests prove that clamp end-to-end against the real DB: a saved
+// setting of 200 must warn subscriptions in the clamped 90-day window and
+// NOT the raw 200-day window, and a saved setting of 0 must warn the
+// clamped 1-day window and NOT a (degenerate) raw 0-day window.
+//
+// getSubscriptionsDueForWarning(days) selects endDate in [days-1, days+1].
+// So for the clamped value 90 the window is [89, 91] days, and for the
+// clamped value 1 the window is [0, 2] days.
+// =========================================================
+
+describe("scheduler clamps an out-of-range expiryWarningDays setting", () => {
+  it("clamps a 200-day setting down to the 90-day maximum window", async () => {
+    await storage.savePlatformSetting(SETTING_KEY, 200);
+
+    // Inside the clamped 90-day window ([89, 91] days).
+    const at90 = await createSub({
+      status: "active",
+      endDate: daysFromNow(90),
+      merchantName: "Clamp90 Corp",
+    });
+    // Inside the RAW 200-day window but far outside the clamped 90-day window.
+    // If the scheduler ignored the clamp and used 200 directly, this would be warned.
+    const at200 = await createSub({
+      status: "active",
+      endDate: daysFromNow(200),
+      merchantName: "Raw200 Corp",
+    });
+
+    await warnUpcomingExpirations();
+
+    expect((await getSub(at90.id)).expiryWarningSentAt).not.toBeNull();
+    expect((await getSub(at200.id)).expiryWarningSentAt).toBeNull();
+  });
+
+  it("clamps a 0-day setting up to the 1-day minimum window", async () => {
+    await storage.savePlatformSetting(SETTING_KEY, 0);
+
+    // Inside the clamped 1-day window ([0, 2] days) but outside a raw 0-day
+    // window ([-1, 1] days). If the scheduler used the raw 0, this would not
+    // be warned — so warning it proves the clamp up to 1.
+    const at1_9 = await createSub({
+      status: "active",
+      endDate: daysFromNow(1.9),
+      merchantName: "Clamp1 Corp",
+    });
+    // Outside any plausible window — never warned.
+    const at10 = await createSub({
+      status: "active",
+      endDate: daysFromNow(10),
+      merchantName: "TenDay Corp",
+    });
+
+    await warnUpcomingExpirations();
+
+    expect((await getSub(at1_9.id)).expiryWarningSentAt).not.toBeNull();
+    expect((await getSub(at10.id)).expiryWarningSentAt).toBeNull();
+  });
+});
