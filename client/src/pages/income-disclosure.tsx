@@ -278,7 +278,7 @@ export default function IncomeDisclosurePage() {
             This Income Disclosure Statement is provided for informational purposes only and does not
             constitute an offer or solicitation of a business opportunity. Leader Shield Funding reserves
             the right to update this disclosure at any time. The most current version is always available
-            at leadershieldnetwork.com/income-disclosure.
+            at leadershieldfunding.com/income-disclosure.
           </p>
           <Link href="/">
             <Button variant="outline" data-testid="button-return-home">
