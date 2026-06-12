@@ -23,7 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, Loader2, Search, Phone, Mail, Building2, MapPin, Bot, Send, Plus } from "lucide-react";
+import { UserPlus, Loader2, Search, Phone, Mail, Building2, MapPin, Bot, Send, Plus, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -52,6 +52,49 @@ const statusLabels: Record<string, string> = {
   closed_lost: "Closed Lost",
   ai_followup: "AI Follow-up",
 };
+
+// Friendly names for the Merchant Growth Platform shared landing pages. The
+// `campaign` value stored in `source` (as `landing:<campaign>`) maps to a page.
+const campaignLabels: Record<string, string> = {
+  "lp-platform-overview": "Platform",
+  "lp-platform-leaks": "Leaks",
+  "lp-platform-scale": "Scale",
+};
+
+// Captured enrichment fields worth surfacing to the agent, in display order.
+const enrichmentFieldLabels: Array<{ key: string; label: string }> = [
+  { key: "tier_interest", label: "Tier interest" },
+  { key: "bottleneck", label: "Bottleneck" },
+  { key: "leak", label: "Biggest leak" },
+  { key: "growth_goal", label: "Growth goal" },
+];
+
+type LeadSource = {
+  isShared: boolean;
+  pageLabel: string;
+  campaign: string | null;
+};
+
+function getLeadSource(lead: Lead): LeadSource {
+  const source = lead.source ?? "";
+  if (source.startsWith("landing:")) {
+    const campaign = source.slice("landing:".length);
+    return {
+      isShared: true,
+      pageLabel: campaignLabels[campaign] ?? "Shared Link",
+      campaign,
+    };
+  }
+  return { isShared: false, pageLabel: "", campaign: null };
+}
+
+function getCapturedFields(lead: Lead): Array<{ label: string; value: string }> {
+  const data = (lead.enrichmentData ?? {}) as Record<string, unknown>;
+  return enrichmentFieldLabels
+    .map(({ key, label }) => ({ label, value: data[key] }))
+    .filter((f) => typeof f.value === "string" && f.value.trim() !== "")
+    .map((f) => ({ label: f.label, value: String(f.value) }));
+}
 
 export default function LeadsPage() {
   const { toast } = useToast();
@@ -294,6 +337,7 @@ export default function LeadsPage() {
                 <tr className="border-b border-border bg-gray-50/50 text-left">
                   <th className="px-6 py-4 font-medium text-sm text-muted-foreground uppercase tracking-wider">Contact</th>
                   <th className="px-6 py-4 font-medium text-sm text-muted-foreground uppercase tracking-wider">Company</th>
+                  <th className="px-6 py-4 font-medium text-sm text-muted-foreground uppercase tracking-wider">Source</th>
                   <th className="px-6 py-4 font-medium text-sm text-muted-foreground uppercase tracking-wider">Location</th>
                   <th className="px-6 py-4 font-medium text-sm text-muted-foreground uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 font-medium text-sm text-muted-foreground uppercase tracking-wider">Actions</th>
@@ -302,7 +346,7 @@ export default function LeadsPage() {
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                       Loading leads...
                     </td>
@@ -337,6 +381,40 @@ export default function LeadsPage() {
                         {lead.industry && (
                           <span className="text-xs text-muted-foreground">{lead.industry}</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4" data-testid={`cell-source-${lead.id}`}>
+                        {(() => {
+                          const src = getLeadSource(lead);
+                          const captured = getCapturedFields(lead);
+                          if (!src.isShared) {
+                            return <span className="text-sm text-muted-foreground">-</span>;
+                          }
+                          return (
+                            <div className="flex flex-col gap-1.5">
+                              <span
+                                className="inline-flex w-fit items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-100 text-amber-800 border-amber-200"
+                                data-testid={`badge-source-${lead.id}`}
+                              >
+                                <Share2 className="w-3 h-3" />
+                                {src.pageLabel}
+                              </span>
+                              {captured.length > 0 && (
+                                <div className="flex flex-col gap-0.5">
+                                  {captured.map((field) => (
+                                    <span
+                                      key={field.label}
+                                      className="text-xs text-muted-foreground"
+                                      data-testid={`text-captured-${lead.id}-${field.label.toLowerCase().replace(/\s+/g, '-')}`}
+                                    >
+                                      <span className="font-medium text-foreground">{field.label}:</span>{" "}
+                                      {field.value}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
                         {lead.city && lead.state ? (
@@ -383,7 +461,7 @@ export default function LeadsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                       <UserPlus className="w-12 h-12 mx-auto mb-4 opacity-20" />
                       <p className="font-medium">No leads assigned</p>
                       <p className="text-sm">Request leads from admin to get started.</p>
