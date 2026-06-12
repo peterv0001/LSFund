@@ -1137,6 +1137,9 @@ export default function LandingSections() {
                 <Link href="/lp/seasonal"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-seasonal">Seasonal Funding</span></Link>
                 <Link href="/lp/partners"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-partners">Partner Network</span></Link>
                 <Link href="/lp/referral"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-referral">Referral Partners</span></Link>
+                <Link href="/lp/platform"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-platform">Merchant Growth Platform</span></Link>
+                <Link href="/lp/leaks"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-leaks">Plug Profit Leaks</span></Link>
+                <Link href="/lp/scale"><span className="block text-white/40 hover:text-white transition-colors cursor-pointer" data-testid="footer-link-lp-scale">Scale Operations</span></Link>
               </div>
             </div>
             <div>
