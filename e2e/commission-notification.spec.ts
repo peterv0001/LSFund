@@ -8,6 +8,9 @@ const ADMIN_PASSWORD = "password123";
 const AGENT_EMAIL = `e2e-comm-notif-${TS}@example.com`;
 const AGENT_PASSWORD = "E2eCommNotif1!";
 
+const READ_AGENT_EMAIL = `e2e-comm-notif-read-${TS}@example.com`;
+const READ_AGENT_PASSWORD = "E2eCommNotifRead1!";
+
 async function loginAs(
   page: import("@playwright/test").Page,
   email: string,
@@ -82,5 +85,91 @@ test.describe("Agent sees commission notifications in the bell", () => {
     await expect(
       page.getByText(merchantName, { exact: false })
     ).toBeVisible();
+  });
+});
+
+test.describe("Reading a commission notification clears the unread badge", () => {
+  const merchantName = `CommNotifRead Merchant ${TS}`;
+
+  // Seed a fresh agent with exactly one unread commission_earned notification so
+  // the read flow can be tested in isolation from the view-only test above.
+  test.beforeAll(async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await page.context().request.post("/api/register", {
+      data: {
+        firstName: "CommRead",
+        lastName: `Notif${TS}`,
+        email: READ_AGENT_EMAIL,
+        password: READ_AGENT_PASSWORD,
+        referralCode: "",
+      },
+      failOnStatusCode: false,
+    });
+
+    await loginAs(page, READ_AGENT_EMAIL, READ_AGENT_PASSWORD);
+
+    const subRes = await page.context().request.post("/api/subscriptions", {
+      data: { merchantName, tier: "tier_1" },
+    });
+    expect(subRes.ok()).toBeTruthy();
+
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+    const calcRes = await page.context().request.post(
+      "/api/admin/subscriptions/calculate-commissions"
+    );
+    expect(calcRes.ok()).toBeTruthy();
+    const calcBody = await calcRes.json();
+    expect(calcBody.processed).toBeGreaterThanOrEqual(1);
+
+    await context.close();
+  });
+
+  test("clicking the notification marks it read and Mark all read clears the badge", async ({
+    page,
+  }) => {
+    await loginAs(page, READ_AGENT_EMAIL, READ_AGENT_PASSWORD);
+    await page.goto("/dashboard");
+
+    const bell = page.locator('[data-testid="button-notification-bell"]:visible');
+    await expect(bell).toBeVisible({ timeout: 10000 });
+
+    // Unread badge should be present before reading anything.
+    const badge = page.locator('[data-testid="badge-unread-count"]:visible');
+    await expect(badge).toBeVisible({ timeout: 10000 });
+
+    await bell.click();
+
+    // Locate the specific commission_earned notification item. It is styled as
+    // unread, so its per-item blue unread indicator is present.
+    const commissionItem = page
+      .locator('[data-testid^="notification-item-"]')
+      .filter({ hasText: "Subscription Commission Earned!" });
+    await expect(commissionItem).toBeVisible({ timeout: 10000 });
+    await expect(
+      commissionItem.locator('[data-testid^="indicator-unread-"]')
+    ).toBeVisible();
+
+    // Clicking the notification marks just this one read; its unread indicator
+    // disappears (no longer styled as unread).
+    await commissionItem.click();
+    await expect(
+      commissionItem.locator('[data-testid^="indicator-unread-"]')
+    ).toHaveCount(0, { timeout: 10000 });
+
+    // A Welcome notification is still unread, so the badge persists. Clicking
+    // "Mark all read" marks everything read and removes the unread badge.
+    const markAllRead = page.getByRole("button", { name: /mark all read/i });
+    await expect(markAllRead).toBeVisible({ timeout: 10000 });
+    await markAllRead.click();
+
+    // The unread badge should disappear once all notifications are read.
+    await expect(badge).toBeHidden({ timeout: 10000 });
+
+    // No unread indicators remain in the list.
+    await expect(
+      page.locator('[data-testid^="indicator-unread-"]')
+    ).toHaveCount(0);
   });
 });

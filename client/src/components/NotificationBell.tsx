@@ -101,7 +101,10 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative" data-testid="button-notification-bell">
           <Bell className="w-5 h-5" />
           {(unreadCount?.count || 0) > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+            <span
+              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold"
+              data-testid="badge-unread-count"
+            >
               {unreadCount.count > 9 ? '9+' : unreadCount.count}
             </span>
           )}
@@ -177,7 +180,10 @@ export function NotificationBell() {
                       </p>
                     </div>
                     {!notification.isRead && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                      <div
+                        className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"
+                        data-testid={`indicator-unread-${notification.id}`}
+                      />
                     )}
                   </div>
                 </div>
