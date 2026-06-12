@@ -136,7 +136,7 @@ async function insertStripeSubscription(
       agentId: testAgentId,
       merchantName: "Webhook Merchant",
       tier: "tier_1",
-      monthlyAmount: "199",
+      monthlyAmount: "149",
       startDate: new Date(),
       stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
       stripeCustomerId: "cus_webhook_test",
@@ -172,15 +172,15 @@ describe("POST /api/webhooks/stripe – invoice.paid fires subscription commissi
     const agentCommission = commissions.find((c) => c.agentId === testAgentId);
     expect(agentCommission).toBeDefined();
     expect(agentCommission!.type).toBe("subscription_commission");
-    // tier_1: poolRate 0.50 × decay 1.00 (months1to3) × $199 = $99.50
-    expect(Number(agentCommission!.amount)).toBeCloseTo(99.5, 2);
+    // tier_1: poolRate 0.25 × decay 1.00 (months1to3) × $149 = $37.25
+    expect(Number(agentCommission!.amount)).toBeCloseTo(37.25, 2);
 
     await db.delete(schema.commissions).where(eq(schema.commissions.subscriptionId, sub.id));
     await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
   });
 
   it("calculates the tier_2 commission using pool rate × decay", async () => {
-    const sub = await insertStripeSubscription({ tier: "tier_2", monthlyAmount: "429" });
+    const sub = await insertStripeSubscription({ tier: "tier_2", monthlyAmount: "397" });
     useMockStripeWithEvent(buildInvoicePaidEvent(STRIPE_SUBSCRIPTION_ID));
 
     await request(testApp)
@@ -196,8 +196,8 @@ describe("POST /api/webhooks/stripe – invoice.paid fires subscription commissi
       .where(eq(schema.commissions.subscriptionId, sub.id));
 
     expect(agentCommission).toBeDefined();
-    // tier_2: poolRate 0.60 × decay 1.00 × $429 = $257.40
-    expect(Number(agentCommission.amount)).toBeCloseTo(257.4, 2);
+    // tier_2: poolRate 0.35 × decay 1.00 × $397 = $138.95
+    expect(Number(agentCommission.amount)).toBeCloseTo(138.95, 2);
 
     await db.delete(schema.commissions).where(eq(schema.commissions.subscriptionId, sub.id));
     await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));

@@ -23,9 +23,10 @@
 ## Products
 
 - **Merchant Cash Advance (MCA):** Capital access for merchants with commissions earned by agents on funded deals via GBR waterfall.
-- **Merchant Growth Platform — Tier 1 (Merchant Essentials, $199/mo):** Financial reporting, forecasting, AI expense categorization, credit monitoring.
-- **Merchant Growth Platform — Tier 2 (Growth Accelerator, $429/mo):** Google Business optimization, automated reviews, marketing automation, CRM, AI chatbot.
-- **Merchant Growth Platform — Tier 3 (Elite AI Revenue System, $749/mo):** AI lead generation, appointment automation, conversion funnels, ad intelligence.
+- **Merchant Growth Platform — Tier 1 (Starter, $149/mo):** 750 verified lead credits/mo, 5 email outreach sequences, Basic AI Brand Intelligence, integrates with existing CRM. Powered by Lead Titan AI.
+- **Merchant Growth Platform — Tier 2 (Growth Foundation, $397/mo):** Advanced AI Brand Intelligence, native AI CRM (1,000 contacts + scoring), 24/7 AI chatbot lead capture, AI visual email, performance dashboard.
+- **Merchant Growth Platform — Tier 3 (Revenue Growth System, $697/mo, Most Popular):** Everything in Growth Foundation plus 2,000 lead credits/mo, Darwin AI Chief of Staff, AI social content to Meta, Ask AI, CRM 10,000 contacts + automation.
+- **Merchant Growth Platform — Tier 4 (Revenue Scale AI, $1,497/mo, Best Value):** Everything in Revenue Growth System plus AI Caller (750 outbound min/mo), AI paid ads + ad designer + insights, social to Meta/LinkedIn/X, AI blogs, CRM 25,000 contacts + advanced automation. Powered by Marketing Titan + Lead Titan AI.
 
 ## Agent Sign-Up
 

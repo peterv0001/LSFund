@@ -66,7 +66,7 @@ export default function AuthPage() {
           <div className="space-y-3">
             {[
               { icon: DollarSign, text: "22% MCA commission on every funded deal", color: "text-emerald-400" },
-              { icon: Repeat, text: "50-70% recurring subscription commissions", color: "text-blue-400" },
+              { icon: Repeat, text: "25-50% recurring subscription commissions", color: "text-blue-400" },
               { icon: Zap, text: "+5% pairing enhancement bonus", color: "text-[#E0C27E]" },
               { icon: Users, text: "Override income from your team", color: "text-purple-400" },
             ].map((item, i) => (

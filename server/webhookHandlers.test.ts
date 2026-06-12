@@ -504,7 +504,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
 
   it('creates a pending commission for the agent with the expected type and amount', async () => {
     const stripeSubId = 'sub_commission_agent_test';
-    // tier_1 pool 0.50 × decay 1.00 × $100 monthly = $50.00 commission.
+    // tier_1 pool 0.25 × decay 1.00 × $100 monthly = $25.00 commission.
     const fakeSubscription = {
       id: 201,
       stripeSubscriptionId: stripeSubId,
@@ -527,7 +527,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
         agentId: 1,
         subscriptionId: 201,
         type: 'subscription_commission',
-        amount: '50.00',
+        amount: '25.00',
         status: 'pending',
       })
     );
@@ -547,7 +547,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     };
 
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
-    // Single L1 sponsor: $100 × pool 0.50 × l1Rate 0.10 × decay 1.00 = $5.00.
+    // Single L1 sponsor: $100 × pool 0.25 × l1Rate 0.10 × decay 1.00 = $2.50.
     vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any]);
 
     await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
@@ -559,7 +559,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
         agentId: 7,
         subscriptionId: 202,
         type: 'subscription_residual',
-        amount: '5.00',
+        amount: '2.50',
         sourceAgentId: 5,
         status: 'pending',
       })
@@ -589,7 +589,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
 
   it('adds the MCA pairing bonus when a recent subscription is paired with a deal', async () => {
     const stripeSubId = 'sub_commission_paired_recent_test';
-    // tier_1 pool 0.50 + pairing bonus 0.05 = 0.55 × decay 1.00 × $100 = $55.00.
+    // tier_1 pool 0.25 + pairing bonus 0.05 = 0.30 × decay 1.00 × $100 = $30.00.
     const fakeSubscription = {
       id: 204,
       stripeSubscriptionId: stripeSubId,
@@ -613,7 +613,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
         agentId: 1,
         subscriptionId: 204,
         type: 'subscription_commission',
-        amount: '55.00',
+        amount: '30.00',
         status: 'pending',
       })
     );
@@ -623,7 +623,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     const stripeSubId = 'sub_commission_paired_old_test';
     // Started ~4 months ago: monthsSinceStart is in the 4–6 band → decay 0.75.
     // Pairing bonus is gated to monthsSinceStart < 3, so it must NOT apply.
-    // tier_1 pool 0.50 × decay 0.75 × $100 = $37.50 (no +0.05 bonus).
+    // tier_1 pool 0.25 × decay 0.75 × $100 = $18.75 (no +0.05 bonus).
     const fourMonthsAgo = new Date();
     fourMonthsAgo.setDate(fourMonthsAgo.getDate() - 122);
     const fakeSubscription = {
@@ -649,7 +649,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
         agentId: 1,
         subscriptionId: 205,
         type: 'subscription_commission',
-        amount: '37.50',
+        amount: '18.75',
         status: 'pending',
       })
     );
@@ -699,7 +699,7 @@ describe('WebhookHandlers.handleInvoicePaid – decay schedule by subscription a
     };
   }
 
-  it('pays 75% at 4-6 months (tier_1 pool 0.50 × 0.75 × $100 = $37.50)', async () => {
+  it('pays 75% at 4-6 months (tier_1 pool 0.25 × 0.75 × $100 = $18.75)', async () => {
     const sub = buildSub(4, 301);
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
     vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
@@ -712,13 +712,13 @@ describe('WebhookHandlers.handleInvoicePaid – decay schedule by subscription a
         agentId: 1,
         subscriptionId: 301,
         type: 'subscription_commission',
-        amount: '37.50',
+        amount: '18.75',
         status: 'pending',
       })
     );
   });
 
-  it('pays 50% at 7-9 months (tier_1 pool 0.50 × 0.50 × $100 = $25.00)', async () => {
+  it('pays 50% at 7-9 months (tier_1 pool 0.25 × 0.50 × $100 = $12.50)', async () => {
     const sub = buildSub(7, 302);
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
     vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
@@ -731,13 +731,13 @@ describe('WebhookHandlers.handleInvoicePaid – decay schedule by subscription a
         agentId: 1,
         subscriptionId: 302,
         type: 'subscription_commission',
-        amount: '25.00',
+        amount: '12.50',
         status: 'pending',
       })
     );
   });
 
-  it('pays 25% at 10-12 months (tier_1 pool 0.50 × 0.25 × $100 = $12.50)', async () => {
+  it('pays 25% at 10-12 months (tier_1 pool 0.25 × 0.25 × $100 = $6.25)', async () => {
     const sub = buildSub(10, 303);
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
     vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
@@ -750,13 +750,13 @@ describe('WebhookHandlers.handleInvoicePaid – decay schedule by subscription a
         agentId: 1,
         subscriptionId: 303,
         type: 'subscription_commission',
-        amount: '12.50',
+        amount: '6.25',
         status: 'pending',
       })
     );
   });
 
-  it('pays 10% and switches type to subscription_residual after 12 months (0.50 × 0.10 × $100 = $5.00)', async () => {
+  it('pays 10% and switches type to subscription_residual after 12 months (0.25 × 0.10 × $100 = $2.50)', async () => {
     const sub = buildSub(13, 304);
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([sub]));
     vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
@@ -769,7 +769,7 @@ describe('WebhookHandlers.handleInvoicePaid – decay schedule by subscription a
         agentId: 1,
         subscriptionId: 304,
         type: 'subscription_residual',
-        amount: '5.00',
+        amount: '2.50',
         status: 'pending',
       })
     );

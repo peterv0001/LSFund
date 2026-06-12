@@ -167,7 +167,7 @@ export class WebhookHandlers {
       else decayRate = CONFIG.subscriptionDecay.postMonth12;
 
       const monthlyAmount = Number(sub.monthlyAmount);
-      const poolRate = CONFIG.subscriptionPools[sub.tier] || 0.50;
+      const poolRate = CONFIG.subscriptionPools[sub.tier] || 0.25;
       let commissionRate = poolRate * decayRate;
 
       if (sub.mcaPairedDealId && monthsSinceStart < 3) {

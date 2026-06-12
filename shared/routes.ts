@@ -1063,7 +1063,7 @@ export const api = {
           agentId: z.number(),
           merchantName: z.string(),
           merchantEmail: z.string().optional(),
-          tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+          tier: z.enum(['tier_1', 'tier_2', 'tier_3', 'tier_4']),
           startDate: z.string().optional(),
           endDate: z.string().optional(),
         }),
@@ -1337,7 +1337,7 @@ export const api = {
       input: z.object({
         merchantName: z.string(),
         merchantEmail: z.string().email().optional(),
-        tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+        tier: z.enum(['tier_1', 'tier_2', 'tier_3', 'tier_4']),
         mcaPairedDealId: z.number().optional(),
       }),
       responses: {

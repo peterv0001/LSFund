@@ -521,6 +521,24 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped agent_invitations table");
     },
   },
+  {
+    name: "018_add_subscription_tier_4",
+    async run(client) {
+      await client.query(
+        `ALTER TYPE subscription_tier ADD VALUE IF NOT EXISTS 'tier_4'`
+      );
+      console.log("[migrations] Added 'tier_4' to subscription_tier enum");
+    },
+    async down() {
+      // PostgreSQL does not support removing a value from an enum type without
+      // recreating the type and rewriting every dependent column, so this
+      // migration is intentionally not reversible. Leaving the extra enum value
+      // in place is harmless.
+      console.log(
+        "[migrations] 018_add_subscription_tier_4 down is a no-op (enum values cannot be dropped)"
+      );
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

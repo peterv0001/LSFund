@@ -577,7 +577,7 @@ function SalesResources() {
           <ul>
             <li><strong>Tailor the pitch:</strong> Connect their specific pain points to the matching platform tier features</li>
             <li><strong>Tell stories:</strong> Use real examples of merchants who saw measurable results</li>
-            <li><strong>Focus on ROI:</strong> "If this system brings in just 2 extra customers per month at $500 average ticket, that's $12,000/year from a $199/mo investment"</li>
+            <li><strong>Focus on ROI:</strong> "If this system brings in just 2 extra customers per month at $500 average ticket, that's $12,000/year from a $149/mo investment"</li>
             <li><strong>Demo the value:</strong> Walk through the platform dashboard and show them what their business data looks like</li>
           </ul>
 
@@ -585,7 +585,7 @@ function SalesResources() {
           
           <h4>"I can't afford it"</h4>
           <div className="bg-blue-50 p-4 rounded-lg text-sm">
-            "I totally understand budget concerns. Let's look at what you're currently spending on marketing that isn't trackable. Most merchants find they're already spending more on ineffective tactics. This platform consolidates everything and gives you measurable ROI. Plus, Merchant Essentials starts at just $199/mo — less than most merchants spend on a single print ad."
+            "I totally understand budget concerns. Let's look at what you're currently spending on marketing that isn't trackable. Most merchants find they're already spending more on ineffective tactics. This platform consolidates everything and gives you measurable ROI. Plus, the Starter plan begins at just $149/mo — less than most merchants spend on a single print ad."
           </div>
 
           <h4>"I don't have time to learn new tools"</h4>
@@ -603,7 +603,7 @@ function SalesResources() {
             <li><strong>Right tier recommendation:</strong> Match the merchant's needs to the appropriate subscription level — don't oversell</li>
             <li><strong>Onboarding assurance:</strong> "Our team handles everything — you'll be fully operational within 48 hours"</li>
             <li><strong>Remove risk:</strong> Emphasize the value guarantee and ongoing support</li>
-            <li><strong>Ask for the commitment:</strong> "Based on what we discussed, Growth Accelerator covers everything you need. Shall we get you set up today?"</li>
+            <li><strong>Ask for the commitment:</strong> "Based on what we discussed, the Growth Foundation plan covers everything you need. Shall we get you set up today?"</li>
           </ul>
         </CardContent>
       </Card>
@@ -649,80 +649,86 @@ function SalesResources() {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-2 pr-4 font-semibold">Feature</th>
-                  <th className="text-center py-2 px-2 font-semibold">Essentials<br/><span className="text-muted-foreground font-normal">$199/mo</span></th>
-                  <th className="text-center py-2 px-2 font-semibold">Growth<br/><span className="text-muted-foreground font-normal">$429/mo</span></th>
-                  <th className="text-center py-2 px-2 font-semibold">Elite AI<br/><span className="text-muted-foreground font-normal">$749/mo</span></th>
+                  <th className="text-center py-2 px-2 font-semibold">Starter<br/><span className="text-muted-foreground font-normal">$149/mo</span></th>
+                  <th className="text-center py-2 px-2 font-semibold">Growth Foundation<br/><span className="text-muted-foreground font-normal">$397/mo</span></th>
+                  <th className="text-center py-2 px-2 font-semibold">Revenue Growth System<br/><span className="text-muted-foreground font-normal">$697/mo</span></th>
+                  <th className="text-center py-2 px-2 font-semibold">Revenue Scale AI<br/><span className="text-muted-foreground font-normal">$1,497/mo</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 <tr>
-                  <td className="py-2 pr-4">Financial Reporting</td>
+                  <td className="py-2 pr-4">Verified Lead Credits</td>
+                  <td className="text-center py-2 text-xs">750/mo</td>
+                  <td className="text-center py-2 text-xs">750/mo</td>
+                  <td className="text-center py-2 text-xs">2,000/mo</td>
+                  <td className="text-center py-2 text-xs">2,000/mo +</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4">Email Outreach Sequences</td>
+                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Forecasting</td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
+                  <td className="py-2 pr-4">AI Brand Intelligence</td>
+                  <td className="text-center py-2 text-xs">Basic</td>
+                  <td className="text-center py-2 text-xs">Advanced</td>
+                  <td className="text-center py-2 text-xs">Advanced</td>
+                  <td className="text-center py-2 text-xs">Advanced</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Expense Categorization</td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
+                  <td className="py-2 pr-4">Native AI CRM</td>
+                  <td className="text-center py-2 text-muted-foreground">—</td>
+                  <td className="text-center py-2 text-xs">1,000</td>
+                  <td className="text-center py-2 text-xs">10,000</td>
+                  <td className="text-center py-2 text-xs">25,000</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Credit Monitoring</td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-4">Google Business Optimization</td>
+                  <td className="py-2 pr-4">24/7 AI Chatbot Lead Capture</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
+                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Review Capture</td>
+                  <td className="py-2 pr-4">AI Visual Email + Dashboard</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
+                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">SMS/Email Automation</td>
+                  <td className="py-2 pr-4">Darwin AI Chief of Staff</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-4">CRM + AI Chatbot</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">AI-Driven Lead Generation</td>
+                  <td className="py-2 pr-4">AI Social Content (Meta)</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-4">Appointment Booking</td>
-                  <td className="text-center py-2 text-muted-foreground">—</td>
-                  <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Conversion Funnels</td>
+                  <td className="py-2 pr-4">AI Caller (Outbound)</td>
+                  <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Competitive Ad Intelligence</td>
+                  <td className="py-2 pr-4">AI Paid Ads + Ad Designer</td>
+                  <td className="text-center py-2 text-muted-foreground">—</td>
+                  <td className="text-center py-2 text-muted-foreground">—</td>
+                  <td className="text-center py-2 text-muted-foreground">—</td>
+                  <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4">Social (LinkedIn + X) + AI Blogs</td>
+                  <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2 text-muted-foreground">—</td>
                   <td className="text-center py-2"><CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /></td>
@@ -753,7 +759,7 @@ function SalesResources() {
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Complete Leader Shield Academy training modules</li>
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Set up your agent portal and CRM access</li>
-                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Learn the three subscription tiers and key features</li>
+                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Learn the four subscription tiers and key features</li>
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Practice cold call scripts with your sponsor</li>
                 </ul>
               </div>

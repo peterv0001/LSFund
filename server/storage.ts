@@ -1592,7 +1592,7 @@ export class DatabaseStorage {
     agentId: number;
     merchantName: string;
     merchantEmail?: string;
-    tier: 'tier_1' | 'tier_2' | 'tier_3';
+    tier: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4';
     monthlyAmount: string;
     mcaPairedDealId?: number;
     startDate?: Date;

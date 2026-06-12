@@ -19,7 +19,7 @@ export const announcementTargetEnum = pgEnum("announcement_target", ['all', 'age
 export const leadStatusEnum = pgEnum("lead_status", ['new', 'contacted', 'warm', 'hot', 'qualified', 'submitted', 'closed_won', 'closed_lost', 'ai_followup']);
 export const leadRequestStatusEnum = pgEnum("lead_request_status", ['pending', 'approved', 'denied', 'fulfilled']);
 
-export const subscriptionTierEnum = pgEnum("subscription_tier", ['tier_1', 'tier_2', 'tier_3']);
+export const subscriptionTierEnum = pgEnum("subscription_tier", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ['active', 'paused', 'cancelled', 'expired']);
 export const subscriptionBillingStatusEnum = pgEnum("subscription_billing_status", ['pending', 'active', 'past_due', 'failed', 'cancelled']);
 export const holdbackStatusEnum = pgEnum("holdback_status", ['held', 'partially_released', 'released', 'clawed_back']);

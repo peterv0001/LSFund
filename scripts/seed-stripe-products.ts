@@ -15,9 +15,10 @@ async function createProducts() {
     console.log('Creating subscription tier products in Stripe...');
 
     const tiers = [
-      { name: 'Subscription Tier 1', amount: 19900, meta: 'tier_1' },
-      { name: 'Subscription Tier 2', amount: 42900, meta: 'tier_2' },
-      { name: 'Subscription Tier 3', amount: 74900, meta: 'tier_3' },
+      { name: 'Subscription Tier 1 — Starter', amount: 14900, meta: 'tier_1' },
+      { name: 'Subscription Tier 2 — Growth Foundation', amount: 39700, meta: 'tier_2' },
+      { name: 'Subscription Tier 3 — Revenue Growth System', amount: 69700, meta: 'tier_3' },
+      { name: 'Subscription Tier 4 — Revenue Scale AI', amount: 149700, meta: 'tier_4' },
     ];
 
     const priceIds: Record<string, string> = {};
@@ -67,7 +68,7 @@ async function createProducts() {
 
     console.log('\n=== Stripe Price IDs ===');
     console.log(JSON.stringify(priceIds, null, 2));
-    console.log('\nAdd these to your environment as STRIPE_PRICE_TIER_1, STRIPE_PRICE_TIER_2, STRIPE_PRICE_TIER_3');
+    console.log('\nAdd these to your environment as STRIPE_PRICE_TIER_1, STRIPE_PRICE_TIER_2, STRIPE_PRICE_TIER_3, STRIPE_PRICE_TIER_4');
 
   } catch (error: any) {
     console.error('Error creating products:', error.message);

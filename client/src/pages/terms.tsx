@@ -87,7 +87,7 @@ export default function TermsOfServicePage() {
 
             <h3 className="text-lg font-semibold text-primary mt-6 mb-3">4.2 Subscription Platform Commissions</h3>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-              <li>Commissions on Merchant Growth Platform subscriptions are paid from a commission pool ranging from 50% to 70% of the subscription fee, depending on the tier.</li>
+              <li>Commissions on Merchant Growth Platform subscriptions are paid from a commission pool ranging from 25% to 50% of the subscription fee, depending on the tier.</li>
               <li>Aggressive upfront payouts apply during months 1 through 3 of each subscription.</li>
               <li>After month 12, agents receive a lifetime 10% residual commission for as long as the subscription remains active.</li>
               <li>The Pairing Enhancement Bonus of +5% applies when a subscription is bundled with an MCA deal within the qualifying period.</li>

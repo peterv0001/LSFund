@@ -27,9 +27,10 @@ export const CONFIG = {
     after90: 0.00,
   },
   subscriptionPools: {
-    tier_1: 0.50,
-    tier_2: 0.60,
-    tier_3: 0.70,
+    tier_1: 0.25,
+    tier_2: 0.35,
+    tier_3: 0.45,
+    tier_4: 0.50,
   } as Record<string, number>,
   subscriptionDecay: {
     months1to3: 1.00,
@@ -44,13 +45,15 @@ export const CONFIG = {
     l2Rate: 0.05,
   },
   subscriptionTierPrices: {
-    tier_1: 199,
-    tier_2: 429,
-    tier_3: 749,
+    tier_1: 149,
+    tier_2: 397,
+    tier_3: 697,
+    tier_4: 1497,
   } as Record<string, number>,
   stripePriceIds: {
     tier_1: process.env.STRIPE_PRICE_TIER_1 ?? '',
     tier_2: process.env.STRIPE_PRICE_TIER_2 ?? '',
     tier_3: process.env.STRIPE_PRICE_TIER_3 ?? '',
+    tier_4: process.env.STRIPE_PRICE_TIER_4 ?? '',
   } as Record<string, string>,
 };

@@ -442,17 +442,18 @@ export default function AdminSettings() {
                     </div>
                     <div className="space-y-1">
                       <p className="font-medium text-gray-700">Subscription Pools</p>
-                      <p className="text-gray-500">Tier 1 ($199/mo): 50%</p>
-                      <p className="text-gray-500">Tier 2 ($399/mo): 60%</p>
-                      <p className="text-gray-500">Tier 3 ($799/mo): 70%</p>
+                      <p className="text-gray-500">Starter ($149/mo): 25%</p>
+                      <p className="text-gray-500">Growth Foundation ($397/mo): 35%</p>
+                      <p className="text-gray-500">Revenue Growth System ($697/mo): 45%</p>
+                      <p className="text-gray-500">Revenue Scale AI ($1,497/mo): 50%</p>
                     </div>
                     <div className="space-y-1">
                       <p className="font-medium text-gray-700">Subscription Decay</p>
                       <p className="text-gray-500">Months 1–3: 100%</p>
-                      <p className="text-gray-500">Months 4–6: 80%</p>
-                      <p className="text-gray-500">Months 7–9: 60%</p>
-                      <p className="text-gray-500">Months 10–12: 40%</p>
-                      <p className="text-gray-500">Month 12+: 20%</p>
+                      <p className="text-gray-500">Months 4–6: 75%</p>
+                      <p className="text-gray-500">Months 7–9: 50%</p>
+                      <p className="text-gray-500">Months 10–12: 25%</p>
+                      <p className="text-gray-500">Month 12+: 10%</p>
                     </div>
                   </div>
                 </CardContent>

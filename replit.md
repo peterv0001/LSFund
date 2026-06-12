@@ -21,9 +21,12 @@ Leader Shield Funding is a full-stack network marketing (MLM) platform for Merch
 
 **Products:**
 - **Merchant Growth Platform (Subscription Tiers):**
-    - Tier 1: Merchant Essentials ($199/mo) - Financial reporting, forecasting, AI expense categorization, credit monitoring.
-    - Tier 2: Growth Accelerator ($429/mo) - Google Business optimization, automated reviews, marketing automation, CRM, AI chatbot.
-    - Tier 3: Elite AI Revenue System ($749/mo) - AI lead generation, appointment automation, conversion funnels, ad intelligence.
+    - Tier 1: Starter ($149/mo) - 750 verified lead credits, 5 email outreach sequences, Basic AI Brand Intelligence, integrates with existing CRM. (Powered by Lead Titan AI.)
+    - Tier 2: Growth Foundation ($397/mo) - Advanced AI Brand Intelligence, native AI CRM (1,000 contacts + scoring), 24/7 AI chatbot lead capture, AI visual email, performance dashboard.
+    - Tier 3: Revenue Growth System ($697/mo, Most Popular) - Everything in Growth Foundation plus 2,000 lead credits/mo, Darwin AI Chief of Staff, AI social content to Meta, Ask AI, CRM 10,000 contacts + automation.
+    - Tier 4: Revenue Scale AI ($1,497/mo, Best Value) - Everything in Revenue Growth System plus AI Caller (750 outbound min/mo), AI paid ads + ad designer + insights, social to Meta/LinkedIn/X, AI blogs, CRM 25,000 contacts + advanced automation.
+
+    Subscription tiers are delivered via an exclusive partnership with Marketing Titan AI + Lead Titan AI.
 - **Merchant Cash Advance (MCA):** Traditional capital access with enhanced commissions when bundled with subscriptions.
 
 The platform's core business logic includes binary tree placement for agent hierarchy, a GBR waterfall for MCA commissions, a subscription commission engine with decay, holdback/clawback systems, fulfillment agent tiering, and a rank advancement system. It also features platform fee management, a lead distribution system, quarterly performance accelerators, and renewal commissions.
@@ -90,11 +93,11 @@ Preferred communication style: Simple, everyday language.
 ### Commission Engine & Business Logic
 - **Commission Engine:** Implements GBR waterfall (MAC/TFC/PICF/RSR), MAC sponsor overrides with compression, subscription commission decay, MCA pairing enhancement, binary bonuses, platform fee waivers, and fulfillment tier rate determination.
 - **Holdback & Clawback:** 70% commission released at funding, 30% deferred for 60-90 days, with a clawback schedule for early deal fall-offs.
-- **Subscription Tiers:** Three tiers (Merchant Essentials, Growth Accelerator, Elite AI Revenue System) with defined commission pools and decay schedules.
+- **Subscription Tiers:** Four tiers (Starter, Growth Foundation, Revenue Growth System, Revenue Scale AI), powered by Marketing Titan AI + Lead Titan AI, with defined commission pools (25%/35%/45%/50%) and decay schedules.
 - **Platform Fee:** $99/month, with reductions and waivers based on agent revenue.
 ## External Dependencies
 
-- **Stripe Billing:** Payment processing for merchant subscriptions. Utilizes `stripe` npm package for direct webhook handling (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`), and `@stripe/stripe-js` / `@stripe/react-stripe-js` for frontend elements. Environment variables: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_TIER_1`, `STRIPE_PRICE_TIER_2`, `STRIPE_PRICE_TIER_3`.
+- **Stripe Billing:** Payment processing for merchant subscriptions. Utilizes `stripe` npm package for direct webhook handling (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`), and `@stripe/stripe-js` / `@stripe/react-stripe-js` for frontend elements. Environment variables: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_TIER_1`, `STRIPE_PRICE_TIER_2`, `STRIPE_PRICE_TIER_3`, `STRIPE_PRICE_TIER_4`.
 - **PostgreSQL:** Primary database, connected via `DATABASE_URL`.
 - **Drizzle ORM:** Type-safe database queries and schema management.
 - **Passport.js:** Authentication middleware.

@@ -87,7 +87,7 @@ type Subscription = {
   agent?: Agent;
   merchantName: string;
   merchantEmail: string | null;
-  tier: "tier_1" | "tier_2" | "tier_3";
+  tier: "tier_1" | "tier_2" | "tier_3" | "tier_4";
   monthlyAmount: string;
   status: "active" | "paused" | "cancelled" | "expired";
   mcaPairedDealId: number | null;
@@ -143,9 +143,10 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 const TIER_LABELS: Record<string, string> = {
-  tier_1: "Tier 1 — $199/mo",
-  tier_2: "Tier 2 — $399/mo",
-  tier_3: "Tier 3 — $799/mo",
+  tier_1: "Starter — $149/mo",
+  tier_2: "Growth Foundation — $397/mo",
+  tier_3: "Revenue Growth System — $697/mo",
+  tier_4: "Revenue Scale AI — $1,497/mo",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -347,7 +348,7 @@ export default function AdminSubscriptions() {
     agentId: "",
     merchantName: "",
     merchantEmail: "",
-    tier: "tier_1" as "tier_1" | "tier_2" | "tier_3",
+    tier: "tier_1" as "tier_1" | "tier_2" | "tier_3" | "tier_4",
     startDate: "",
     endDate: "",
   });
@@ -527,7 +528,7 @@ export default function AdminSubscriptions() {
       agentId: number;
       merchantName: string;
       merchantEmail?: string;
-      tier: "tier_1" | "tier_2" | "tier_3";
+      tier: "tier_1" | "tier_2" | "tier_3" | "tier_4";
       startDate?: string;
       endDate?: string;
     }) => apiRequest("POST", api.admin.subscriptions.create.path, data),
@@ -2008,9 +2009,10 @@ export default function AdminSubscriptions() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tier_1">Tier 1 — $199/mo</SelectItem>
-                  <SelectItem value="tier_2">Tier 2 — $399/mo</SelectItem>
-                  <SelectItem value="tier_3">Tier 3 — $799/mo</SelectItem>
+                  <SelectItem value="tier_1">Starter — $149/mo</SelectItem>
+                  <SelectItem value="tier_2">Growth Foundation — $397/mo</SelectItem>
+                  <SelectItem value="tier_3">Revenue Growth System — $697/mo</SelectItem>
+                  <SelectItem value="tier_4">Revenue Scale AI — $1,497/mo</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -43,8 +43,8 @@ export default function RefundPolicyPage() {
             </div>
             <p className="text-muted-foreground leading-relaxed">
               This Refund & Cancellation Policy applies to the subscription products offered through the Leader Shield
-              Funding Merchant Growth Platform, including Merchant Essentials, Growth Accelerator, and Elite AI Revenue
-              System (collectively, "Subscription Products"). By purchasing or subscribing to any of these products,
+              Funding Merchant Growth Platform, including Starter, Growth Foundation, Revenue Growth System, and Revenue
+              Scale AI (collectively, "Subscription Products"). By purchasing or subscribing to any of these products,
               you agree to the terms outlined in this policy.
             </p>
           </section>
@@ -55,20 +55,24 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">2. Subscription Products & Pricing</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              The Merchant Growth Platform offers three subscription tiers, each billed on a monthly recurring basis:
+              The Merchant Growth Platform offers four subscription tiers — powered by our partnership with Marketing Titan AI + Lead Titan AI — each billed on a monthly recurring basis:
             </p>
             <div className="space-y-3 ml-4">
               <div className="flex items-start gap-3">
-                <span className="font-semibold text-foreground min-w-[200px]">Merchant Essentials</span>
-                <span className="text-muted-foreground">$199/month — Financial reporting, forecasting, AI expense categorization, and credit monitoring.</span>
+                <span className="font-semibold text-foreground min-w-[200px]">Starter</span>
+                <span className="text-muted-foreground">$149/month — 750 verified lead credits, email outreach sequences, Basic AI Brand Intelligence, and integration with your existing CRM.</span>
               </div>
               <div className="flex items-start gap-3">
-                <span className="font-semibold text-foreground min-w-[200px]">Growth Accelerator</span>
-                <span className="text-muted-foreground">$429/month — All Essentials features plus CRM, lead generation, marketing automation, and competitor intelligence.</span>
+                <span className="font-semibold text-foreground min-w-[200px]">Growth Foundation</span>
+                <span className="text-muted-foreground">$397/month — Advanced AI Brand Intelligence, native AI CRM, 24/7 AI chatbot lead capture, AI visual email, and a performance dashboard.</span>
               </div>
               <div className="flex items-start gap-3">
-                <span className="font-semibold text-foreground min-w-[200px]">Elite AI Revenue System</span>
-                <span className="text-muted-foreground">$749/month — Full platform access including AI revenue optimization, custom integrations, and dedicated support.</span>
+                <span className="font-semibold text-foreground min-w-[200px]">Revenue Growth System</span>
+                <span className="text-muted-foreground">$697/month — Everything in Growth Foundation plus 2,000 lead credits/mo, Darwin AI Chief of Staff, AI social content, and expanded CRM automation.</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="font-semibold text-foreground min-w-[200px]">Revenue Scale AI</span>
+                <span className="text-muted-foreground">$1,497/month — Full platform access including AI Caller, AI paid ads, multi-channel social, AI blogs, and advanced CRM automation.</span>
               </div>
             </div>
           </section>

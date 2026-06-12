@@ -544,8 +544,8 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
       expect(Number(agentCommissions[0].amount)).toBeGreaterThan(0);
 
       // Verify the commission amount matches the active sub's monthly amount
-      // multiplied by the pool+decay rate (tier_1 = 0.50, months1to3 decay = 1.0)
-      const expectedRate = 0.50 * 1.00;
+      // multiplied by the pool+decay rate (tier_1 = 0.25, months1to3 decay = 1.0)
+      const expectedRate = 0.25 * 1.00;
       const expectedAmount = Number(activeSub.monthlyAmount) * expectedRate;
       expect(Number(agentCommissions[0].amount)).toBeCloseTo(expectedAmount, 2);
     } finally {
@@ -641,7 +641,7 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
       expect(Number(agentCommissions[0].amount)).toBeGreaterThan(0);
 
       // Verify the commission amount matches the active sub, not the cancelled/expired ones
-      const expectedRate = 0.50 * 1.00;
+      const expectedRate = 0.25 * 1.00;
       const expectedAmount = Number(activeSub.monthlyAmount) * expectedRate;
       expect(Number(agentCommissions[0].amount)).toBeCloseTo(expectedAmount, 2);
     } finally {

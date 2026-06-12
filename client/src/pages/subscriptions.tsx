@@ -74,7 +74,7 @@ type Subscription = {
   agentId: number;
   merchantName: string;
   merchantEmail: string | null;
-  tier: "tier_1" | "tier_2" | "tier_3";
+  tier: "tier_1" | "tier_2" | "tier_3" | "tier_4";
   monthlyAmount: string;
   status: "active" | "paused" | "cancelled" | "expired";
   mcaPairedDealId: number | null;
@@ -107,21 +107,24 @@ type Deal = {
 // === Constants ===
 
 const TIER_LABELS: Record<string, string> = {
-  tier_1: "Tier 1 — $199/mo",
-  tier_2: "Tier 2 — $429/mo",
-  tier_3: "Tier 3 — $749/mo",
+  tier_1: "Starter — $149/mo",
+  tier_2: "Growth Foundation — $397/mo",
+  tier_3: "Revenue Growth System — $697/mo",
+  tier_4: "Revenue Scale AI — $1,497/mo",
 };
 
 const TIER_PRICES: Record<string, number> = {
-  tier_1: 199,
-  tier_2: 429,
-  tier_3: 749,
+  tier_1: 149,
+  tier_2: 397,
+  tier_3: 697,
+  tier_4: 1497,
 };
 
 const POOL_RATES: Record<string, number> = {
-  tier_1: 0.50,
-  tier_2: 0.60,
-  tier_3: 0.70,
+  tier_1: 0.25,
+  tier_2: 0.35,
+  tier_3: 0.45,
+  tier_4: 0.50,
 };
 
 const DECAY_SCHEDULE = [
@@ -155,7 +158,7 @@ function getDecayRate(months: number): number {
 
 function getEstimatedCommission(sub: Subscription): number {
   const months = getMonthsActive(sub.startDate);
-  const poolRate = POOL_RATES[sub.tier] ?? 0.50;
+  const poolRate = POOL_RATES[sub.tier] ?? 0.25;
   const decay = getDecayRate(months);
   const bonus = sub.mcaPairedDealId && months < 3 ? 0.05 : 0;
   return Number(sub.monthlyAmount) * (poolRate * decay + bonus);
@@ -166,7 +169,7 @@ function getEstimatedCommission(sub: Subscription): number {
 const logSubscriptionSchema = z.object({
   merchantName: z.string().min(2, "Merchant name must be at least 2 characters"),
   merchantEmail: z.string().email("Invalid email").optional().or(z.literal("")),
-  tier: z.enum(["tier_1", "tier_2", "tier_3"], { required_error: "Please select a tier" }),
+  tier: z.enum(["tier_1", "tier_2", "tier_3", "tier_4"], { required_error: "Please select a tier" }),
   startDate: z.string().min(1, "Start date is required"),
   pairedWithDeal: z.boolean().default(false),
   mcaPairedDealId: z.number().optional(),
@@ -338,13 +341,16 @@ function LogSubscriptionDialogInner({ deals, onClose }: { deals: Deal[]; onClose
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="tier_1" data-testid="option-tier-1">
-                    Tier 1 — $199/mo
+                    Starter — $149/mo
                   </SelectItem>
                   <SelectItem value="tier_2" data-testid="option-tier-2">
-                    Tier 2 — $429/mo
+                    Growth Foundation — $397/mo
                   </SelectItem>
                   <SelectItem value="tier_3" data-testid="option-tier-3">
-                    Tier 3 — $749/mo
+                    Revenue Growth System — $697/mo
+                  </SelectItem>
+                  <SelectItem value="tier_4" data-testid="option-tier-4">
+                    Revenue Scale AI — $1,497/mo
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -824,7 +830,7 @@ function SubscriptionHistoryTimeline({ subId }: { subId: number }) {
 
 function DecayScheduleBar({ sub }: { sub: Subscription }) {
   const months = getMonthsActive(sub.startDate);
-  const poolRate = POOL_RATES[sub.tier] ?? 0.50;
+  const poolRate = POOL_RATES[sub.tier] ?? 0.25;
 
   return (
     <div className="mt-3 pt-3 border-t border-gray-100">

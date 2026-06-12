@@ -129,9 +129,10 @@ const CONFIG = {
     after90: 0.00,
   },
   subscriptionPools: {
-    tier_1: 0.50,
-    tier_2: 0.60,
-    tier_3: 0.70,
+    tier_1: 0.25,
+    tier_2: 0.35,
+    tier_3: 0.45,
+    tier_4: 0.50,
   } as Record<string, number>,
   subscriptionDecay: {
     months1to3: 1.00,
@@ -146,9 +147,10 @@ const CONFIG = {
     l2Rate: 0.05, // L2 sponsor earns 5% of the subscription pool × decay
   },
   subscriptionTierPrices: {
-    tier_1: 199,
-    tier_2: 429,
-    tier_3: 749,
+    tier_1: 149,
+    tier_2: 397,
+    tier_3: 697,
+    tier_4: 1497,
   } as Record<string, number>,
   platformFee: {
     standard: 99,
@@ -181,6 +183,7 @@ const CONFIG = {
     tier_1: process.env.STRIPE_PRICE_TIER_1 ?? '',
     tier_2: process.env.STRIPE_PRICE_TIER_2 ?? '',
     tier_3: process.env.STRIPE_PRICE_TIER_3 ?? '',
+    tier_4: process.env.STRIPE_PRICE_TIER_4 ?? '',
   } as Record<string, string>,
 };
 
@@ -1983,7 +1986,7 @@ export async function registerRoutes(
       const createSubSchema = z.object({
         merchantName: z.string().min(2),
         merchantEmail: z.string().email().optional().or(z.literal('')),
-        tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+        tier: z.enum(['tier_1', 'tier_2', 'tier_3', 'tier_4']),
         startDate: z.string().optional().refine((val) => {
           if (!val) return true;
           const d = new Date(val);
@@ -2012,7 +2015,7 @@ export async function registerRoutes(
       }
 
       const tierPrices: Record<string, number> = CONFIG.subscriptionTierPrices;
-      const monthlyAmount = tierPrices[input.tier] || 199;
+      const monthlyAmount = tierPrices[input.tier] || 149;
 
       const startDate = input.startDate ? new Date(input.startDate) : new Date();
 
@@ -2111,7 +2114,7 @@ export async function registerRoutes(
       else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
       else decayRate = CONFIG.subscriptionDecay.postMonth12;
 
-      const poolRate = CONFIG.subscriptionPools[input.tier] || 0.50;
+      const poolRate = CONFIG.subscriptionPools[input.tier] || 0.25;
       let commissionRate = poolRate * decayRate;
       if (verifiedPairedDealId && monthsSinceStart < 3) {
         commissionRate += CONFIG.mcaPairingBonus;
@@ -2468,7 +2471,7 @@ export async function registerRoutes(
         agentId: z.number().int().positive(),
         merchantName: z.string().min(2),
         merchantEmail: z.string().email().optional().or(z.literal('')),
-        tier: z.enum(['tier_1', 'tier_2', 'tier_3']),
+        tier: z.enum(['tier_1', 'tier_2', 'tier_3', 'tier_4']),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
       });
@@ -2478,7 +2481,7 @@ export async function registerRoutes(
       }
       const input = parseResult.data;
       const tierPrices: Record<string, number> = CONFIG.subscriptionTierPrices;
-      const monthlyAmount = tierPrices[input.tier] || 199;
+      const monthlyAmount = tierPrices[input.tier] || 149;
       const startDate = input.startDate ? new Date(input.startDate) : new Date();
       const endDate = input.endDate ? new Date(input.endDate) : undefined;
       const sub = await storage.createSubscription({
@@ -2860,7 +2863,7 @@ export async function registerRoutes(
         else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
         else decayRate = CONFIG.subscriptionDecay.postMonth12;
         
-        const poolRate = CONFIG.subscriptionPools[sub.tier] || 0.50;
+        const poolRate = CONFIG.subscriptionPools[sub.tier] || 0.25;
         let commissionRate = poolRate * decayRate;
         
         if (sub.mcaPairedDealId && monthsSinceStart < 3) {

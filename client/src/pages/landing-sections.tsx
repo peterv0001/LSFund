@@ -446,7 +446,7 @@ export default function LandingSections() {
                   Sell monthly subscription products that merchants genuinely need. Every subscription you place generates recurring commissions that compound month after month.
                 </p>
                 <div className="space-y-3">
-                  {["50-70% commission pool by tier", "Aggressive upfront payouts (months 1-3)", "Lifetime 10% residual after month 12", "Three tiers from $199 to $749/month"].map((item, i) => (
+                  {["25-50% commission pool by tier", "Aggressive upfront payouts (months 1-3)", "Lifetime 10% residual after month 12", "Four tiers from $149 to $1,497/month", "Powered by Marketing Titan + Lead Titan AI"].map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <CheckCircle2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
                       <span className="text-sm text-white/70">{item}</span>
@@ -484,64 +484,81 @@ export default function LandingSections() {
                 The Products
               </span>
               <h2 className="text-4xl lg:text-5xl font-display font-bold text-primary mb-6">
-                Three Subscription Tiers.<br />Real Solutions Merchants Need.
+                Four Subscription Tiers.<br />Real Solutions Merchants Need.
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                These are not fluff products. Each tier solves real business problems and delivers measurable ROI for merchants — making them easy to sell and easy to retain.
+                Powered by our exclusive partnership with Marketing Titan + Lead Titan AI. These are not fluff products — each tier solves real business problems and delivers measurable ROI for merchants, making them easy to sell and easy to retain.
               </p>
             </div>
           </AnimatedSection>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 tier: "Tier 1",
-                name: "Merchant Essentials",
-                price: "$199",
-                pool: "50%",
+                name: "Starter",
+                poweredBy: "Powered by Lead Titan AI",
+                price: "$149",
+                pool: "25%",
                 color: "blue",
                 icon: BarChart3,
-                ideal: "Businesses seeking financial discipline and operational clarity",
-                features: ["Financial reporting dashboards", "30-day forecasting projections", "AI-based expense categorization", "Credit monitoring & fraud alerts"]
+                ideal: "Merchants who need a steady flow of new leads to get started",
+                features: ["750 verified lead credits / month", "5 email outreach sequences (1,500 sends/mo)", "Basic AI Brand Intelligence", "Integrates with your existing CRM"]
               },
               {
                 tier: "Tier 2",
-                name: "Growth Accelerator",
-                price: "$429",
-                pool: "60%",
+                name: "Growth Foundation",
+                poweredBy: "Powered by Marketing Titan + Lead Titan",
+                price: "$397",
+                pool: "35%",
                 color: "blue",
                 icon: Rocket,
-                popular: true,
-                ideal: "Businesses with stable operations looking to accelerate revenue growth",
-                features: ["Google Business optimization", "Automated review capture systems", "SMS & email marketing automation", "CRM infrastructure & AI chatbot"]
+                ideal: "Businesses ready to build visibility and a stable lead engine",
+                features: ["Advanced AI Brand Intelligence (catalog, personas, SEO)", "Native AI CRM (1,000 contacts + scoring)", "24/7 AI chatbot lead capture", "AI visual email + performance dashboard"]
               },
               {
                 tier: "Tier 3",
-                name: "Elite AI Revenue System",
-                price: "$749",
-                pool: "70%",
+                name: "Revenue Growth System",
+                poweredBy: "Powered by Marketing Titan + Lead Titan",
+                price: "$697",
+                pool: "45%",
                 color: "purple",
                 icon: Bot,
-                ideal: "Aggressive operators seeking to dominate their market with AI-driven growth",
-                features: ["AI-driven lead generation", "Appointment booking automation", "Advanced conversion funnel builds", "Competitive ad intelligence"]
+                popular: true,
+                ideal: "Operators focused on growing and optimizing revenue",
+                features: ["Everything in Growth Foundation", "2,000 lead credits/mo + Darwin AI Chief of Staff", "AI social content to Meta (30/mo) + Ask AI", "CRM 10,000 contacts + automation"]
               },
-            ].map((item, i) => {
+              {
+                tier: "Tier 4",
+                name: "Revenue Scale AI",
+                poweredBy: "Powered by Marketing Titan + Lead Titan",
+                price: "$1,497",
+                pool: "50%",
+                color: "amber",
+                icon: Sparkles,
+                bestValue: true,
+                ideal: "Aggressive operators scaling with full AI automation",
+                features: ["Everything in Revenue Growth System", "AI Caller (750 outbound min/mo, books meetings)", "AI paid ads + ad designer + ad insights", "CRM 25,000 contacts + advanced automation"]
+              },
+            ].map((item: any, i) => {
               const colorMap: Record<string, { bg: string; text: string; border: string; badge: string; iconBg: string }> = {
                 blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", badge: "bg-blue-100 text-blue-700", iconBg: "bg-blue-100" },
                 purple: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200", badge: "bg-purple-100 text-purple-700", iconBg: "bg-purple-100" },
+                amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-300", badge: "bg-amber-100 text-amber-700", iconBg: "bg-amber-100" },
               };
               const c = colorMap[item.color];
+              const highlighted = item.popular || item.bestValue;
               return (
                 <AnimatedSection key={i} delay={i * 0.15}>
-                  <Card className={`relative overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 h-full ${item.popular ? `border-2 ${c.border} shadow-lg` : 'border-border/50'}`} data-testid={`card-tier-${i}`}>
-                    {item.popular && (
+                  <Card className={`relative overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 h-full ${highlighted ? `border-2 ${c.border} shadow-lg` : 'border-border/50'}`} data-testid={`card-tier-${i}`}>
+                    {highlighted && (
                       <div className="absolute -top-0 left-0 right-0">
-                        <div className="bg-primary text-white text-xs font-bold px-4 py-1.5 text-center">
-                          MOST POPULAR
+                        <div className={`${item.bestValue ? 'bg-[#C9A24B]' : 'bg-primary'} text-white text-xs font-bold px-4 py-1.5 text-center`}>
+                          {item.bestValue ? 'BEST VALUE' : 'MOST POPULAR'}
                         </div>
                       </div>
                     )}
-                    <CardContent className={`p-8 ${item.popular ? 'pt-12' : ''}`}>
+                    <CardContent className={`p-8 ${highlighted ? 'pt-12' : ''}`}>
                       <div className="flex items-center justify-between mb-4">
                         <span className={`text-xs font-bold uppercase tracking-wider ${c.text}`}>{item.tier}</span>
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${c.badge}`}>{item.pool} Pool</span>
@@ -550,6 +567,7 @@ export default function LandingSections() {
                         <item.icon className={`w-7 h-7 ${c.text}`} />
                       </div>
                       <h3 className="text-xl font-bold text-primary mb-1">{item.name}</h3>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#C9A24B] mb-2">{item.poweredBy}</p>
                       <p className="text-3xl font-bold text-primary mb-2">{item.price}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
                       <p className="text-sm text-muted-foreground mb-6 italic">{item.ideal}</p>
                       <div className="space-y-3">
@@ -661,7 +679,7 @@ export default function LandingSections() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {[
               { icon: DollarSign, title: "MCA Commission", rate: "22% GBR", desc: "Earn on every funded deal you refer", color: "from-emerald-400 to-emerald-500" },
-              { icon: Repeat, title: "Platform Residuals", rate: "50-70%", desc: "Monthly recurring subscription commissions", color: "from-blue-400 to-blue-500" },
+              { icon: Repeat, title: "Platform Residuals", rate: "25-50%", desc: "Monthly recurring subscription commissions", color: "from-blue-400 to-blue-500" },
               { icon: Zap, title: "Pairing Bonus", rate: "+5%", desc: "Enhancement when you bundle MCA + subscription", color: "from-[#E0C27E] to-white/70" },
               { icon: Users, title: "Team Overrides", rate: "Up to 8%", desc: "Earn on your team's production as a sponsor", color: "from-purple-400 to-purple-500" },
             ].map((item, i) => (
