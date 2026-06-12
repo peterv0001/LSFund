@@ -50,7 +50,7 @@ export default function Dashboard() {
     },
   });
 
-  type ShareStat = { views: number; leads: number };
+  type ShareStat = { views: number; leads: number; views7d: number; views30d: number };
   const { data: shareStats } = useQuery<Record<'platform' | 'leaks' | 'scale', ShareStat>>({
     queryKey: ['share-stats'],
     queryFn: async () => {
@@ -440,6 +440,20 @@ export default function Dashboard() {
                         {shareStats?.[lp.key as 'platform' | 'leaks' | 'scale']?.leads ?? 0}
                       </span>
                       <span className="text-[11px] uppercase tracking-wide text-gray-400 mt-1">Leads</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mb-3" data-testid={`trend-share-${lp.key}`}>
+                    <div className="flex-1 flex flex-col items-center bg-gray-50 rounded-lg py-2">
+                      <span className="font-mono text-sm font-bold leading-none" data-testid={`text-views7d-${lp.key}`}>
+                        {shareStats?.[lp.key as 'platform' | 'leaks' | 'scale']?.views7d ?? 0}
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide text-gray-400 mt-1">Last 7d</span>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center bg-gray-50 rounded-lg py-2">
+                      <span className="font-mono text-sm font-bold leading-none" data-testid={`text-views30d-${lp.key}`}>
+                        {shareStats?.[lp.key as 'platform' | 'leaks' | 'scale']?.views30d ?? 0}
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide text-gray-400 mt-1">Last 30d</span>
                     </div>
                   </div>
                   <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">

@@ -149,4 +149,42 @@ describe("agent share stats", () => {
     expect(stats.platform.leads).toBe(0);
     expect(stats.leaks.leads).toBe(0);
   });
+
+  it("breaks views down into last-7-day and last-30-day windows", async () => {
+    // Backdate one of the platform views to 45 days ago: outside both windows.
+    const [oldRow] = await db
+      .insert(schema.landingPageViews)
+      .values({ agentId: activeAgentId, page: "platform" })
+      .returning();
+    const fortyFiveDaysAgo = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+    await db
+      .update(schema.landingPageViews)
+      .set({ createdAt: fortyFiveDaysAgo })
+      .where(eq(schema.landingPageViews.id, oldRow.id));
+
+    // Backdate another platform view to 15 days ago: inside 30d, outside 7d.
+    const [midRow] = await db
+      .insert(schema.landingPageViews)
+      .values({ agentId: activeAgentId, page: "platform" })
+      .returning();
+    const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+    await db
+      .update(schema.landingPageViews)
+      .set({ createdAt: fifteenDaysAgo })
+      .where(eq(schema.landingPageViews.id, midRow.id));
+
+    const stats = await storage.getShareStats(activeAgentId);
+    // 5 platform views total now (3 recent + 1 mid + 1 old).
+    expect(stats.platform.views).toBe(5);
+    // Recent 3 fall in the 7-day window; the 15- and 45-day-old ones do not.
+    expect(stats.platform.views7d).toBe(3);
+    // 7-day views plus the 15-day-old one fall in the 30-day window.
+    expect(stats.platform.views30d).toBe(4);
+    // Scale view recorded just now counts in both windows.
+    expect(stats.scale.views7d).toBe(1);
+    expect(stats.scale.views30d).toBe(1);
+    // No leaks views at all.
+    expect(stats.leaks.views7d).toBe(0);
+    expect(stats.leaks.views30d).toBe(0);
+  });
 });

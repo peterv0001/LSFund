@@ -1441,15 +1441,24 @@ export class DatabaseStorage {
   // each link was opened (views) and how many leads it produced. Lead counts
   // come from leads assigned to the agent whose source matches the page's
   // campaign tag (source = `landing:<campaign>`).
-  async getShareStats(agentId: number): Promise<Record<'platform' | 'leaks' | 'scale', { views: number; leads: number }>> {
+  async getShareStats(agentId: number): Promise<Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number }>> {
     const campaignByPage: Record<'platform' | 'leaks' | 'scale', string> = {
       platform: 'landing:lp-platform-overview',
       leaks: 'landing:lp-platform-leaks',
       scale: 'landing:lp-platform-scale',
     };
 
+    const now = new Date();
+    const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
     const viewRows = await db
-      .select({ page: landingPageViews.page, cnt: count() })
+      .select({
+        page: landingPageViews.page,
+        cnt: count(),
+        cnt7: sql<number>`COUNT(*) FILTER (WHERE ${landingPageViews.createdAt} >= ${since7})`,
+        cnt30: sql<number>`COUNT(*) FILTER (WHERE ${landingPageViews.createdAt} >= ${since30})`,
+      })
       .from(landingPageViews)
       .where(eq(landingPageViews.agentId, agentId))
       .groupBy(landingPageViews.page);
@@ -1460,13 +1469,16 @@ export class DatabaseStorage {
       .where(eq(leads.assignedAgentId, agentId))
       .groupBy(leads.source);
 
-    const viewByPage = new Map(viewRows.map((r) => [r.page, Number(r.cnt)]));
+    const viewByPage = new Map(viewRows.map((r) => [r.page, r]));
     const leadBySource = new Map(leadRows.map((r) => [r.source, Number(r.cnt)]));
 
-    const result = {} as Record<'platform' | 'leaks' | 'scale', { views: number; leads: number }>;
+    const result = {} as Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number }>;
     for (const page of ['platform', 'leaks', 'scale'] as const) {
+      const row = viewByPage.get(page);
       result[page] = {
-        views: viewByPage.get(page) ?? 0,
+        views: row ? Number(row.cnt) : 0,
+        views7d: row ? Number(row.cnt7) : 0,
+        views30d: row ? Number(row.cnt30) : 0,
         leads: leadBySource.get(campaignByPage[page]) ?? 0,
       };
     }

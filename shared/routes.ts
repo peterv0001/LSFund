@@ -309,9 +309,9 @@ export const api = {
       path: '/api/agents/share-stats',
       responses: {
         200: z.object({
-          platform: z.object({ views: z.number(), leads: z.number() }),
-          leaks: z.object({ views: z.number(), leads: z.number() }),
-          scale: z.object({ views: z.number(), leads: z.number() }),
+          platform: z.object({ views: z.number(), leads: z.number(), views7d: z.number(), views30d: z.number() }),
+          leaks: z.object({ views: z.number(), leads: z.number(), views7d: z.number(), views30d: z.number() }),
+          scale: z.object({ views: z.number(), leads: z.number(), views7d: z.number(), views30d: z.number() }),
         }),
       },
     },
