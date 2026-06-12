@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/components/AdminSidebar", () => ({
@@ -22,6 +22,9 @@ const SYSTEM_INFO_PATH = api.admin.systemInfo.get.path;
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let expiryCheckIntervalMs = 3_600_000;
+let expiryCheckIntervalInvalid = false;
+let expiryCheckIntervalRejectedValue: string | null = null;
+const expiryCheckIntervalDefaultMs = 3_600_000;
 
 function jsonResponse(body: unknown) {
   return {
@@ -34,7 +37,16 @@ function jsonResponse(body: unknown) {
 
 function routeFetch(url: string) {
   if (url.startsWith(SYSTEM_INFO_PATH)) {
-    return jsonResponse({ expiryCheckIntervalMs });
+    return jsonResponse({
+      expiryCheckIntervalMs,
+      expiryCheckIntervalInvalid,
+      expiryCheckIntervalRejectedValue,
+      expiryCheckIntervalDefaultMs,
+      expiryWarningDays: 7,
+      nodeEnv: "test",
+      schedulerLastRunAt: null,
+      schedulerNextRunAt: null,
+    });
   }
   if (url.startsWith(WEBHOOK_STATUS_PATH)) {
     return jsonResponse({
@@ -84,6 +96,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   expiryCheckIntervalMs = 3_600_000;
+  expiryCheckIntervalInvalid = false;
+  expiryCheckIntervalRejectedValue = null;
 });
 
 describe("Admin settings – System Info card", () => {
@@ -109,5 +123,35 @@ describe("Admin settings – System Info card", () => {
       expect(badge.textContent).toContain("30 sec");
     });
     expect(badge.textContent).toMatch(/30.?000\s*ms/);
+  });
+
+  it("does not show the invalid-interval alert when the configured value is valid", async () => {
+    expiryCheckIntervalInvalid = false;
+
+    renderSettings();
+
+    // Wait for the card to render before asserting the alert is absent.
+    await screen.findByTestId("badge-expiry-check-interval");
+    expect(
+      screen.queryByTestId("alert-invalid-scheduler-interval"),
+    ).toBeNull();
+  });
+
+  it("alerts admins when the configured interval was rejected and the default is in use", async () => {
+    expiryCheckIntervalInvalid = true;
+    expiryCheckIntervalRejectedValue = "0";
+    expiryCheckIntervalMs = 3_600_000; // fell back to the 1-hour default
+
+    renderSettings();
+
+    const alert = await screen.findByTestId("alert-invalid-scheduler-interval");
+    // States the invalid value the operator entered.
+    expect(
+      within(alert).getByTestId("text-rejected-interval-value").textContent,
+    ).toContain("0");
+    // States the fallback interval now in use.
+    const fallback = within(alert).getByTestId("text-fallback-interval");
+    expect(fallback.textContent).toContain("1 hr");
+    expect(fallback.textContent).toMatch(/3.?600.?000\s*ms/);
   });
 });

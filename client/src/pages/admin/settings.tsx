@@ -53,6 +53,9 @@ type WebhookStatus = {
 
 type SystemInfo = {
   expiryCheckIntervalMs: number;
+  expiryCheckIntervalInvalid: boolean;
+  expiryCheckIntervalRejectedValue: string | null;
+  expiryCheckIntervalDefaultMs: number;
   expiryWarningDays: number;
   nodeEnv: string;
   schedulerLastRunAt: string | null;
@@ -622,6 +625,29 @@ export default function AdminSettings() {
                     <p className="text-sm text-gray-500">Unable to load system info.</p>
                   ) : (
                     <div className="divide-y divide-gray-100">
+                      {systemInfo.expiryCheckIntervalInvalid && (
+                        <div className="pb-4">
+                          <Alert variant="destructive" data-testid="alert-invalid-scheduler-interval">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Invalid scheduler interval — using default</AlertTitle>
+                            <AlertDescription>
+                              The configured{" "}
+                              <code className="font-mono">EXPIRY_CHECK_INTERVAL_MS</code> value{" "}
+                              <span className="font-mono font-semibold" data-testid="text-rejected-interval-value">
+                                "{systemInfo.expiryCheckIntervalRejectedValue}"
+                              </span>{" "}
+                              was rejected because it is not a positive integer (milliseconds). The
+                              scheduler has fallen back to the default of{" "}
+                              <span className="font-semibold" data-testid="text-fallback-interval">
+                                {formatInterval(systemInfo.expiryCheckIntervalDefaultMs)} (
+                                {systemInfo.expiryCheckIntervalDefaultMs.toLocaleString()} ms)
+                              </span>
+                              . Update the value to fix how often expiry checks run.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between gap-3 text-sm pb-4">
                         <div>
                           <p className="font-medium text-gray-700">Subscription expiry check interval</p>

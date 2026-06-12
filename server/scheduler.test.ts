@@ -309,6 +309,70 @@ describe("EXPIRY_CHECK_INTERVAL_MS – invalid value fallback", () => {
 });
 
 // =========================================================
+// getSchedulerConfigHealth — surfaces invalid config to admins
+// =========================================================
+//
+// The admin dashboard reads this to alert operators that their configured
+// EXPIRY_CHECK_INTERVAL_MS was rejected and the safe default is in use, so they
+// can fix the bad value before it affects how often expiry checks run.
+
+describe("getSchedulerConfigHealth – reports interval config health", () => {
+  const savedEnv = process.env.EXPIRY_CHECK_INTERVAL_MS;
+
+  const loadHealth = async (value: string | undefined) => {
+    if (value === undefined) {
+      delete process.env.EXPIRY_CHECK_INTERVAL_MS;
+    } else {
+      process.env.EXPIRY_CHECK_INTERVAL_MS = value;
+    }
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.resetModules();
+    const { getSchedulerConfigHealth } = await import("./scheduler.js");
+    return getSchedulerConfigHealth();
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    if (savedEnv === undefined) {
+      delete process.env.EXPIRY_CHECK_INTERVAL_MS;
+    } else {
+      process.env.EXPIRY_CHECK_INTERVAL_MS = savedEnv;
+    }
+    vi.resetModules();
+  });
+
+  it("reports not-invalid with a null rejected value when the env var is unset", async () => {
+    const health = await loadHealth(undefined);
+    expect(health.intervalInvalid).toBe(false);
+    expect(health.rejectedIntervalValue).toBeNull();
+    expect(health.intervalMs).toBe(3_600_000);
+    expect(health.defaultIntervalMs).toBe(3_600_000);
+  });
+
+  it("reports not-invalid for a valid positive integer", async () => {
+    const health = await loadHealth("45000");
+    expect(health.intervalInvalid).toBe(false);
+    expect(health.rejectedIntervalValue).toBeNull();
+    expect(health.intervalMs).toBe(45_000);
+  });
+
+  it("reports invalid, preserves the raw rejected value, and falls back to the default", async () => {
+    const health = await loadHealth("0");
+    expect(health.intervalInvalid).toBe(true);
+    expect(health.rejectedIntervalValue).toBe("0");
+    expect(health.intervalMs).toBe(3_600_000);
+    expect(health.defaultIntervalMs).toBe(3_600_000);
+  });
+
+  it("preserves the untrimmed rejected value for a non-numeric string", async () => {
+    const health = await loadHealth("  abc  ");
+    expect(health.intervalInvalid).toBe(true);
+    expect(health.rejectedIntervalValue).toBe("  abc  ");
+    expect(health.intervalMs).toBe(3_600_000);
+  });
+});
+
+// =========================================================
 // expireOverdueSubscriptions — side-effect failures are non-fatal
 // =========================================================
 

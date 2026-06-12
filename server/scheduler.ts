@@ -3,10 +3,19 @@ import { emailService } from "./email";
 
 const DEFAULT_EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // default: 1 hour
 
-function resolveExpiryCheckIntervalMs(): number {
+// Result of resolving EXPIRY_CHECK_INTERVAL_MS. When the configured value is
+// rejected, `invalid` is true and `rejectedValue` holds exactly what the
+// operator set so the admin dashboard can surface the bad configuration.
+type ResolvedExpiryInterval = {
+  intervalMs: number;
+  invalid: boolean;
+  rejectedValue: string | null;
+};
+
+function resolveExpiryCheckInterval(): ResolvedExpiryInterval {
   const raw = process.env.EXPIRY_CHECK_INTERVAL_MS;
   if (raw === undefined) {
-    return DEFAULT_EXPIRY_CHECK_INTERVAL_MS;
+    return { intervalMs: DEFAULT_EXPIRY_CHECK_INTERVAL_MS, invalid: false, rejectedValue: null };
   }
 
   const trimmed = raw.trim();
@@ -23,13 +32,33 @@ function resolveExpiryCheckIntervalMs(): number {
     console.warn(
       `[Scheduler] Invalid EXPIRY_CHECK_INTERVAL_MS value "${raw}" — must be a positive integer (milliseconds). Falling back to the default of ${DEFAULT_EXPIRY_CHECK_INTERVAL_MS}ms (1 hour).`,
     );
-    return DEFAULT_EXPIRY_CHECK_INTERVAL_MS;
+    return { intervalMs: DEFAULT_EXPIRY_CHECK_INTERVAL_MS, invalid: true, rejectedValue: raw };
   }
 
-  return parsed;
+  return { intervalMs: parsed, invalid: false, rejectedValue: null };
 }
 
-export const EXPIRY_CHECK_INTERVAL_MS = resolveExpiryCheckIntervalMs();
+const resolvedExpiryInterval = resolveExpiryCheckInterval();
+
+export const EXPIRY_CHECK_INTERVAL_MS = resolvedExpiryInterval.intervalMs;
+
+// Reports whether the configured EXPIRY_CHECK_INTERVAL_MS was rejected and the
+// safe default is in use. The admin dashboard uses this to alert operators that
+// their configured value was invalid, so they can fix it before it affects how
+// often expiry checks run.
+export function getSchedulerConfigHealth(): {
+  intervalMs: number;
+  intervalInvalid: boolean;
+  rejectedIntervalValue: string | null;
+  defaultIntervalMs: number;
+} {
+  return {
+    intervalMs: EXPIRY_CHECK_INTERVAL_MS,
+    intervalInvalid: resolvedExpiryInterval.invalid,
+    rejectedIntervalValue: resolvedExpiryInterval.rejectedValue,
+    defaultIntervalMs: DEFAULT_EXPIRY_CHECK_INTERVAL_MS,
+  };
+}
 
 // Track scheduler timing so the admin System Info panel can report when the
 // expiry checks last ran and when they are next due, without reading logs.

@@ -1041,6 +1041,9 @@ export const api = {
         responses: {
           200: z.object({
             expiryCheckIntervalMs: z.number(),
+            expiryCheckIntervalInvalid: z.boolean(),
+            expiryCheckIntervalRejectedValue: z.string().nullable(),
+            expiryCheckIntervalDefaultMs: z.number(),
             expiryWarningDays: z.number(),
             nodeEnv: z.string(),
             schedulerLastRunAt: z.string().nullable(),

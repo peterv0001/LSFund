@@ -17,7 +17,7 @@ import { checkSchemaHealth } from "./schema-health";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
-import { resolveExpiryWarningDays, EXPIRY_CHECK_INTERVAL_MS, getSchedulerStatus, sendDueExpiryWarnings } from "./scheduler";
+import { resolveExpiryWarningDays, EXPIRY_CHECK_INTERVAL_MS, getSchedulerStatus, getSchedulerConfigHealth, sendDueExpiryWarnings } from "./scheduler";
 import rateLimit from "express-rate-limit";
 
 // Extend Express User type
@@ -3381,8 +3381,12 @@ export async function registerRoutes(
   // System Info — read-only operational config (e.g. scheduler interval)
   app.get(api.admin.systemInfo.get.path, requireAdmin, async (_req, res) => {
     const { lastRunAt, nextRunAt } = getSchedulerStatus();
+    const { intervalMs, intervalInvalid, rejectedIntervalValue, defaultIntervalMs } = getSchedulerConfigHealth();
     res.json({
-      expiryCheckIntervalMs: EXPIRY_CHECK_INTERVAL_MS,
+      expiryCheckIntervalMs: intervalMs,
+      expiryCheckIntervalInvalid: intervalInvalid,
+      expiryCheckIntervalRejectedValue: rejectedIntervalValue,
+      expiryCheckIntervalDefaultMs: defaultIntervalMs,
       expiryWarningDays: await resolveExpiryWarningDays(),
       nodeEnv: process.env.NODE_ENV ?? "development",
       schedulerLastRunAt: lastRunAt,
