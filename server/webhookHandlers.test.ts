@@ -654,6 +654,56 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
       })
     );
   });
+
+  it('pays the upline override on a paired deal using the base pool rate, WITHOUT the pairing bonus', async () => {
+    const stripeSubId = 'sub_commission_paired_upline_test';
+    // Paired, recent subscription. The direct agent earns the +0.05 pairing bonus
+    // (tier_1 pool 0.25 + 0.05 = 0.30 × decay 1.00 × $100 = $30.00), but the upline
+    // override intentionally uses ONLY the base pool rate:
+    //   $100 × pool 0.25 × l1Rate 0.10 × decay 1.00 = $2.50 (no +0.05 bonus).
+    const fakeSubscription = {
+      id: 206,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 5,
+      tier: 'tier_1',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: new Date(),
+      mcaPairedDealId: 42,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getUpline).mockReset();
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    // One commission for the agent (with bonus), one override for the sponsor (no bonus).
+    expect(storage.createCommission).toHaveBeenCalledTimes(2);
+
+    // Direct agent gets the pairing bonus.
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 5,
+        subscriptionId: 206,
+        type: 'subscription_commission',
+        amount: '30.00',
+        status: 'pending',
+      })
+    );
+
+    // Upline sponsor override is computed on the base pool rate, excluding the bonus.
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 7,
+        subscriptionId: 206,
+        type: 'subscription_residual',
+        amount: '2.50',
+        sourceAgentId: 5,
+        status: 'pending',
+      })
+    );
+  });
 });
 
 // ── Unit – handleInvoicePaid applies the subscription decay schedule ───────
