@@ -150,6 +150,32 @@ function buildRetryMockStripeClient(invoicePaid: boolean) {
   };
 }
 
+// Mock Stripe client for the "in-between" outcome: the open invoice's pay call
+// resolves but the invoice is NOT 'paid' (e.g. still 'open'), so the route lands
+// the subscription in 'past_due' without a success OR a hard decline.
+function buildUnpaidRetryMockStripeClient() {
+  const openInvoice = { id: "in_test_open_unpaid", status: "open" };
+  return {
+    paymentMethods: {
+      attach: vi.fn().mockResolvedValue({ id: "pm_test_new" }),
+      retrieve: vi.fn().mockResolvedValue({
+        id: "pm_test_new",
+        card: { last4: "1111", brand: "mastercard" },
+      }),
+    },
+    customers: {
+      update: vi.fn().mockResolvedValue({ id: MOCK_CUSTOMER_ID }),
+    },
+    subscriptions: {
+      update: vi.fn().mockResolvedValue({ id: MOCK_SUBSCRIPTION_ID }),
+    },
+    invoices: {
+      list: vi.fn().mockResolvedValue({ data: [openInvoice] }),
+      pay: vi.fn().mockResolvedValue({ id: openInvoice.id, status: "open" }),
+    },
+  };
+}
+
 function useMockStripe(mockStripe: ReturnType<typeof buildRetryMockStripeClient>) {
   vi.mocked(getUncachableStripeClient).mockResolvedValue(
     mockStripe as unknown as Stripe
@@ -352,6 +378,60 @@ describe("payment retry – failure email preference", () => {
     expect(
       notifs.some((n) => n.title === "Payment Failed: Test Merchant")
     ).toBe(true);
+
+    await cleanupAgent(agent.id);
+  });
+});
+
+// ── Still-unpaid retry (past_due) stays quiet ──────────────────────────────
+describe("payment retry – still-unpaid outcome (past_due)", () => {
+  it("sends NEITHER a success nor failure email when the invoice resolves still-unpaid", async () => {
+    const agent = await createAgent("unpaid-quiet", {
+      emailOnPaymentRetrySuccess: true,
+      emailOnPaymentRetryFailed: true,
+    });
+    const sub = await insertBillableSubscription(agent.id);
+    useMockStripe(buildUnpaidRetryMockStripeClient());
+    const cookie = await loginAs(agent.email);
+
+    const res = await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/payment-method`)
+      .set("Cookie", cookie)
+      .send({})
+      .expect(200);
+
+    expect(res.body.billingStatus).toBe("past_due");
+
+    await shortDelay();
+    expect(emailService.sendPaymentRetrySuccessEmail).not.toHaveBeenCalled();
+    expect(emailService.sendPaymentRetryFailedEmail).not.toHaveBeenCalled();
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("creates NO payment success/failure in-app notification when still-unpaid", async () => {
+    const agent = await createAgent("unpaid-no-notif", {
+      emailOnPaymentRetrySuccess: true,
+      emailOnPaymentRetryFailed: true,
+    });
+    const sub = await insertBillableSubscription(agent.id);
+    useMockStripe(buildUnpaidRetryMockStripeClient());
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/payment-method`)
+      .set("Cookie", cookie)
+      .send({})
+      .expect(200);
+
+    await shortDelay();
+    const notifs = await getNotificationsForAgent(agent.id);
+    expect(
+      notifs.some((n) => n.title === "Payment Successful: Test Merchant")
+    ).toBe(false);
+    expect(
+      notifs.some((n) => n.title === "Payment Failed: Test Merchant")
+    ).toBe(false);
 
     await cleanupAgent(agent.id);
   });
