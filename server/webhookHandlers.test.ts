@@ -306,6 +306,51 @@ describe('WebhookHandlers.handleInvoicePaymentFailed – updates billingStatus',
 
     expect(db.update).not.toHaveBeenCalled();
   });
+
+  it("logs a 'billing_failed' activity entry for the subscription's agent", async () => {
+    const stripeSubId = 'sub_handler_activity_test';
+    const fakeSubscription = { id: 110, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+
+    expect(storage.logActivity).toHaveBeenCalledTimes(1);
+    expect(storage.logActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: fakeSubscription.agentId,
+        action: 'billing_failed',
+        entityType: 'subscription',
+        entityId: fakeSubscription.id,
+      })
+    );
+  });
+
+  it("creates a 'Payment Failed' notification for the subscription's agent", async () => {
+    const stripeSubId = 'sub_handler_notification_test';
+    const fakeSubscription = { id: 111, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+
+    expect(storage.createNotification).toHaveBeenCalledTimes(1);
+    expect(storage.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: fakeSubscription.agentId,
+        title: 'Payment Failed',
+      })
+    );
+  });
+
+  it('does not log activity or notify when no subscription matches the stripe ID', async () => {
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([]));
+
+    await WebhookHandlers.handleInvoicePaymentFailed('sub_nonexistent_alert_test');
+
+    expect(storage.logActivity).not.toHaveBeenCalled();
+    expect(storage.createNotification).not.toHaveBeenCalled();
+  });
 });
 
 // ── Event routing – customer.subscription.deleted ─────────────────────────
