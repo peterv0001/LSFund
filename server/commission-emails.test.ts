@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from "vitest";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import express from "express";
 import { createServer } from "http";
@@ -108,6 +108,39 @@ async function createActiveSubscription(agentId: number, startDate?: Date) {
   return sub;
 }
 
+// Finds every agent this file created, identified by its unique per-run email
+// prefixes. Used by the file-level safety-net afterAll so leaked rows from a
+// crashed test (active subscriptions, commissions) cannot pollute later test
+// files' global calculate-commissions runs and trigger FK violations.
+async function findThisFilesAgentIds(): Promise<number[]> {
+  const rows = await db
+    .select({ id: schema.agents.id })
+    .from(schema.agents)
+    .where(like(schema.agents.email, `comm-email-%${TS}%`));
+  return rows.map((r) => r.id);
+}
+
+// Returns the IDs of every active subscription the global calculate-commissions
+// route will process. Capture this BEFORE calling the route, then pass the IDs
+// to cleanupCommissionsForSubscriptions afterward so the commissions the route
+// inserts (for ALL active subs, including any leaked from other files) are
+// removed and cannot become orphaned FK references in a later test file's run.
+async function getActiveSubscriptionIdsForCommissionRoute(): Promise<number[]> {
+  const rows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.status, "active"));
+  return rows.map((r) => r.id);
+}
+
+async function cleanupCommissionsForSubscriptions(subIds: number[]) {
+  const ids = Array.from(new Set(subIds));
+  if (ids.length === 0) return;
+  await db
+    .delete(schema.commissions)
+    .where(inArray(schema.commissions.subscriptionId, ids));
+}
+
 async function cleanupAgent(agentId: number) {
   await db
     .delete(schema.commissions)
@@ -167,25 +200,29 @@ describe("calculate-commissions – emailOnCommissionEarned: true", () => {
     const agent = await createAgent("comm-on", { emailOnCommissionEarned: true });
     await createActiveSubscription(agent.id);
 
-    const res = await request(testApp)
-      .post("/api/admin/subscriptions/calculate-commissions")
-      .set("Cookie", adminCookie)
-      .expect(200);
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
+    try {
+      const res = await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", adminCookie)
+        .expect(200);
 
-    expect(res.body.processed).toBeGreaterThanOrEqual(1);
+      expect(res.body.processed).toBeGreaterThanOrEqual(1);
 
-    await shortDelay();
+      await shortDelay();
 
-    expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalled();
-    expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalledWith(
-      agent.email,
-      expect.objectContaining({
-        firstName: agent.firstName,
-        commissionType: "Subscription Commission",
-      })
-    );
-
-    await cleanupAgent(agent.id);
+      expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalled();
+      expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalledWith(
+        agent.email,
+        expect.objectContaining({
+          firstName: agent.firstName,
+          commissionType: "Subscription Commission",
+        })
+      );
+    } finally {
+      await cleanupCommissionsForSubscriptions(touchedSubIds);
+      await cleanupAgent(agent.id);
+    }
   });
 });
 
@@ -196,23 +233,27 @@ describe("calculate-commissions – emailOnCommissionEarned: false", () => {
     const agent = await createAgent("comm-off", { emailOnCommissionEarned: false });
     await createActiveSubscription(agent.id); // sub created but email should be suppressed
 
-    const res = await request(testApp)
-      .post("/api/admin/subscriptions/calculate-commissions")
-      .set("Cookie", adminCookie)
-      .expect(200);
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
+    try {
+      const res = await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", adminCookie)
+        .expect(200);
 
-    expect(res.body.processed).toBeGreaterThanOrEqual(1);
+      expect(res.body.processed).toBeGreaterThanOrEqual(1);
 
-    await shortDelay();
+      await shortDelay();
 
-    // The call should either not have been made for this agent at all, or
-    // if other agents' commissions happened to run, it should never have been
-    // called with this agent's email address.
-    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
-    const calledForThisAgent = calls.some((args: unknown[]) => args[0] === agent.email);
-    expect(calledForThisAgent).toBe(false);
-
-    await cleanupAgent(agent.id);
+      // The call should either not have been made for this agent at all, or
+      // if other agents' commissions happened to run, it should never have been
+      // called with this agent's email address.
+      const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+      const calledForThisAgent = calls.some((args: unknown[]) => args[0] === agent.email);
+      expect(calledForThisAgent).toBe(false);
+    } finally {
+      await cleanupCommissionsForSubscriptions(touchedSubIds);
+      await cleanupAgent(agent.id);
+    }
   });
 });
 
@@ -226,23 +267,27 @@ describe("calculate-commissions – subscription_residual commission type", () =
     const agent = await createAgent("comm-residual", { emailOnCommissionEarned: true });
     await createActiveSubscription(agent.id, thirteenMonthsAgo);
 
-    await request(testApp)
-      .post("/api/admin/subscriptions/calculate-commissions")
-      .set("Cookie", adminCookie)
-      .expect(200);
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
+    try {
+      await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", adminCookie)
+        .expect(200);
 
-    await shortDelay();
+      await shortDelay();
 
-    expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalled();
-    expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalledWith(
-      agent.email,
-      expect.objectContaining({
-        firstName: agent.firstName,
-        commissionType: "Subscription Residual",
-      })
-    );
-
-    await cleanupAgent(agent.id);
+      expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalled();
+      expect(emailService.sendCommissionEarnedEmail).toHaveBeenCalledWith(
+        agent.email,
+        expect.objectContaining({
+          firstName: agent.firstName,
+          commissionType: "Subscription Residual",
+        })
+      );
+    } finally {
+      await cleanupCommissionsForSubscriptions(touchedSubIds);
+      await cleanupAgent(agent.id);
+    }
   });
 });
 
@@ -253,26 +298,30 @@ describe("calculate-commissions – in-app notification for subscription_commiss
     const agent = await createAgent("notif-comm", { emailOnCommissionEarned: true });
     const sub = await createActiveSubscription(agent.id);
 
-    const res = await request(testApp)
-      .post("/api/admin/subscriptions/calculate-commissions")
-      .set("Cookie", adminCookie)
-      .expect(200);
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
+    try {
+      const res = await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", adminCookie)
+        .expect(200);
 
-    expect(res.body.processed).toBeGreaterThanOrEqual(1);
+      expect(res.body.processed).toBeGreaterThanOrEqual(1);
 
-    const notifs = await db
-      .select()
-      .from(schema.notifications)
-      .where(eq(schema.notifications.agentId, agent.id));
+      const notifs = await db
+        .select()
+        .from(schema.notifications)
+        .where(eq(schema.notifications.agentId, agent.id));
 
-    expect(notifs).toHaveLength(1);
-    expect(notifs[0].type).toBe("commission_earned");
-    expect(notifs[0].title).toBe("Subscription Commission Earned!");
-    expect(notifs[0].message).toContain("Subscription Commission");
-    expect(notifs[0].message).toContain(sub.merchantName);
-    expect(notifs[0].isRead).toBe(false);
-
-    await cleanupAgent(agent.id);
+      expect(notifs).toHaveLength(1);
+      expect(notifs[0].type).toBe("commission_earned");
+      expect(notifs[0].title).toBe("Subscription Commission Earned!");
+      expect(notifs[0].message).toContain("Subscription Commission");
+      expect(notifs[0].message).toContain(sub.merchantName);
+      expect(notifs[0].isRead).toBe(false);
+    } finally {
+      await cleanupCommissionsForSubscriptions(touchedSubIds);
+      await cleanupAgent(agent.id);
+    }
   });
 });
 
@@ -284,24 +333,28 @@ describe("calculate-commissions – in-app notification for subscription_residua
     const agent = await createAgent("notif-residual", { emailOnCommissionEarned: true });
     const sub = await createActiveSubscription(agent.id, thirteenMonthsAgo);
 
-    await request(testApp)
-      .post("/api/admin/subscriptions/calculate-commissions")
-      .set("Cookie", adminCookie)
-      .expect(200);
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
+    try {
+      await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", adminCookie)
+        .expect(200);
 
-    const notifs = await db
-      .select()
-      .from(schema.notifications)
-      .where(eq(schema.notifications.agentId, agent.id));
+      const notifs = await db
+        .select()
+        .from(schema.notifications)
+        .where(eq(schema.notifications.agentId, agent.id));
 
-    expect(notifs).toHaveLength(1);
-    expect(notifs[0].type).toBe("commission_earned");
-    expect(notifs[0].title).toBe("Subscription Residual Earned!");
-    expect(notifs[0].message).toContain("Subscription Residual");
-    expect(notifs[0].message).toContain(sub.merchantName);
-    expect(notifs[0].isRead).toBe(false);
-
-    await cleanupAgent(agent.id);
+      expect(notifs).toHaveLength(1);
+      expect(notifs[0].type).toBe("commission_earned");
+      expect(notifs[0].title).toBe("Subscription Residual Earned!");
+      expect(notifs[0].message).toContain("Subscription Residual");
+      expect(notifs[0].message).toContain(sub.merchantName);
+      expect(notifs[0].isRead).toBe(false);
+    } finally {
+      await cleanupCommissionsForSubscriptions(touchedSubIds);
+      await cleanupAgent(agent.id);
+    }
   });
 });
 
@@ -310,28 +363,32 @@ describe("calculate-commissions – notification created even when email is opte
     const agent = await createAgent("notif-no-email", { emailOnCommissionEarned: false });
     await createActiveSubscription(agent.id);
 
-    const res = await request(testApp)
-      .post("/api/admin/subscriptions/calculate-commissions")
-      .set("Cookie", adminCookie)
-      .expect(200);
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
+    try {
+      const res = await request(testApp)
+        .post("/api/admin/subscriptions/calculate-commissions")
+        .set("Cookie", adminCookie)
+        .expect(200);
 
-    expect(res.body.processed).toBeGreaterThanOrEqual(1);
+      expect(res.body.processed).toBeGreaterThanOrEqual(1);
 
-    const notifs = await db
-      .select()
-      .from(schema.notifications)
-      .where(eq(schema.notifications.agentId, agent.id));
+      const notifs = await db
+        .select()
+        .from(schema.notifications)
+        .where(eq(schema.notifications.agentId, agent.id));
 
-    expect(notifs).toHaveLength(1);
-    expect(notifs[0].type).toBe("commission_earned");
+      expect(notifs).toHaveLength(1);
+      expect(notifs[0].type).toBe("commission_earned");
 
-    await shortDelay();
+      await shortDelay();
 
-    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
-    const calledForThisAgent = calls.some((args: unknown[]) => args[0] === agent.email);
-    expect(calledForThisAgent).toBe(false);
-
-    await cleanupAgent(agent.id);
+      const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+      const calledForThisAgent = calls.some((args: unknown[]) => args[0] === agent.email);
+      expect(calledForThisAgent).toBe(false);
+    } finally {
+      await cleanupCommissionsForSubscriptions(touchedSubIds);
+      await cleanupAgent(agent.id);
+    }
   });
 });
 
@@ -565,4 +622,32 @@ describe("deal approval sponsor override – emailOnCommissionEarned gate", () =
     await cleanupAgentFull(downline.id);
     await cleanupAgentFull(sponsor.id);
   });
+});
+
+// =========================================================
+// File-level safety net. Registered last, so it runs FIRST (afterAll hooks run
+// in reverse registration order). It purges every row this file created — child
+// rows first, then subscriptions, then the agents themselves — keyed off this
+// run's unique email prefix. This guarantees no leaked active subscription or
+// orphaned commission survives a crashed test to collide with another test
+// file's global calculate-commissions run.
+// =========================================================
+afterAll(async () => {
+  const ids = await findThisFilesAgentIds();
+  if (ids.length === 0) return;
+  const subRows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(inArray(schema.subscriptions.agentId, ids));
+  const subIds = subRows.map((r) => r.id);
+  if (subIds.length > 0) {
+    await db.delete(schema.commissions).where(inArray(schema.commissions.subscriptionId, subIds));
+  }
+  await db.delete(schema.commissions).where(inArray(schema.commissions.agentId, ids));
+  await db.delete(schema.notifications).where(inArray(schema.notifications.agentId, ids));
+  await db.delete(schema.holdbacks).where(inArray(schema.holdbacks.agentId, ids));
+  await db.delete(schema.deals).where(inArray(schema.deals.agentId, ids));
+  await db.delete(schema.activityLog).where(inArray(schema.activityLog.actorId, ids));
+  await db.delete(schema.subscriptions).where(inArray(schema.subscriptions.agentId, ids));
+  await db.delete(schema.agents).where(inArray(schema.agents.id, ids));
 });

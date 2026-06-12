@@ -8,3 +8,4 @@
 - [Dev server has no file watch](dev-server-no-watch.md) — `tsx server/index.ts` doesn't restart on server edits; new routes 404/serve SPA in preview while vitest passes. Restart workflow after server/ changes.
 - [Public referral-code lookups](public-referral-lookup.md) — on unauthenticated surfaces use getAgentByReferralCodeStrict (referral-code only); the non-strict variant falls back to numeric id and enables enumeration.
 - [Adding new tables](adding-new-tables.md) — new table needs BOTH a Drizzle table AND a numbered migration in server/migrations.ts; db:push is interactive (needs TTY) so create dev table via executeSql, then let migration run on restart.
+- [Test DB FK constraints](test-db-fk-constraints.md) — only real FK is commissions.subscription_id→subscriptions (ON DELETE SET NULL); FK violations only come from INSERTing commissions for vanished subs (global calc-commissions route + leaked active subs across test files).

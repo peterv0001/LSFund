@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { storage } from "./storage.js";
 import express from "express";
@@ -21,6 +21,34 @@ const testPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(testPool, { schema });
 
 const TEST_EMAIL_PREFIX = `sub-test-${Date.now()}`;
+
+// Tracks every agent created anywhere in this file so a file-level safety-net
+// afterAll (registered last → runs first) can purge child rows that reference
+// them — commissions and activity-log entries — before any agent deletion runs,
+// even if a test crashes before its own cleanup completes.
+const allTestAgentIds: number[] = [];
+
+// Deletes every commission whose subscriptionId is in the given list. Used to
+// scope cleanup of the GLOBAL POST /api/admin/subscriptions/calculate-commissions
+// route to ALL active subscriptions it could have touched (including rows left
+// behind by other test files), so no orphaned commission rows survive pointing
+// at subscriptions that are about to be deleted.
+async function cleanupCommissionsForSubscriptions(subIds: number[]) {
+  const ids = Array.from(new Set(subIds));
+  if (ids.length === 0) return;
+  await db.delete(schema.commissions).where(inArray(schema.commissions.subscriptionId, ids));
+}
+
+// Returns the IDs of every subscription the calculate-commissions route would
+// process right now (status=active; the route also gates on billingStatus but
+// capturing the status=active superset is sufficient for cleanup scoping).
+async function getActiveSubscriptionIdsForCommissionRoute(): Promise<number[]> {
+  const rows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.status, "active"));
+  return rows.map((r) => r.id);
+}
 
 async function createTestAgent(suffix: string) {
   const [agent] = await db
@@ -59,9 +87,22 @@ let agentId: number;
 beforeAll(async () => {
   const agent = await createTestAgent("main");
   agentId = agent.id;
+  allTestAgentIds.push(agentId);
 });
 
 afterAll(async () => {
+  // Delete child rows that reference this agent before removing the agent and
+  // its subscriptions: first commissions tied to its subscriptions, then any
+  // remaining commissions/activity-log rows that name this agent, then the
+  // subscriptions, then the agent. This afterAll is registered first so it runs
+  // last and is the one that closes the shared pool.
+  const subRows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.agentId, agentId));
+  await cleanupCommissionsForSubscriptions(subRows.map((r) => r.id));
+  await db.delete(schema.commissions).where(eq(schema.commissions.agentId, agentId));
+  await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, agentId));
   await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, agentId));
   await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
   await testPool.end();
@@ -168,6 +209,7 @@ describe("getSubscriptionsByAgent – reactivatedByName attribution", () => {
       })
       .returning();
     adminActorId = admin.id;
+    allTestAgentIds.push(adminActorId);
 
     const [agent] = await db
       .insert(schema.agents)
@@ -181,9 +223,19 @@ describe("getSubscriptionsByAgent – reactivatedByName attribution", () => {
       })
       .returning();
     agentActorId = agent.id;
+    allTestAgentIds.push(agentActorId);
   });
 
   afterAll(async () => {
+    // Subscriptions in this block reference these actor agents via the actor
+    // columns (pausedById/cancelledById/reactivatedById). Clear any a crashed
+    // test left behind, plus their activity-log rows, before deleting the actors.
+    for (const actorId of [adminActorId, agentActorId]) {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.pausedById, actorId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.cancelledById, actorId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.reactivatedById, actorId));
+      await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, actorId));
+    }
     await db.delete(schema.agents).where(eq(schema.agents.id, adminActorId));
     await db.delete(schema.agents).where(eq(schema.agents.id, agentActorId));
   });
@@ -394,6 +446,7 @@ beforeAll(async () => {
     })
     .returning();
   adminId = admin.id;
+  allTestAgentIds.push(adminId);
 
   // Spin up the real Express app with all routes registered
   testApp = express();
@@ -403,6 +456,7 @@ beforeAll(async () => {
 }, 30000);
 
 afterAll(async () => {
+  await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, adminId));
   await db.delete(schema.agents).where(eq(schema.agents.id, adminId));
 });
 
@@ -506,10 +560,17 @@ beforeAll(async () => {
     })
     .returning();
   commRouteAgentId = agent.id;
+  allTestAgentIds.push(commRouteAgentId);
 }, 30000);
 
 afterAll(async () => {
+  const subRows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.agentId, commRouteAgentId));
+  await cleanupCommissionsForSubscriptions(subRows.map((r) => r.id));
   await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
+  await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, commRouteAgentId));
   await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, commRouteAgentId));
   await db.delete(schema.agents).where(eq(schema.agents.id, commRouteAgentId));
 });
@@ -518,6 +579,7 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
   it("creates a commission only for the active subscription and not for the paused one", async () => {
     const activeSub = await createTestSubscription(commRouteAgentId, "active");
     const pausedSub = await createTestSubscription(commRouteAgentId, "paused");
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
     try {
       const cookie = await loginAsAdmin();
 
@@ -549,6 +611,7 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
       const expectedAmount = Number(activeSub.monthlyAmount) * expectedRate;
       expect(Number(agentCommissions[0].amount)).toBeCloseTo(expectedAmount, 2);
     } finally {
+      await cleanupCommissionsForSubscriptions([...touchedSubIds, activeSub.id, pausedSub.id]);
       await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, pausedSub.id));
@@ -557,6 +620,7 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
 
   it("creates no commissions for the agent when all their subscriptions are paused", async () => {
     const pausedSub = await createTestSubscription(commRouteAgentId, "paused");
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
     try {
       const cookie = await loginAsAdmin();
 
@@ -572,12 +636,14 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
 
       expect(agentCommissions).toHaveLength(0);
     } finally {
+      await cleanupCommissionsForSubscriptions([...touchedSubIds, pausedSub.id]);
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, pausedSub.id));
     }
   });
 
   it("does not create duplicate commissions when the route is called twice for the same period", async () => {
     const activeSub = await createTestSubscription(commRouteAgentId, "active");
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
     try {
       const cookie = await loginAsAdmin();
 
@@ -611,6 +677,7 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
 
       expect(agentCommissions).toHaveLength(1);
     } finally {
+      await cleanupCommissionsForSubscriptions([...touchedSubIds, activeSub.id]);
       await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
     }
@@ -620,6 +687,7 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
     const activeSub = await createTestSubscription(commRouteAgentId, "active");
     const cancelledSub = await createTestSubscription(commRouteAgentId, "cancelled");
     const expiredSub = await createTestSubscription(commRouteAgentId, "expired");
+    const touchedSubIds = await getActiveSubscriptionIdsForCommissionRoute();
     try {
       const cookie = await loginAsAdmin();
 
@@ -645,6 +713,7 @@ describe("POST /api/admin/subscriptions/calculate-commissions – status filteri
       const expectedAmount = Number(activeSub.monthlyAmount) * expectedRate;
       expect(Number(agentCommissions[0].amount)).toBeCloseTo(expectedAmount, 2);
     } finally {
+      await cleanupCommissionsForSubscriptions([...touchedSubIds, activeSub.id, cancelledSub.id, expiredSub.id]);
       await db.delete(schema.commissions).where(eq(schema.commissions.agentId, commRouteAgentId));
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, activeSub.id));
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, cancelledSub.id));
@@ -680,6 +749,7 @@ beforeAll(async () => {
     })
     .returning();
   historyAgentId = agent.id;
+  allTestAgentIds.push(historyAgentId);
 
   const loginRes = await request(testApp)
     .post("/api/login")
@@ -691,8 +761,16 @@ beforeAll(async () => {
 }, 30000);
 
 afterAll(async () => {
-  // Per-test cleanups handle individual activity log entries.
-  // Clean up any leftover subscriptions and the test agent.
+  // Per-test cleanups handle individual activity log entries. Clear any leftover
+  // commissions (tied to this agent's subscriptions), activity-log rows, and
+  // subscriptions before deleting the test agent.
+  const subRows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.agentId, historyAgentId));
+  await cleanupCommissionsForSubscriptions(subRows.map((r) => r.id));
+  await db.delete(schema.commissions).where(eq(schema.commissions.agentId, historyAgentId));
+  await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, historyAgentId));
   await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, historyAgentId));
   await db.delete(schema.agents).where(eq(schema.agents.id, historyAgentId));
 });
@@ -1223,9 +1301,17 @@ beforeAll(async () => {
     })
     .returning();
   agentRouteAgentId = agent.id;
+  allTestAgentIds.push(agentRouteAgentId);
 }, 30000);
 
 afterAll(async () => {
+  const subRows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.agentId, agentRouteAgentId));
+  await cleanupCommissionsForSubscriptions(subRows.map((r) => r.id));
+  await db.delete(schema.commissions).where(eq(schema.commissions.agentId, agentRouteAgentId));
+  await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, agentRouteAgentId));
   await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, agentRouteAgentId));
   await db.delete(schema.agents).where(eq(schema.agents.id, agentRouteAgentId));
 });
@@ -1328,9 +1414,12 @@ beforeAll(async () => {
     })
     .returning();
   agentBId = agent.id;
+  allTestAgentIds.push(agentBId);
 }, 30000);
 
 afterAll(async () => {
+  await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, agentBId));
+  await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, agentBId));
   await db.delete(schema.agents).where(eq(schema.agents.id, agentBId));
 });
 
@@ -1692,4 +1781,24 @@ describe("getSubscriptionsDueForExpiry – excludes subscriptions that should no
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
     }
   });
+});
+
+// =========================================================
+// File-level safety net. Registered last, so it runs FIRST (afterAll hooks run
+// in reverse registration order). It purges child rows — commissions and
+// activity-log entries — referencing ANY agent created in this file before the
+// per-fixture afterAll hooks delete those agents and their subscriptions. This
+// guarantees no orphaned commission rows survive a crashed test to collide with
+// a later test file's global calculate-commissions run.
+// =========================================================
+afterAll(async () => {
+  if (allTestAgentIds.length === 0) return;
+  const ids = Array.from(new Set(allTestAgentIds));
+  const subRows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(inArray(schema.subscriptions.agentId, ids));
+  await cleanupCommissionsForSubscriptions(subRows.map((r) => r.id));
+  await db.delete(schema.commissions).where(inArray(schema.commissions.agentId, ids));
+  await db.delete(schema.activityLog).where(inArray(schema.activityLog.actorId, ids));
 });
