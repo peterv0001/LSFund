@@ -2330,7 +2330,10 @@ export async function registerRoutes(
             emailService.sendSubscriptionCancelledEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send subscription cancelled email:', err));
           } else if (status === 'active' && prefs.emailOnReactivated !== false) {
-            emailService.sendSubscriptionReactivatedEmail(agent.email, emailData)
+            const newEndDate = sub.endDate && new Date(sub.endDate).getTime() > Date.now()
+              ? new Date(sub.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+              : undefined;
+            emailService.sendSubscriptionReactivatedEmail(agent.email, { ...emailData, newEndDate })
               .catch((err) => console.error('[Email] Failed to send subscription reactivated email:', err));
           }
         }
@@ -2601,8 +2604,45 @@ export async function registerRoutes(
         return res.status(400).json({ message: parseResult.error.errors[0].message });
       }
       const endDate = parseResult.data.endDate ? new Date(parseResult.data.endDate) : null;
+      const previous = await storage.getSubscription(subId);
+      const previousEnd = previous?.endDate ? new Date(previous.endDate) : null;
       const updated = await storage.updateSubscriptionEndDate(subId, endDate);
       const actorId = req.user?.id;
+
+      // Send a renewal/extension confirmation only when the end date is genuinely
+      // pushed out: it must be in the future AND later than the prior end date (or
+      // there was no prior end date). Skip when the date is cleared (null), set to
+      // the past, or merely shortened, since those are not renewals.
+      const isExtension = !!endDate
+        && endDate.getTime() > Date.now()
+        && (!previousEnd || endDate.getTime() > previousEnd.getTime());
+      if (isExtension && endDate) {
+        const agent = await storage.getAgent(updated.agentId);
+        if (agent) {
+          const newEndDate = endDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          const tierLabel = updated.tier.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+          storage.createNotification({
+            agentId: updated.agentId,
+            type: 'system',
+            title: `Subscription Renewed: ${updated.merchantName}`,
+            message: `Your ${tierLabel} subscription for ${updated.merchantName} has been renewed through ${newEndDate}. Commission accrual continues.`,
+          }).catch((err) => console.error('[Notification] Failed to create subscription renewal notification:', err));
+
+          // Renewal is a positive subscription-continuation event, so it honors the
+          // same opt-out as reactivation (emailOnReactivated). Absent/true => send.
+          const prefs = (agent.emailPreferences as { emailOnReactivated?: boolean } | null) ?? {};
+          if (prefs.emailOnReactivated !== false) {
+            emailService.sendSubscriptionRenewedEmail(agent.email, {
+              firstName: agent.firstName,
+              merchantName: updated.merchantName,
+              tier: tierLabel,
+              newEndDate,
+            }).catch((err) => console.error('[Email] Failed to send subscription renewed email:', err));
+          }
+        }
+      }
+
       if (actorId) {
         storage.logActivity({
           actorId,
@@ -2740,8 +2780,8 @@ export async function registerRoutes(
 
       // Notify the agent by email and in-app notification
       // Only notify on genuine status transitions (skip if status is unchanged)
-      // Only send reactivation notice when subscription was previously paused
-      const isReactivation = status === 'active' && existingSub?.status === 'paused';
+      // Send a reactivation notice when a paused OR cancelled subscription is set active
+      const isReactivation = status === 'active' && (existingSub?.status === 'paused' || existingSub?.status === 'cancelled');
       if (existingSub && existingSub.status !== status && (status === 'paused' || status === 'cancelled' || status === 'expired' || isReactivation)) {
         const agent = await storage.getAgent(existingSub.agentId);
         if (agent) {
@@ -2792,7 +2832,10 @@ export async function registerRoutes(
             emailService.sendSubscriptionExpiredEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription expired email:', err));
           } else if (isReactivation && prefs.emailOnReactivated !== false) {
-            emailService.sendSubscriptionReactivatedEmail(agent.email, emailData)
+            const newEndDate = existingSub.endDate && new Date(existingSub.endDate).getTime() > Date.now()
+              ? new Date(existingSub.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+              : undefined;
+            emailService.sendSubscriptionReactivatedEmail(agent.email, { ...emailData, newEndDate })
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription reactivated email:', err));
           }
         }
