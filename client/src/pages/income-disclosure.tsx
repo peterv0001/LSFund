@@ -13,14 +13,13 @@ import {
 } from "@/components/ui/table";
 
 const rankData = [
-  { rank: "Associate", participants: "62.4%", avgAnnual: "$480", medianAnnual: "$0", pctEarning: "23%" },
-  { rank: "Senior Associate", participants: "18.1%", avgAnnual: "$3,200", medianAnnual: "$1,100", pctEarning: "54%" },
-  { rank: "Team Lead", participants: "10.2%", avgAnnual: "$12,800", medianAnnual: "$7,400", pctEarning: "78%" },
-  { rank: "Division Manager", participants: "5.6%", avgAnnual: "$34,500", medianAnnual: "$22,000", pctEarning: "89%" },
-  { rank: "Regional Director", participants: "2.4%", avgAnnual: "$78,000", medianAnnual: "$55,000", pctEarning: "94%" },
-  { rank: "National VP", participants: "0.9%", avgAnnual: "$145,000", medianAnnual: "$110,000", pctEarning: "97%" },
-  { rank: "Executive Partner", participants: "0.3%", avgAnnual: "$285,000", medianAnnual: "$210,000", pctEarning: "99%" },
-  { rank: "Presidential Diamond", participants: "0.1%", avgAnnual: "$520,000", medianAnnual: "$400,000", pctEarning: "100%" },
+  { rank: "Member (no production)", participants: "62.4%", avgAnnual: "$480", medianAnnual: "$0", pctEarning: "23%" },
+  { rank: "Standard Distributor", participants: "23.1%", avgAnnual: "$4,200", medianAnnual: "$1,400", pctEarning: "58%" },
+  { rank: "Enhanced Distributor", participants: "9.2%", avgAnnual: "$38,000", medianAnnual: "$24,000", pctEarning: "88%" },
+  { rank: "Elite Distributor", participants: "3.1%", avgAnnual: "$118,000", medianAnnual: "$92,000", pctEarning: "95%" },
+  { rank: "Small Agency", participants: "1.4%", avgAnnual: "$185,000", medianAnnual: "$140,000", pctEarning: "97%" },
+  { rank: "Growth Agency", participants: "0.6%", avgAnnual: "$280,000", medianAnnual: "$220,000", pctEarning: "99%" },
+  { rank: "Enterprise Agency", participants: "0.2%", avgAnnual: "$465,000", medianAnnual: "$360,000", pctEarning: "100%" },
 ];
 
 export default function IncomeDisclosurePage() {
@@ -55,7 +54,7 @@ export default function IncomeDisclosurePage() {
             Income Disclosure Statement
           </h1>
           <p className="text-muted-foreground" data-testid="text-disclosure-date">
-            Effective Date: January 1, 2025 | Last Updated: January 1, 2025
+            Effective Date: January 1, 2026 | Last Updated: January 1, 2026
           </p>
         </div>
 
@@ -190,9 +189,9 @@ export default function IncomeDisclosurePage() {
             </p>
             <p>
               Income includes all forms of compensation paid by Leader Shield Funding including, but not
-              limited to: MCA brokerage commissions, subscription platform commissions, pairing bonuses,
-              team override commissions, quarterly accelerator bonuses, rank advancement bonuses, and
-              any other incentive payments.
+              limited to: MCA Opening Agent Pool commissions, Merchant Growth Platform subscription
+              commissions and lifetime residuals, monthly performance accelerators, multi-level override
+              commissions, and any other incentive payments.
             </p>
           </div>
         </section>

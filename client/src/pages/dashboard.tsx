@@ -19,13 +19,25 @@ import {
   Repeat,
   Info,
   AlertTriangle,
-  X
+  X,
+  Award,
+  Layers
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { COMP_V2026 } from "@shared/compensation";
 
 const DISMISSED_EXPIRING_SOON_KEY = "dismissed-expiring-soon-subscriptions";
+
+const TIER_LABELS: Record<string, string> = { standard: "Standard", enhanced: "Enhanced", elite: "Elite" };
+const MEMBERSHIP_LABELS: Record<string, string> = { individual: "Individual", small_agency: "Small Agency", growth_agency: "Growth Agency", enterprise_agency: "Enterprise Agency" };
+const RESIDUAL_LABELS: Record<string, string> = { good_standing: "Good Standing", reduced: "Reduced", suspended: "Suspended" };
+const RESIDUAL_STYLES: Record<string, string> = {
+  good_standing: "text-[#1C8A5B] bg-emerald-50 border-emerald-100",
+  reduced: "text-amber-600 bg-amber-50 border-amber-100",
+  suspended: "text-destructive bg-destructive/5 border-destructive/20",
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -291,6 +303,53 @@ export default function Dashboard() {
             trendUp={referralStats?.thisMonthReferrals > 0}
           />
         </div>
+
+        {(() => {
+          const tier = user?.distributorTier ?? "standard";
+          const membership = user?.membershipType ?? "individual";
+          const residual = user?.residualStatus ?? "good_standing";
+          const plan = COMP_V2026.membership[membership];
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10" data-testid="grid-distributor-status">
+              <div className="rounded-2xl border border-border bg-card p-6" data-testid="card-distributor-tier">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Award className="w-5 h-5 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Distributor Tier</p>
+                </div>
+                <p className="text-2xl font-bold text-primary" data-testid="text-distributor-tier">{TIER_LABELS[tier] ?? tier}</p>
+                <p className="text-xs text-muted-foreground mt-1">Recalculated monthly from your production</p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-6" data-testid="card-membership-type">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Layers className="w-5 h-5 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Membership</p>
+                </div>
+                <p className="text-2xl font-bold text-primary" data-testid="text-membership-type">{MEMBERSHIP_LABELS[membership] ?? membership}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${plan.fee}/mo · waived at ${plan.waiverThreshold.toLocaleString()} collected
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-6" data-testid="card-residual-status">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Repeat className="w-5 h-5 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Residual Standing</p>
+                </div>
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold border ${RESIDUAL_STYLES[residual] ?? ""}`} data-testid="text-residual-status">
+                  {RESIDUAL_LABELS[residual] ?? residual}
+                </span>
+                <p className="text-xs text-muted-foreground mt-2">Eligibility for ongoing subscription residuals</p>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="grid lg:grid-cols-3 gap-8">
           

@@ -43,6 +43,15 @@ import {
   Settings2,
 } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
+import { COMP_V2026, type SubscriptionProduct } from "@shared/compensation";
+
+// ---------------------------------------------------------------------------
+// Display helpers — every compensation number on this page is sourced from the
+// shared COMP_V2026 config so the marketing site never drifts from the engine.
+// ---------------------------------------------------------------------------
+const usd = (n: number) => `$${n.toLocaleString()}`;
+const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+const { subscriptionPricing, subscriptionPools, mcaAllocation, mcaAgencyModels, subscriptionAgencySplits, downlineLevels, maxDownlineLevels, subscriptionAccelerators, mcaAccelerators, distributorQualification, membership, matureResidual } = COMP_V2026;
 
 function AnimatedSection({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef(null);
@@ -415,7 +424,7 @@ export default function LandingSections() {
                   Earn competitive commissions on every funded MCA deal. Fast approvals, high ticket values, and repeat business mean you can start earning within your first week.
                 </p>
                 <div className="space-y-3">
-                  {["22% of Gross Brokerage Revenue", "70% paid at funding, 30% deferred", "Quarterly performance accelerators up to +3%", "Renewal commissions on repeat deals"].map((item, i) => (
+                  {[`${pct(mcaAllocation.openingAgentPool)} Opening Agent Pool on every funded deal`, "Paid monthly on collected revenue", `Performance accelerators up to +${pct(mcaAccelerators.cap)}`, "Repeat-merchant and penetration bonuses"].map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
                       <span className="text-sm text-white/70">{item}</span>
@@ -446,7 +455,7 @@ export default function LandingSections() {
                   Sell monthly subscription products that merchants genuinely need. Every subscription you place generates recurring commissions that compound month after month.
                 </p>
                 <div className="space-y-3">
-                  {["25-50% commission pool by tier", "Aggressive upfront payouts (months 1-3)", "Lifetime 10% residual after month 12", "Four tiers from $149 to $1,497/month", "Powered by Marketing Titan + Lead Titan AI"].map((item, i) => (
+                  {[`Pools up to ${pct(subscriptionPools.elite.tier_3.m1to3)} by distributor tier`, "Aggressive upfront payouts (months 1–3)", `Lifetime residual up to ${pct(matureResidual.tier_3)} after month 12`, `Four tiers from ${usd(subscriptionPricing.tier_1.retail)} to ${usd(subscriptionPricing.tier_4.retail)}/month`, "Powered by Marketing Titan + Lead Titan AI"].map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <CheckCircle2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
                       <span className="text-sm text-white/70">{item}</span>
@@ -463,11 +472,103 @@ export default function LandingSections() {
                 <Zap className="w-8 h-8 text-[#C9A24B]" />
               </div>
               <div className="text-center md:text-left">
-                <h3 className="text-xl font-bold text-white mb-1">The Power of Pairing: +5% Enhancement</h3>
+                <h3 className="text-xl font-bold text-white mb-1">The Power of Pairing</h3>
                 <p className="text-white/60">
-                  Bundle an MCA with a subscription and earn an extra 5% commission on the subscription for the first 3 months.
-                  This is the compound advantage that sets Leader Shield apart.
+                  Attach a subscription to a funded MCA (or fund a subscribing merchant) and you trigger attachment accelerators on
+                  both products — earning more on each side. This is the compound advantage that sets Leader Shield apart.
                 </p>
+              </div>
+            </div>
+          </AnimatedSection>
+        </div>
+      </section>
+
+      {/* Sales Strategy — Distribution Flywheel */}
+      <section className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <AnimatedSection>
+            <div className="text-center mb-16">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-sm font-medium text-primary mb-6">
+                <Gauge className="w-4 h-4" />
+                How The Business Works
+              </span>
+              <h2 className="text-4xl lg:text-5xl font-display font-bold text-primary mb-6">
+                You Open. We Close. Everyone Grows.
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Leader Shield is built so you can focus on relationships and opening opportunities — our partners handle the heavy
+                lifting of closing, underwriting, and fulfillment.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          {/* Opening vs Closing */}
+          <AnimatedSection delay={0.1}>
+            <div className="grid md:grid-cols-2 gap-6 mb-16">
+              <div className="bg-primary/5 border border-primary/10 rounded-2xl p-8" data-testid="card-opening-agent">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Handshake className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-primary mb-2">You're the Opening Agent</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Your job is to start the conversation — find merchants who need capital or growth tools and introduce them.
+                  You own the relationship; you don't need to be an underwriting expert.
+                </p>
+              </div>
+              <div className="bg-muted/40 border border-border rounded-2xl p-8" data-testid="card-closing-partner">
+                <div className="w-12 h-12 rounded-2xl bg-[#C9A24B]/15 flex items-center justify-center mb-4">
+                  <FileCheck className="w-6 h-6 text-[#C9A24B]" />
+                </div>
+                <h3 className="text-xl font-bold text-primary mb-2">Our Partners Close</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Premium Merchant Funding (PMF) and our platform partners handle closing, underwriting, fulfillment, and ongoing
+                  service — which is exactly why PMF takes the largest share of each funded deal.
+                </p>
+              </div>
+            </div>
+          </AnimatedSection>
+
+          {/* Three Engines */}
+          <AnimatedSection delay={0.2}>
+            <h3 className="text-2xl font-bold text-primary mb-2 text-center">Three Engines, One Flywheel</h3>
+            <p className="text-muted-foreground text-center mb-10 max-w-2xl mx-auto">
+              Each merchant relationship can power three connected income engines — and each one feeds the next.
+            </p>
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                { icon: Banknote, title: "Capital", desc: "Fund merchants with a merchant cash advance and earn from the Opening Agent Pool on every deal.", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+                { icon: Repeat, title: "Merchant Growth Platform", desc: "Place recurring subscriptions that solve real problems and pay you compounding monthly residuals.", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+                { icon: Users, title: "Distribution", desc: "Build an organization of distributors and earn override income across up to 3 levels.", color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
+              ].map((item, i) => (
+                <div key={i} className={`rounded-2xl p-8 border ${item.border} ${item.bg}`} data-testid={`engine-card-${i}`}>
+                  <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-4 shadow-sm">
+                    <item.icon className={`w-7 h-7 ${item.color}`} />
+                  </div>
+                  <h4 className="text-lg font-bold text-primary mb-2">{item.title}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </AnimatedSection>
+
+          {/* Flywheel steps */}
+          <AnimatedSection delay={0.3}>
+            <div className="mt-12 bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10 rounded-2xl p-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[
+                  { icon: Target, label: "Open", desc: "Introduce a merchant" },
+                  { icon: Banknote, label: "Fund & Subscribe", desc: "Capital + platform" },
+                  { icon: TrendingUp, label: "Grow", desc: "Merchant succeeds & retains" },
+                  { icon: Repeat, label: "Repeat", desc: "Renewals, residuals & referrals" },
+                ].map((item, i) => (
+                  <div key={i} className="text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-background shadow-sm flex items-center justify-center mx-auto mb-3">
+                      <item.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <p className="font-bold text-primary mb-1">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </AnimatedSection>
@@ -497,9 +598,8 @@ export default function LandingSections() {
               {
                 tier: "Tier 1",
                 name: "Starter",
+                productKey: "tier_1" as SubscriptionProduct,
                 poweredBy: "Powered by Lead Titan AI",
-                price: "$149",
-                pool: "25%",
                 color: "blue",
                 icon: BarChart3,
                 ideal: "Merchants who need a steady flow of new leads to get started",
@@ -508,9 +608,8 @@ export default function LandingSections() {
               {
                 tier: "Tier 2",
                 name: "Growth Foundation",
+                productKey: "tier_2" as SubscriptionProduct,
                 poweredBy: "Powered by Marketing Titan + Lead Titan",
-                price: "$397",
-                pool: "35%",
                 color: "blue",
                 icon: Rocket,
                 ideal: "Businesses ready to build visibility and a stable lead engine",
@@ -519,9 +618,8 @@ export default function LandingSections() {
               {
                 tier: "Tier 3",
                 name: "Revenue Growth System",
+                productKey: "tier_3" as SubscriptionProduct,
                 poweredBy: "Powered by Marketing Titan + Lead Titan",
-                price: "$697",
-                pool: "45%",
                 color: "purple",
                 icon: Bot,
                 popular: true,
@@ -531,9 +629,8 @@ export default function LandingSections() {
               {
                 tier: "Tier 4",
                 name: "Revenue Scale AI",
+                productKey: "tier_4" as SubscriptionProduct,
                 poweredBy: "Powered by Marketing Titan + Lead Titan",
-                price: "$1,497",
-                pool: "50%",
                 color: "amber",
                 icon: Sparkles,
                 bestValue: true,
@@ -561,17 +658,18 @@ export default function LandingSections() {
                     <CardContent className={`p-8 ${highlighted ? 'pt-12' : ''}`}>
                       <div className="flex items-center justify-between mb-4">
                         <span className={`text-xs font-bold uppercase tracking-wider ${c.text}`}>{item.tier}</span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${c.badge}`}>{item.pool} Pool</span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${c.badge}`}>Up to {pct(subscriptionPools.elite[item.productKey as SubscriptionProduct].m1to3)} Pool</span>
                       </div>
                       <div className={`w-14 h-14 rounded-2xl ${c.iconBg} flex items-center justify-center mb-4`}>
                         <item.icon className={`w-7 h-7 ${c.text}`} />
                       </div>
                       <h3 className="text-xl font-bold text-primary mb-1">{item.name}</h3>
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-[#C9A24B] mb-2">{item.poweredBy}</p>
-                      <p className="text-3xl font-bold text-primary mb-2">{item.price}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                      <p className="text-3xl font-bold text-primary mb-1">{usd(subscriptionPricing[item.productKey as SubscriptionProduct].retail)}<span className="text-base font-normal text-muted-foreground">/mo retail</span></p>
+                      <p className="text-sm font-semibold text-[#1C8A5B] mb-2" data-testid={`text-member-price-${i}`}>Distributor member price: {usd(subscriptionPricing[item.productKey as SubscriptionProduct].member)}/mo</p>
                       <p className="text-sm text-muted-foreground mb-6 italic">{item.ideal}</p>
                       <div className="space-y-3">
-                        {item.features.map((feature, j) => (
+                        {item.features.map((feature: string, j: number) => (
                           <div key={j} className="flex items-start gap-2">
                             <CheckCircle2 className={`w-4 h-4 ${c.text} mt-0.5 flex-shrink-0`} />
                             <span className="text-sm text-muted-foreground">{feature}</span>
@@ -605,11 +703,12 @@ export default function LandingSections() {
             </div>
           </AnimatedSection>
 
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {[
-              { title: "Part-Time Agent", subtitle: "10-15 hrs/week", income: "$2,500-$4,000", timeframe: "/month", desc: "2 MCA deals + 3 subscriptions per month. Perfect for side income while keeping your day job.", color: "border-blue-200 bg-blue-50/50" },
-              { title: "Full-Time Producer", subtitle: "40 hrs/week", income: "$8,000-$15,000", timeframe: "/month", desc: "4 MCA deals + 6 subscriptions per month. Full-time focus with compounding platform residuals.", color: "border-primary/20 bg-primary/5", featured: true },
-              { title: "Team Builder", subtitle: "Team of 5-10", income: "$25,000+", timeframe: "/month", desc: "Personal production plus override commissions from your growing team. This is where legacy income begins.", color: "border-emerald-200 bg-emerald-50/50" },
+              { title: "Subscription Producer", subtitle: "Platform-focused", income: "$30K–$60K", timeframe: "/year illustrative", desc: "Builds a book of recurring Merchant Growth Platform subscriptions and earns compounding monthly residuals.", color: "border-blue-200 bg-blue-50/50" },
+              { title: "Balanced Distributor", subtitle: "Capital + platform", income: "$100K–$200K", timeframe: "/year illustrative", desc: "Pairs funded MCA deals with subscriptions, reaching Enhanced tier and stacking accelerators.", color: "border-primary/20 bg-primary/5", featured: true },
+              { title: "Elite Distributor", subtitle: "High-volume producer", income: "$250K–$350K", timeframe: "/year illustrative", desc: "Consistently hits Elite qualification thresholds with strong funded volume and a mature residual base.", color: "border-emerald-200 bg-emerald-50/50" },
+              { title: "Agency Leader", subtitle: "Builds an organization", income: "$200K–$500K+", timeframe: "/year illustrative", desc: "Personal production plus override income from a multi-level distributor organization (up to 3 levels deep).", color: "border-amber-200 bg-amber-50/50" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.15}>
                 <Card className={`h-full border-2 ${item.color} ${item.featured ? 'shadow-xl scale-[1.02]' : 'shadow-sm'}`} data-testid={`income-scenario-${i}`}>
@@ -632,26 +731,18 @@ export default function LandingSections() {
           </div>
 
           <AnimatedSection delay={0.3}>
-            <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10 rounded-2xl p-6 md:p-8">
-              <h3 className="text-xl font-bold text-primary mb-4 text-center">Monthly Income Projection: 4 Subscriptions + 1 MCA Deal</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { month: "Month 1", total: "$2,600", platform: "$400", mca: "$2,200" },
-                  { month: "Month 3", total: "$3,300", platform: "$1,100", mca: "$2,200" },
-                  { month: "Month 6", total: "$4,200", platform: "$2,000", mca: "$2,200" },
-                  { month: "Month 12", total: "$5,700", platform: "$3,500", mca: "$2,200" },
-                ].map((item, i) => (
-                  <div key={i} className="text-center p-4 bg-background rounded-xl shadow-sm">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{item.month}</p>
-                    <p className="text-2xl font-bold text-primary mb-2">{item.total}</p>
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p>MCA: {item.mca}</p>
-                      <p>Platform: {item.platform}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-center text-xs text-muted-foreground mt-4">*Illustrative example only. Actual results depend on individual effort, retention, and market conditions.</p>
+            <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10 rounded-2xl p-6 md:p-8 text-center">
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl mx-auto" data-testid="text-income-disclaimer">
+                <strong className="text-foreground">These figures are illustrative archetypes, not guarantees or projections of income.</strong> They
+                do not represent typical or average earnings. The majority of participants earn little to no income. Actual results
+                depend entirely on your own effort, skill, retention, and market conditions.
+              </p>
+              <Link href="/income-disclosure">
+                <Button variant="outline" className="mt-5" data-testid="button-view-income-disclosure">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Read the full Income Disclosure Statement
+                </Button>
+              </Link>
             </div>
           </AnimatedSection>
         </div>
@@ -678,10 +769,10 @@ export default function LandingSections() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {[
-              { icon: DollarSign, title: "MCA Commission", rate: "22% GBR", desc: "Earn on every funded deal you refer", color: "from-emerald-400 to-emerald-500" },
-              { icon: Repeat, title: "Platform Residuals", rate: "25-50%", desc: "Monthly recurring subscription commissions", color: "from-blue-400 to-blue-500" },
-              { icon: Zap, title: "Pairing Bonus", rate: "+5%", desc: "Enhancement when you bundle MCA + subscription", color: "from-[#E0C27E] to-white/70" },
-              { icon: Users, title: "Team Overrides", rate: "Up to 8%", desc: "Earn on your team's production as a sponsor", color: "from-purple-400 to-purple-500" },
+              { icon: DollarSign, title: "MCA Opening Pool", rate: pct(mcaAllocation.openingAgentPool), desc: "Your share of the gross commission on every funded MCA deal you open", color: "from-emerald-400 to-emerald-500" },
+              { icon: Repeat, title: "Subscription Pools", rate: `Up to ${pct(subscriptionPools.elite.tier_3.m1to3)}`, desc: "Recurring monthly commissions, paid on collected subscription revenue", color: "from-blue-400 to-blue-500" },
+              { icon: Zap, title: "Accelerators", rate: `+${pct(subscriptionAccelerators.cap)}`, desc: "Performance accelerators stacked on top of your subscription pools", color: "from-[#E0C27E] to-white/70" },
+              { icon: Users, title: "Team Overrides", rate: `Up to ${pct(subscriptionAgencySplits.recruiting.override)}`, desc: `Override income across up to ${maxDownlineLevels} downline levels`, color: "from-purple-400 to-purple-500" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.1}>
                 <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-center hover:bg-white/8 transition-all h-full" data-testid={`comp-card-${i}`}>
@@ -699,51 +790,166 @@ export default function LandingSections() {
           <AnimatedSection delay={0.4}>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
                     <DollarSign className="w-5 h-5 text-emerald-400" />
                   </div>
-                  Payout Mechanics
+                  How MCA Commission Splits
                 </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-emerald-400">70%</span>
+                <p className="text-sm text-white/50 mb-6">Every funded deal's gross brokerage commission is allocated four ways.</p>
+                <div className="space-y-3">
+                  {[
+                    { label: "Opening Agent Pool", note: "Producer + agency override", value: mcaAllocation.openingAgentPool, highlight: true },
+                    { label: "Premium Merchant Funding (PMF)", note: "Closing & underwriting partner", value: mcaAllocation.pmf },
+                    { label: "Performance Accelerator Pool", note: "Funds monthly MCA accelerators", value: mcaAllocation.performanceAcceleratorPool },
+                    { label: "LeaderShield EBITDA", note: "Platform operations", value: mcaAllocation.leadershieldEbitda },
+                  ].map((item, i) => (
+                    <div key={i} className={`flex items-center justify-between p-3 rounded-xl ${item.highlight ? 'bg-emerald-500/15 border border-emerald-400/30' : 'bg-white/5'}`}>
+                      <div>
+                        <p className={`font-semibold ${item.highlight ? 'text-emerald-300' : 'text-white/80'}`}>{item.label}</p>
+                        <p className="text-xs text-white/40">{item.note}</p>
+                      </div>
+                      <span className={`text-lg font-bold ${item.highlight ? 'text-emerald-300' : 'text-white/70'}`}>{pct(item.value)}</span>
                     </div>
-                    <div>
-                      <p className="font-semibold text-white">Immediate Release</p>
-                      <p className="text-sm text-white/50">Paid when the deal is confirmed funded</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-blue-400">30%</span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">Deferred Release</p>
-                      <p className="text-sm text-white/50">Released after 60-90 days to cover clawbacks</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                     <Award className="w-5 h-5 text-[#C9A24B]" />
                   </div>
-                  Quarterly Accelerators
+                  Performance Accelerators
                 </h3>
+                <p className="text-sm text-white/50 mb-6">Earned on top of your pools and recalculated every month.</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                    <div>
+                      <p className="font-semibold text-white">Subscription accelerators</p>
+                      <p className="text-xs text-white/40">Volume, quality, MCA attachment, mix & team growth</p>
+                    </div>
+                    <span className="text-lg font-bold text-[#C9A24B]">up to +{pct(subscriptionAccelerators.cap)}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                    <div>
+                      <p className="font-semibold text-white">MCA accelerators</p>
+                      <p className="text-xs text-white/40">Volume, subscription attachment, penetration & repeat merchants</p>
+                    </div>
+                    <span className="text-lg font-bold text-[#C9A24B]">up to +{pct(mcaAccelerators.cap)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
+
+          {/* Distributor Tiers */}
+          <AnimatedSection delay={0.45}>
+            <div className="mt-8">
+              <h3 className="text-2xl font-bold text-white mb-2 text-center">Distributor Tiers</h3>
+              <p className="text-sm text-white/50 text-center mb-8 max-w-2xl mx-auto">Your tier is recalculated every month from your own production. Higher tiers unlock higher commission pools — no recruiting required.</p>
+              <div className="grid md:grid-cols-3 gap-6">
+                {[
+                  { name: "Standard", tier: "standard" as const, blurb: "Active membership + minimum production. The starting tier for every distributor.", qual: null },
+                  { name: "Enhanced", tier: "enhanced" as const, blurb: "Qualify on any one threshold each month.", qual: distributorQualification.enhanced },
+                  { name: "Elite", tier: "elite" as const, blurb: "Qualify on any one threshold each month.", qual: distributorQualification.elite },
+                ].map((t, i) => (
+                  <div key={i} className={`rounded-2xl p-6 border ${i === 2 ? 'bg-[#C9A24B]/10 border-[#C9A24B]/40' : 'bg-white/5 border-white/10'}`} data-testid={`tier-card-${t.tier}`}>
+                    <p className={`text-lg font-bold mb-2 ${i === 2 ? 'text-[#C9A24B]' : 'text-white'}`}>{t.name}</p>
+                    <p className="text-sm text-white/50 mb-4">{t.blurb}</p>
+                    {t.qual && (
+                      <ul className="text-sm text-white/70 space-y-1 mb-4">
+                        <li>{usd(t.qual.fundedVolume)}+ funded volume, or</li>
+                        <li>{usd(t.qual.subscriptionRevenue)}+ monthly subscription revenue, or</li>
+                        <li>{t.qual.activeSubscriptions}+ active subscriptions</li>
+                      </ul>
+                    )}
+                    <div className="pt-3 border-t border-white/10 text-sm">
+                      <span className="text-white/50">Top subscription pool: </span>
+                      <span className={`font-bold ${i === 2 ? 'text-[#C9A24B]' : 'text-white'}`}>{pct(subscriptionPools[t.tier].tier_3.m1to3)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AnimatedSection>
+
+          {/* Subscription decay + residual */}
+          <AnimatedSection delay={0.5}>
+            <div className="mt-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+              <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Repeat className="w-5 h-5 text-blue-400" />
+                </div>
+                Subscription Pools Decay — Then Pay Residuals for Life
+              </h3>
+              <p className="text-sm text-white/50 mb-6">Example: Revenue Growth System (Tier 3) at Elite. Pools step down over the first year, then settle into a residual you keep as long as the merchant stays subscribed.</p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {[
+                  { label: "Months 1–3", bucket: "m1to3" as const },
+                  { label: "Months 4–6", bucket: "m4to6" as const },
+                  { label: "Months 7–9", bucket: "m7to9" as const },
+                  { label: "Months 10–12", bucket: "m10to12" as const },
+                  { label: "Month 13+ residual", bucket: "residual" as const },
+                ].map((d, i) => (
+                  <div key={i} className={`text-center p-4 rounded-xl ${i === 4 ? 'bg-[#1C8A5B]/15 border border-[#1C8A5B]/40' : 'bg-white/5'}`}>
+                    <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">{d.label}</p>
+                    <p className={`text-2xl font-bold ${i === 4 ? 'text-[#1C8A5B]' : 'text-white'}`}>{pct(subscriptionPools.elite.tier_3[d.bucket])}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-white/40 mt-4">Starter (Tier 1) pays no residual. Tier 2 settles at {pct(matureResidual.tier_2)} and Tiers 3–4 at {pct(matureResidual.tier_3)} for the life of the subscription.</p>
+            </div>
+          </AnimatedSection>
+
+          {/* Agency overrides + downline */}
+          <AnimatedSection delay={0.55}>
+            <div className="mt-8 grid md:grid-cols-2 gap-8">
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-purple-400" />
+                  </div>
+                  Agency Override Models
+                </h3>
+                <p className="text-sm text-white/50 mb-6">Choose how much you keep as a producer versus pass to your organization as override. The total is always the same — overrides come out of your share, never on top of it.</p>
+                <div className="space-y-2">
+                  {[
+                    { name: "Independent", key: "independent" },
+                    { name: "Balanced", key: "balanced" },
+                    { name: "Leadership", key: "leadership" },
+                    { name: "Recruiting", key: "recruiting" },
+                  ].map((m, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl text-sm">
+                      <span className="text-white/80 font-semibold">{m.name}</span>
+                      <span className="text-white/50">
+                        Producer {pct(subscriptionAgencySplits[m.key].producer)} · Override {pct(subscriptionAgencySplits[m.key].override)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#C9A24B]/20 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-[#C9A24B]" />
+                  </div>
+                  Override Flows {maxDownlineLevels} Levels Deep
+                </h3>
+                <p className="text-sm text-white/50 mb-6">The override portion is distributed across your organization by level.</p>
                 <div className="space-y-3">
                   {[
-                    { volume: "$250K+", bonus: "+0.5%" },
-                    { volume: "$500K+", bonus: "+1.0%" },
-                    { volume: "$1M+", bonus: "+2.0%" },
-                    { volume: "$2M+", bonus: "+3.0%" },
-                  ].map((item, i) => (
+                    { level: "Level 1", note: "Your direct distributors", value: downlineLevels.level1 },
+                    { level: "Level 2", note: "Their distributors", value: downlineLevels.level2 },
+                    { level: "Level 3", note: "Third generation", value: downlineLevels.level3 },
+                  ].map((l, i) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                      <span className="text-white/70">{item.volume} quarterly volume</span>
-                      <span className="font-bold text-[#C9A24B]">{item.bonus}</span>
+                      <div>
+                        <p className="font-semibold text-white/80">{l.level}</p>
+                        <p className="text-xs text-white/40">{l.note}</p>
+                      </div>
+                      <span className="text-lg font-bold text-[#C9A24B]">{pct(l.value)}</span>
                     </div>
                   ))}
                 </div>
@@ -751,7 +957,7 @@ export default function LandingSections() {
             </div>
           </AnimatedSection>
 
-          <AnimatedSection delay={0.5}>
+          <AnimatedSection delay={0.6}>
             <div className="text-center mt-12">
               <Link href="/signup">
                 <Button size="lg" className="h-16 px-10 text-lg font-bold bg-white text-primary shadow-2xl hover:bg-white/90 transition-all hover:scale-105">
@@ -848,24 +1054,30 @@ export default function LandingSections() {
             ))}
           </div>
 
-          {/* Platform Fee */}
+          {/* Membership Fee */}
           <AnimatedSection delay={0.3}>
-            <div className="bg-background border border-border rounded-2xl p-8 md:p-10 max-w-3xl mx-auto text-center shadow-sm">
-              <h3 className="text-2xl font-bold text-primary mb-2">Platform Fee: $99/month</h3>
-              <p className="text-muted-foreground mb-6">Access to CRM, training, reporting, and support. Production waivers available.</p>
-              <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-background border border-border rounded-2xl p-8 md:p-10 max-w-4xl mx-auto text-center shadow-sm">
+              <h3 className="text-2xl font-bold text-primary mb-2">Membership: {usd(membership.individual.fee)}/month</h3>
+              <p className="text-muted-foreground mb-6">
+                Access to your CRM, training, reporting, and support. Your membership is <strong className="text-foreground">automatically waived</strong> in any
+                month you collect at least {usd(membership.individual.waiverThreshold)} in commissions — so active, producing distributors effectively pay nothing.
+              </p>
+              <p className="text-sm font-semibold text-primary mb-4">Building an agency? Pick the plan that fits your team:</p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { revenue: "$3,000+", benefit: "50% Off" },
-                  { revenue: "$5,000+", benefit: "100% Waived" },
-                  { revenue: "$8,500+", benefit: "Waived + $100 Credit" },
-                ].map((item, i) => (
-                  <div key={i} className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <p className="text-xs font-bold text-emerald-700 mb-1">{item.revenue}</p>
-                    <p className="text-sm font-bold text-emerald-600">{item.benefit}</p>
+                  { name: "Individual", key: "individual", band: "Solo distributor" },
+                  { name: "Small Agency", key: "small_agency", band: "1–5 distributors" },
+                  { name: "Growth Agency", key: "growth_agency", band: "5–10 distributors" },
+                  { name: "Enterprise Agency", key: "enterprise_agency", band: "11+ distributors" },
+                ].map((m, i) => (
+                  <div key={i} className="p-5 bg-muted/40 rounded-xl border border-border text-left" data-testid={`membership-plan-${m.key}`}>
+                    <p className="text-sm font-bold text-primary mb-1">{m.name}</p>
+                    <p className="text-xs text-muted-foreground mb-3">{m.band}</p>
+                    <p className="text-2xl font-bold text-primary">{usd(membership[m.key].fee)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+                    <p className="text-xs font-semibold text-[#1C8A5B] mt-2">Waived at {usd(membership[m.key].waiverThreshold)} collected</p>
                   </div>
                 ))}
               </div>
-              <p className="text-sm font-semibold text-emerald-600">Active, producing agents effectively pay nothing.</p>
             </div>
           </AnimatedSection>
         </div>
@@ -1010,12 +1222,24 @@ export default function LandingSections() {
                   answer="No prior experience is required. Our comprehensive training academy covers everything from product knowledge and sales techniques to compliance guidelines. You'll have access to scripts, objection handlers, and ongoing support from our team."
                 />
                 <FAQItem
-                  question="Can I sell MCA and subscriptions to the same merchant?"
-                  answer="Absolutely, and we encourage it. When you pair a new subscription with a funded MCA, you earn a 5% commission enhancement on the subscription for the first three months. This pairing strategy maximizes your upfront earnings."
+                  question="Can I sell both MCA and subscriptions to the same merchant?"
+                  answer="Absolutely, and we encourage it. Distributors can sell both products. Attaching a subscription to a funded MCA (or funding a subscribing merchant) triggers attachment accelerators on both products, so you earn more on each side."
                 />
                 <FAQItem
-                  question="Is there a fee to be a Leader Shield agent?"
-                  answer="Full agents pay a $99 monthly platform fee for access to the CRM, reporting, training, and support. This fee can be reduced (50% off at $3,000 revenue) or completely waived ($5,000+ revenue). Top producers get a $100 credit on top of the waiver. Referral-only affiliates have no platform fee."
+                  question="How are commissions calculated and how often am I paid?"
+                  answer="Commissions are calculated on collected revenue — the money the company actually collects from merchants — and are paid monthly."
+                />
+                <FAQItem
+                  question="How do distributor tiers work?"
+                  answer={`There are three tiers — Standard, Enhanced, and Elite — and your tier is recalculated every month from your own production. You reach Enhanced by hitting any one of: ${usd(distributorQualification.enhanced.fundedVolume)} funded volume, ${usd(distributorQualification.enhanced.subscriptionRevenue)} in monthly subscription revenue, or ${distributorQualification.enhanced.activeSubscriptions} active subscriptions. Elite requires ${usd(distributorQualification.elite.fundedVolume)}, ${usd(distributorQualification.elite.subscriptionRevenue)}, or ${distributorQualification.elite.activeSubscriptions} active subscriptions. Higher tiers earn higher commission pools.`}
+                />
+                <FAQItem
+                  question="How deep do override commissions go?"
+                  answer={`Override commissions flow up to ${maxDownlineLevels} levels deep in your organization — ${pct(downlineLevels.level1)} on Level 1, ${pct(downlineLevels.level2)} on Level 2, and ${pct(downlineLevels.level3)} on Level 3 of the override portion you've allocated to your team.`}
+                />
+                <FAQItem
+                  question="Is there a fee to be a Leader Shield distributor?"
+                  answer={`Distributors pay a ${usd(membership.individual.fee)} monthly membership for access to the CRM, reporting, training, and support. It is automatically waived in any month you collect at least ${usd(membership.individual.waiverThreshold)} in commissions, so active producers effectively pay nothing. Agency plans are available at ${usd(membership.small_agency.fee)}, ${usd(membership.growth_agency.fee)}, and ${usd(membership.enterprise_agency.fee)} per month with higher waiver thresholds. Referral-only affiliates have no membership fee.`}
                 />
               </CardContent>
             </Card>
