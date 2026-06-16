@@ -561,6 +561,86 @@ export const migrations: Migration[] = [
       console.log("[migrations] Dropped landing_page_views table");
     },
   },
+  {
+    name: "020_add_compensation_v2026_fields",
+    async run(client) {
+      // --- New enum types (idempotent via duplicate_object guard) ---
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE distributor_tier AS ENUM ('standard', 'enhanced', 'elite');
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE agency_model AS ENUM ('independent', 'small_agency', 'leadership', 'recruiting');
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE membership_type AS ENUM ('individual', 'small_agency', 'growth_agency', 'enterprise_agency');
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE residual_status AS ENUM ('good_standing', 'reduced', 'suspended');
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE commission_model AS ENUM ('legacy', 'v2026');
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+
+      // --- Agents: additive distributor/agency/membership/residual attributes.
+      // Existing agents fall back to sensible defaults (standard / independent /
+      // individual / good_standing / 0% override).
+      await client.query(`
+        ALTER TABLE agents
+          ADD COLUMN IF NOT EXISTS distributor_tier distributor_tier NOT NULL DEFAULT 'standard',
+          ADD COLUMN IF NOT EXISTS agency_model agency_model NOT NULL DEFAULT 'independent',
+          ADD COLUMN IF NOT EXISTS override_split_pct numeric(5,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS membership_type membership_type NOT NULL DEFAULT 'individual',
+          ADD COLUMN IF NOT EXISTS residual_status residual_status NOT NULL DEFAULT 'good_standing'
+      `);
+
+      // --- Deals & subscriptions: per-record commission model flag.
+      // Step 1 adds the column with DEFAULT 'legacy' so EVERY existing row keeps
+      // its current terms. Step 2 flips the default to 'v2026' so NEW rows opt
+      // into the 2026 model going forward, without rewriting history.
+      await client.query(`
+        ALTER TABLE deals
+          ADD COLUMN IF NOT EXISTS commission_model commission_model NOT NULL DEFAULT 'legacy'
+      `);
+      await client.query(`ALTER TABLE deals ALTER COLUMN commission_model SET DEFAULT 'v2026'`);
+
+      await client.query(`
+        ALTER TABLE subscriptions
+          ADD COLUMN IF NOT EXISTS commission_model commission_model NOT NULL DEFAULT 'legacy'
+      `);
+      await client.query(`ALTER TABLE subscriptions ALTER COLUMN commission_model SET DEFAULT 'v2026'`);
+
+      console.log("[migrations] Added 2026 compensation fields (agents attributes + commission_model on deals/subscriptions)");
+    },
+    async down(client) {
+      // Drop columns first, then the enum types they depended on.
+      await client.query(`ALTER TABLE subscriptions DROP COLUMN IF EXISTS commission_model`);
+      await client.query(`ALTER TABLE deals DROP COLUMN IF EXISTS commission_model`);
+      await client.query(`
+        ALTER TABLE agents
+          DROP COLUMN IF EXISTS distributor_tier,
+          DROP COLUMN IF EXISTS agency_model,
+          DROP COLUMN IF EXISTS override_split_pct,
+          DROP COLUMN IF EXISTS membership_type,
+          DROP COLUMN IF EXISTS residual_status
+      `);
+      await client.query(`DROP TYPE IF EXISTS commission_model`);
+      await client.query(`DROP TYPE IF EXISTS residual_status`);
+      await client.query(`DROP TYPE IF EXISTS membership_type`);
+      await client.query(`DROP TYPE IF EXISTS agency_model`);
+      await client.query(`DROP TYPE IF EXISTS distributor_tier`);
+      console.log("[migrations] Reverted 2026 compensation fields");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

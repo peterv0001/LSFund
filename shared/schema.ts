@@ -26,6 +26,16 @@ export const holdbackStatusEnum = pgEnum("holdback_status", ['held', 'partially_
 export const fulfillmentTierLevelEnum = pgEnum("fulfillment_tier_level", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
 export const invitationStatusEnum = pgEnum("invitation_status", ['pending', 'accepted', 'cancelled', 'expired']);
 
+// === 2026 COMPENSATION MODEL ENUMS ===
+// Additive, going-forward attributes for the LeaderShield Compensation
+// Architecture & Economics Manual. Existing records keep `legacy` terms; new
+// records are tagged `v2026` so the engine can branch without touching history.
+export const distributorTierEnum = pgEnum("distributor_tier", ['standard', 'enhanced', 'elite']);
+export const agencyModelEnum = pgEnum("agency_model", ['independent', 'small_agency', 'leadership', 'recruiting']);
+export const membershipTypeEnum = pgEnum("membership_type", ['individual', 'small_agency', 'growth_agency', 'enterprise_agency']);
+export const residualStatusEnum = pgEnum("residual_status", ['good_standing', 'reduced', 'suspended']);
+export const commissionModelEnum = pgEnum("commission_model", ['legacy', 'v2026']);
+
 // === TABLE DEFINITIONS ===
 
 export const agents = pgTable("agents", {
@@ -87,6 +97,18 @@ export const agents = pgTable("agents", {
   // Password Reset
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
+
+  // === 2026 COMPENSATION MODEL (additive; recalculated by later tasks) ===
+  // Distributor performance tier (qualification recalculated monthly).
+  distributorTier: distributorTierEnum("distributor_tier").default("standard").notNull(),
+  // Agency-building model; pairs with the override split taken within the pool.
+  agencyModel: agencyModelEnum("agency_model").default("independent").notNull(),
+  // Override split percentage (0-100) the agency takes within the opening pool.
+  overrideSplitPct: decimal("override_split_pct", { precision: 5, scale: 2 }).default("0").notNull(),
+  // Membership category driving the monthly fee + automatic waiver threshold.
+  membershipType: membershipTypeEnum("membership_type").default("individual").notNull(),
+  // Residual good-standing status (governs residual eligibility/decay later).
+  residualStatus: residualStatusEnum("residual_status").default("good_standing").notNull(),
 
   // Timestamps
   lastLoginAt: timestamp("last_login_at"),
@@ -189,7 +211,11 @@ export const deals = pgTable("deals", {
   // === CLOSING TEAM (hidden from agents) ===
   fulfillmentAgentId: integer("fulfillment_agent_id"),
   status: dealStatusEnum("status").default("pending").notNull(),
-  
+
+  // Going-forward compensation switch. Existing rows are `legacy`; new rows
+  // default to `v2026` (DB default set in the additive migration).
+  commissionModel: commissionModelEnum("commission_model").default("v2026").notNull(),
+
   notes: text("notes"),
   approvedById: integer("approved_by_id"),
   
@@ -422,6 +448,9 @@ export const subscriptions = pgTable("subscriptions", {
   tier: subscriptionTierEnum("tier").notNull(),
   monthlyAmount: decimal("monthly_amount", { precision: 10, scale: 2 }).notNull(),
   status: subscriptionStatusEnum("status").default("active").notNull(),
+  // Going-forward compensation switch. Existing rows are `legacy`; new rows
+  // default to `v2026` (DB default set in the additive migration).
+  commissionModel: commissionModelEnum("commission_model").default("v2026").notNull(),
   mcaPairedDealId: integer("mca_paired_deal_id"),
   startDate: timestamp("start_date").defaultNow().notNull(),
   endDate: timestamp("end_date"),
@@ -785,6 +814,12 @@ export const insertAgentSchema = createInsertSchema(agents).omit({
   rightLegVolume: true,
   carryoverLeft: true,
   carryoverRight: true,
+  // 2026 compensation attributes are server/admin-managed, never client-set.
+  distributorTier: true,
+  agencyModel: true,
+  overrideSplitPct: true,
+  membershipType: true,
+  residualStatus: true,
 });
 
 export const updateAgentProfileSchema = z.object({
@@ -831,6 +866,7 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   pmfSubmittedAt: true,
   pmfSubmissionId: true,
   pmfSubmissionStatus: true,
+  commissionModel: true,
 }).extend({
   loanAmount: z.coerce.number().min(1000, "Loan amount must be at least $1,000"),
   requestedAmount: z.preprocess(
@@ -954,6 +990,7 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   cardBrand: true,
   lastChargedAt: true,
   nextBillingDate: true,
+  commissionModel: true,
 }).extend({
   monthlyAmount: z.coerce.number().min(0),
 });
