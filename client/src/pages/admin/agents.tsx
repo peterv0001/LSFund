@@ -18,6 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
   AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,29 @@ type AgentWithCount = Agent & { totalSubscriptionCount: number; activeSubscripti
 
 const STATUS_LS_KEY = "admin:agents:statusFilter";
 
+// Governance (Task #473) display maps — kept aligned with the agent dashboard.
+const TIER_LABELS: Record<string, string> = { standard: "Standard", enhanced: "Enhanced", elite: "Elite" };
+const MEMBERSHIP_LABELS: Record<string, string> = { individual: "Individual", small_agency: "Small Agency", growth_agency: "Growth Agency", enterprise_agency: "Enterprise Agency" };
+const AGENCY_MODEL_LABELS: Record<string, string> = { independent: "Independent", small_agency: "Small Agency", leadership: "Leadership", recruiting: "Recruiting" };
+const RESIDUAL_LABELS: Record<string, string> = { good_standing: "Good Standing", reduced: "Reduced", suspended: "Suspended" };
+
+function getTierBadgeColor(tier: string) {
+  switch (tier) {
+    case 'elite': return 'bg-amber-100 text-amber-800 border-amber-200';
+    case 'enhanced': return 'bg-blue-100 text-blue-800 border-blue-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+}
+
+function getResidualBadgeColor(status: string) {
+  switch (status) {
+    case 'good_standing': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    case 'reduced': return 'bg-amber-100 text-amber-800 border-amber-200';
+    case 'suspended': return 'bg-red-100 text-red-800 border-red-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+}
+
 export default function AdminAgents() {
   const urlSearch = useSearch();
   const [, setLocation] = useLocation();
@@ -95,6 +119,8 @@ export default function AdminAgents() {
   });
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [governanceAgent, setGovernanceAgent] = useState<Agent | null>(null);
+  const [governanceDialogOpen, setGovernanceDialogOpen] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -232,6 +258,45 @@ export default function AdminAgents() {
     },
   });
 
+  const recalcMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(api.admin.agents.recalculateGovernance.path, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to recalculate');
+      return res.json();
+    },
+    onSuccess: (summary: { processed: number; changed: number }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'agents'] });
+      toast({ title: "Tiers recalculated", description: `${summary.changed} of ${summary.processed} agents changed` });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to recalculate tiers", variant: "destructive" });
+    },
+  });
+
+  const residualMutation = useMutation({
+    mutationFn: async ({ id, status, reason }: { id: number; status: string; reason?: string }) => {
+      const res = await fetch(buildUrl(api.admin.agents.setResidualStatus.path, { id }), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, reason }),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to update residual status');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'agents'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'agent-governance'] });
+      toast({ title: "Success", description: "Residual standing updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update residual standing", variant: "destructive" });
+    },
+  });
+
   const getRankBadgeColor = (rank: string) => {
     switch (rank) {
       case 'partner': return 'bg-purple-100 text-purple-800 border-purple-200';
@@ -264,9 +329,21 @@ export default function AdminAgents() {
               View and manage all agents in the network.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="w-4 h-4" />
-            {data?.total || 0} total agents
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-recalculate-tiers"
+              onClick={() => recalcMutation.mutate()}
+              disabled={recalcMutation.isPending}
+            >
+              {recalcMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Recalculate Tiers
+            </Button>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="w-4 h-4" />
+              {data?.total || 0} total agents
+            </div>
           </div>
         </header>
 
@@ -334,6 +411,8 @@ export default function AdminAgents() {
                     <SortIcon column="rank" />
                   </button>
                 </TableHead>
+                <TableHead>Tier</TableHead>
+                <TableHead>Residual</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>
                   <button
@@ -362,7 +441,7 @@ export default function AdminAgents() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
+                  <TableCell colSpan={9} className="text-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                     Loading agents...
                   </TableCell>
@@ -385,6 +464,16 @@ export default function AdminAgents() {
                     <TableCell>
                       <Badge variant="outline" className={getRankBadgeColor(agent.currentRank)}>
                         {agent.currentRank}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getTierBadgeColor(agent.distributorTier)} data-testid={`badge-tier-${agent.id}`}>
+                        {TIER_LABELS[agent.distributorTier] ?? agent.distributorTier}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getResidualBadgeColor(agent.residualStatus)} data-testid={`badge-residual-${agent.id}`}>
+                        {RESIDUAL_LABELS[agent.residualStatus] ?? agent.residualStatus}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -470,6 +559,13 @@ export default function AdminAgents() {
                             <Edit className="w-4 h-4 mr-2" />
                             Edit Agent
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            data-testid={`menu-governance-${agent.id}`}
+                            onClick={() => { setGovernanceAgent(agent); setGovernanceDialogOpen(true); }}
+                          >
+                            <ShieldCheck className="w-4 h-4 mr-2" />
+                            Governance
+                          </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Eye className="w-4 h-4 mr-2" />
                             View Genealogy
@@ -506,7 +602,7 @@ export default function AdminAgents() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                     No agents found
                   </TableCell>
                 </TableRow>
@@ -560,7 +656,137 @@ export default function AdminAgents() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Governance Dialog */}
+        <Dialog open={governanceDialogOpen} onOpenChange={setGovernanceDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Governance</DialogTitle>
+              <DialogDescription>
+                {governanceAgent ? `${governanceAgent.firstName} ${governanceAgent.lastName}` : ''} — qualification, membership &amp; residual standing
+              </DialogDescription>
+            </DialogHeader>
+            {governanceAgent && (
+              <GovernancePanel
+                agent={governanceAgent}
+                onSetResidual={(status, reason) => residualMutation.mutate({ id: governanceAgent.id, status, reason })}
+                isUpdating={residualMutation.isPending}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
+    </div>
+  );
+}
+
+function GovernancePanel({ agent, onSetResidual, isUpdating }: {
+  agent: Agent;
+  onSetResidual: (status: string, reason?: string) => void;
+  isUpdating: boolean;
+}) {
+  const [residual, setResidual] = useState<string>(agent.residualStatus);
+  const [reason, setReason] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'agent-governance', agent.id],
+    queryFn: async () => {
+      const res = await fetch(buildUrl(api.admin.agents.governance.path, { id: agent.id }), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load governance');
+      return res.json();
+    },
+  });
+
+  const fmtMoney = (n: number) => `$${Math.round(Number(n || 0)).toLocaleString()}`;
+
+  return (
+    <div className="space-y-5 py-2">
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8 text-muted-foreground">
+          <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Loading governance…
+        </div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-3">
+              <p className="text-xs text-muted-foreground">Current Tier</p>
+              <Badge variant="outline" className={getTierBadgeColor(data.distributorTier)} data-testid="text-current-tier">
+                {TIER_LABELS[data.distributorTier] ?? data.distributorTier}
+              </Badge>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs text-muted-foreground">Qualified Tier (trailing month)</p>
+              <Badge variant="outline" className={getTierBadgeColor(data.qualifiedTier)} data-testid="text-qualified-tier">
+                {TIER_LABELS[data.qualifiedTier] ?? data.qualifiedTier}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-1 text-sm">
+            <p className="font-medium mb-1">Trailing-month production</p>
+            <div className="flex justify-between"><span className="text-muted-foreground">Funded volume</span><span data-testid="text-funded-volume">{fmtMoney(data.metrics.fundedVolume)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Active subscriptions</span><span data-testid="text-active-subs">{data.metrics.activeSubscriptions}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Subscription MRR</span><span>{fmtMoney(data.metrics.subscriptionRevenue)}</span></div>
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-1 text-sm">
+            <p className="font-medium mb-1">Membership</p>
+            <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span>{MEMBERSHIP_LABELS[data.membership.membershipType] ?? data.membership.membershipType}</span></div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Monthly fee</span>
+              <span data-testid="text-membership-fee">
+                {data.membership.waived ? <span className="text-emerald-700 font-medium">Waived</span> : fmtMoney(data.membership.fee)}
+              </span>
+            </div>
+            {data.membership.waived && (
+              <p className="text-xs text-emerald-700">Production-based waiver active.</p>
+            )}
+          </div>
+
+          {data.buyoutEligibleSubscriptions?.length > 0 && (
+            <div className="rounded-lg border p-3 space-y-1 text-sm">
+              <p className="font-medium mb-1">Buyout-eligible subscriptions</p>
+              {data.buyoutEligibleSubscriptions.map((s: any) => (
+                <div key={s.id} className="flex justify-between" data-testid={`buyout-sub-${s.id}`}>
+                  <span className="text-muted-foreground">{s.merchantName} ({TIER_LABELS[s.tier] ?? s.tier})</span>
+                  <span>{s.monthsActive} mo</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground py-4">Could not load governance details.</p>
+      )}
+
+      <div className="rounded-lg border p-3 space-y-3">
+        <p className="font-medium text-sm">Residual standing</p>
+        <Select value={residual} onValueChange={setResidual}>
+          <SelectTrigger data-testid="select-residual-status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="good_standing">Good Standing</SelectItem>
+            <SelectItem value="reduced">Reduced (50%)</SelectItem>
+            <SelectItem value="suspended">Suspended (0%)</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Reason (optional)"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          data-testid="input-residual-reason"
+        />
+        <Button
+          size="sm"
+          data-testid="button-set-residual"
+          disabled={isUpdating || residual === agent.residualStatus}
+          onClick={() => onSetResidual(residual, reason || undefined)}
+        >
+          {isUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Update Standing
+        </Button>
+      </div>
     </div>
   );
 }
@@ -573,6 +799,8 @@ function EditAgentForm({ agent, onSave, isLoading }: { agent: Agent; onSave: (da
     phone: agent.phone || '',
     currentRank: agent.currentRank,
     status: agent.status,
+    membershipType: agent.membershipType,
+    agencyModel: agent.agencyModel,
   });
 
   return (
@@ -633,6 +861,36 @@ function EditAgentForm({ agent, onSave, isLoading }: { agent: Agent; onSave: (da
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
               <SelectItem value="suspended">Suspended</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Membership Type</Label>
+          <Select value={formData.membershipType} onValueChange={(v) => setFormData(f => ({ ...f, membershipType: v as any }))}>
+            <SelectTrigger data-testid="select-membership-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="individual">Individual</SelectItem>
+              <SelectItem value="small_agency">Small Agency</SelectItem>
+              <SelectItem value="growth_agency">Growth Agency</SelectItem>
+              <SelectItem value="enterprise_agency">Enterprise Agency</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Agency Model</Label>
+          <Select value={formData.agencyModel} onValueChange={(v) => setFormData(f => ({ ...f, agencyModel: v as any }))}>
+            <SelectTrigger data-testid="select-agency-model">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="independent">Independent</SelectItem>
+              <SelectItem value="small_agency">Small Agency</SelectItem>
+              <SelectItem value="leadership">Leadership</SelectItem>
+              <SelectItem value="recruiting">Recruiting</SelectItem>
             </SelectContent>
           </Select>
         </div>

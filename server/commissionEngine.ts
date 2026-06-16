@@ -21,6 +21,7 @@ import {
   type SubscriptionProduct,
   type DecayBucket,
 } from './config';
+import { residualGovernanceFactor, type ResidualStatus } from './governance';
 
 export type AgencyModel = 'independent' | 'small_agency' | 'leadership' | 'recruiting';
 export type SubscriptionCommissionType = 'subscription_commission' | 'subscription_residual';
@@ -117,6 +118,12 @@ export interface SubscriptionV2026Params {
   isMemberPurchase?: boolean;
   /** Qualified accelerator rates (qualification is computed elsewhere). */
   acceleratorRates?: number[];
+  /**
+   * Residual governance (Task #473) — only affects the residual (Month 13+)
+   * bucket. Defaults preserve prior behavior (good standing + active membership).
+   */
+  residualStatus?: ResidualStatus;
+  membershipActive?: boolean;
 }
 
 export interface SubscriptionV2026Result {
@@ -161,7 +168,19 @@ export function computeSubscriptionV2026(params: SubscriptionV2026Params): Subsc
   }
 
   const poolRate = COMP_V2026.subscriptionPools[params.distributorTier][params.tier][bucket];
-  const poolAmount = params.collectedRevenue * poolRate;
+
+  // Residual governance (Task #473): the residual (Month 13+) bucket only pays
+  // when the distributor's residual standing & membership allow it. Suspended
+  // residuals pay $0, reduced standing pays half. Active commissions (months
+  // 1-12) are never affected — the factor is always 1 there.
+  const govFactor = residualGovernanceFactor({
+    isResidual,
+    residualStatus: params.residualStatus ?? 'good_standing',
+    membershipActive: params.membershipActive ?? true,
+    tier: params.tier,
+  });
+
+  const poolAmount = params.collectedRevenue * poolRate * govFactor;
 
   const splitKey = SUBSCRIPTION_SPLIT_BY_AGENCY_MODEL[params.agencyModel];
   const split = COMP_V2026.subscriptionAgencySplits[splitKey];
@@ -172,7 +191,7 @@ export function computeSubscriptionV2026(params: SubscriptionV2026Params): Subsc
     params.acceleratorRates,
     COMP_V2026.subscriptionAccelerators.cap,
   );
-  const acceleratorAmount = params.collectedRevenue * acceleratorRate;
+  const acceleratorAmount = params.collectedRevenue * acceleratorRate * govFactor;
 
   return {
     bucket,
@@ -281,7 +300,12 @@ export async function fireSubscriptionV2026(
       isMemberPurchase?: boolean | null;
       mcaPairedDealId?: number | null;
     };
-    agent: { distributorTier: DistributorTier; agencyModel: AgencyModel };
+    agent: {
+      distributorTier: DistributorTier;
+      agencyModel: AgencyModel;
+      residualStatus?: ResidualStatus;
+      membershipActive?: boolean;
+    };
     monthsSinceStart: number;
     periodDate: string;
     /** Extra (monthly-aggregate) accelerator rates sourced by the caller. */
@@ -305,6 +329,8 @@ export async function fireSubscriptionV2026(
     monthsSinceStart,
     agencyModel: agent.agencyModel,
     isMemberPurchase: sub.isMemberPurchase ?? false,
+    residualStatus: agent.residualStatus,
+    membershipActive: agent.membershipActive,
     acceleratorRates,
   });
 

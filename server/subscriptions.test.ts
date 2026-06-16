@@ -1787,6 +1787,211 @@ describe("getSubscriptionsDueForExpiry – excludes subscriptions that should no
 });
 
 // =========================================================
+// POST /api/subscriptions – internal member purchases (Task #473)
+// Member purchases price at the discounted member rate and pay ZERO commission.
+// =========================================================
+
+const MEMBER_AGENT_EMAIL_PREFIX = `member-test-${Date.now()}`;
+const MEMBER_AGENT_PASSWORD = "MemberTestPass1!";
+let memberAgentId: number;
+let memberAgentCookie: string[];
+
+beforeAll(async () => {
+  const [agent] = await db
+    .insert(schema.agents)
+    .values({
+      email: `${MEMBER_AGENT_EMAIL_PREFIX}@example.com`,
+      password: await hashPasswordForTest(MEMBER_AGENT_PASSWORD),
+      firstName: "Member",
+      lastName: "Agent",
+      currentRank: "agent",
+      highestRank: "agent",
+      isAdmin: false,
+    })
+    .returning();
+  memberAgentId = agent.id;
+  allTestAgentIds.push(memberAgentId);
+
+  const loginRes = await request(testApp)
+    .post("/api/login")
+    .send({ username: `${MEMBER_AGENT_EMAIL_PREFIX}@example.com`, password: MEMBER_AGENT_PASSWORD });
+  memberAgentCookie = loginRes.headers["set-cookie"] as unknown as string[];
+}, 30000);
+
+afterAll(async () => {
+  const subRows = await db
+    .select({ id: schema.subscriptions.id })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.agentId, memberAgentId));
+  await cleanupCommissionsForSubscriptions(subRows.map((r) => r.id));
+  await db.delete(schema.commissions).where(eq(schema.commissions.agentId, memberAgentId));
+  await db.delete(schema.activityLog).where(eq(schema.activityLog.actorId, memberAgentId));
+  await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, memberAgentId));
+  await db.delete(schema.agents).where(eq(schema.agents.id, memberAgentId));
+});
+
+describe("POST /api/subscriptions – member pricing & zero commission", () => {
+  it("prices a member purchase at the discounted member rate and creates no commissions", async () => {
+    const res = await request(testApp)
+      .post("/api/subscriptions")
+      .set("Cookie", memberAgentCookie)
+      .send({ merchantName: "Member Merchant", tier: "tier_2", isMemberPurchase: true })
+      .expect(201);
+
+    try {
+      // Priced at the member rate (249), not the retail rate (397).
+      expect(Number(res.body.monthlyAmount)).toBe(249);
+      expect(res.body.isMemberPurchase).toBe(true);
+
+      const commissions = await db
+        .select()
+        .from(schema.commissions)
+        .where(eq(schema.commissions.subscriptionId, res.body.id));
+      expect(commissions).toHaveLength(0);
+    } finally {
+      await cleanupCommissionsForSubscriptions([res.body.id]);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, res.body.id));
+    }
+  });
+
+  it("rejects a member purchase that also supplies a Stripe payment method", async () => {
+    // No member Stripe price IDs exist, so billing a member purchase through
+    // Stripe would charge retail while the record stores member pricing.
+    const before = await db
+      .select({ id: schema.subscriptions.id })
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.agentId, memberAgentId));
+
+    await request(testApp)
+      .post("/api/subscriptions")
+      .set("Cookie", memberAgentCookie)
+      .send({
+        merchantName: "Billed Member",
+        tier: "tier_2",
+        isMemberPurchase: true,
+        paymentMethodId: "pm_card_visa",
+      })
+      .expect(400);
+
+    // No subscription should have been created by the rejected request.
+    const after = await db
+      .select({ id: schema.subscriptions.id })
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.agentId, memberAgentId));
+    expect(after).toHaveLength(before.length);
+  });
+
+  it("prices a normal (non-member) purchase at the retail rate", async () => {
+    const res = await request(testApp)
+      .post("/api/subscriptions")
+      .set("Cookie", memberAgentCookie)
+      .send({ merchantName: "Retail Merchant", tier: "tier_2" })
+      .expect(201);
+
+    try {
+      // Retail rate for tier_2 is 397.
+      expect(Number(res.body.monthlyAmount)).toBe(397);
+      expect(res.body.isMemberPurchase).toBe(false);
+    } finally {
+      await cleanupCommissionsForSubscriptions([res.body.id]);
+      await db.delete(schema.commissions).where(eq(schema.commissions.agentId, memberAgentId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, res.body.id));
+    }
+  });
+});
+
+// =========================================================
+// storage.getCollectedSubscriptionRevenue – distributor-tier qualification
+// metric (Task #473). Must count only collected revenue: active subs that are
+// either manually-logged (billingStatus NULL) or successfully billed
+// (billingStatus 'active'). Unpaid Stripe states must NOT inflate the metric.
+// =========================================================
+
+describe("storage.getCollectedSubscriptionRevenue – collected-only qualification metric", () => {
+  let revAgentId: number;
+
+  beforeAll(async () => {
+    const agent = await createTestAgent("collected-rev");
+    revAgentId = agent.id;
+    allTestAgentIds.push(revAgentId);
+  });
+
+  afterAll(async () => {
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, revAgentId));
+    await db.delete(schema.agents).where(eq(schema.agents.id, revAgentId));
+  });
+
+  async function insertSub(monthlyAmount: string, status: any, billingStatus: any) {
+    const [sub] = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: revAgentId,
+        merchantName: "Rev Merchant",
+        tier: "tier_2",
+        monthlyAmount,
+        status,
+        billingStatus,
+      })
+      .returning();
+    return sub;
+  }
+
+  it("counts active subs with a NULL (manual/legacy) billing status", async () => {
+    const sub = await insertSub("397.00", "active", null);
+    try {
+      expect(await storage.getCollectedSubscriptionRevenue(revAgentId)).toBe(397);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("counts active subs whose latest invoice was collected (billingStatus 'active')", async () => {
+    const sub = await insertSub("397.00", "active", "active");
+    try {
+      expect(await storage.getCollectedSubscriptionRevenue(revAgentId)).toBe(397);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    }
+  });
+
+  it("excludes active subs in unpaid billing states (pending, past_due, failed)", async () => {
+    const pending = await insertSub("397.00", "active", "pending");
+    const pastDue = await insertSub("397.00", "active", "past_due");
+    const failed = await insertSub("397.00", "active", "failed");
+    try {
+      // None of the three unpaid subscriptions should contribute revenue.
+      expect(await storage.getCollectedSubscriptionRevenue(revAgentId)).toBe(0);
+    } finally {
+      await db
+        .delete(schema.subscriptions)
+        .where(inArray(schema.subscriptions.id, [pending.id, pastDue.id, failed.id]));
+    }
+  });
+
+  it("excludes paused subscriptions even when their billing status is 'active'", async () => {
+    const paused = await insertSub("397.00", "paused", "active");
+    try {
+      expect(await storage.getCollectedSubscriptionRevenue(revAgentId)).toBe(0);
+    } finally {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, paused.id));
+    }
+  });
+
+  it("sums only the collected subscriptions when paid and unpaid subs are mixed", async () => {
+    const paidNull = await insertSub("397.00", "active", null);
+    const paidActive = await insertSub("249.00", "active", "active");
+    const unpaid = await insertSub("697.00", "active", "past_due");
+    try {
+      // 397 + 249 collected; the 697 past_due sub is excluded.
+      expect(await storage.getCollectedSubscriptionRevenue(revAgentId)).toBe(646);
+    } finally {
+      await db
+        .delete(schema.subscriptions)
+        .where(inArray(schema.subscriptions.id, [paidNull.id, paidActive.id, unpaid.id]));
+    }
+  });
+});
+
 // File-level safety net. Registered last, so it runs FIRST (afterAll hooks run
 // in reverse registration order). It purges child rows — commissions and
 // activity-log entries — referencing ANY agent created in this file before the

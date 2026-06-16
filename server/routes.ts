@@ -16,6 +16,17 @@ import { migrations, revertMigration, applyMigration, DUPLICATE_PLACEMENT_ERROR_
 import { checkSchemaHealth } from "./schema-health";
 import { CONFIG } from "./config";
 import { computeMcaV2026, deriveMcaAcceleratorRates, fireSubscriptionV2026, type AgencyModel } from "./commissionEngine";
+import {
+  recalculateAgentGovernance,
+  recalculateAllGovernance,
+  qualifyDistributorTier,
+  computeMembershipStatus,
+  isBuyoutEligible,
+  trailingMonthStart,
+  type MembershipType,
+  type ResidualStatus,
+} from "./governance";
+import { COMP_V2026 } from "./config";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
@@ -1772,6 +1783,107 @@ export async function registerRoutes(
     res.status(501).json({ message: "Agent impersonation is not currently enabled on this platform. Contact your system administrator if you need this capability." });
   });
 
+  // ===== Governance (Task #473) =====
+  // Network-wide monthly distributor-tier recalculation (manual trigger). The
+  // static path is registered before the dynamic :id governance routes below.
+  app.post(api.admin.agents.recalculateGovernance.path, requireAdmin, async (req, res) => {
+    try {
+      const summary = await recalculateAllGovernance(storage);
+      // @ts-ignore
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'agent',
+        entityId: 0,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} ran distributor-tier recalculation (${summary.changed}/${summary.processed} changed)`,
+        details: summary,
+      });
+      res.json(summary);
+    } catch (err) {
+      console.error('[Governance] recalculation failed:', err);
+      res.status(500).json({ message: "Failed to recalculate governance" });
+    }
+  });
+
+  // Computed governance snapshot for one agent: qualified tier (from trailing
+  // production), membership waiver status, and buyout-eligible subscriptions.
+  app.get(api.admin.agents.governance.path, requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const agent = await storage.getAgent(id);
+    if (!agent) return res.status(404).json({ message: "Agent not found" });
+
+    const since = trailingMonthStart();
+    const [fundedVolume, subscriptionRevenue, activeSubscriptions, collectedCommissionRevenue, subs] =
+      await Promise.all([
+        storage.getFundedVolumeSince(id, since),
+        storage.getCollectedSubscriptionRevenue(id),
+        storage.getActiveSubscriptionCount(id),
+        storage.getCollectedCommissionRevenueSince(id, since),
+        storage.getSubscriptionsByAgent(id),
+      ]);
+
+    const metrics = { fundedVolume, subscriptionRevenue, activeSubscriptions };
+    const qualifiedTier = qualifyDistributorTier(metrics);
+    const membership = computeMembershipStatus(
+      agent.membershipType as MembershipType,
+      collectedCommissionRevenue,
+    );
+
+    const now = Date.now();
+    const buyoutEligibleSubscriptions = subs
+      .filter((s) => s.status === 'active')
+      .map((s) => {
+        const monthsActive = Math.floor(
+          (now - new Date(s.startDate).getTime()) / (30.44 * 24 * 60 * 60 * 1000),
+        );
+        return { id: s.id, merchantName: s.merchantName, tier: s.tier, monthsActive };
+      })
+      .filter((s) => isBuyoutEligible({
+        tier: s.tier as any,
+        monthsActive: s.monthsActive,
+        residualStatus: agent.residualStatus as ResidualStatus,
+      }));
+
+    res.json({
+      distributorTier: agent.distributorTier,
+      qualifiedTier,
+      metrics,
+      membership,
+      residualStatus: agent.residualStatus,
+      membershipActive: agent.status === 'active',
+      buyoutEligibleSubscriptions,
+    });
+  });
+
+  // Set an agent's residual standing (good_standing / reduced / suspended).
+  app.post(api.admin.agents.setResidualStatus.path, requireAdmin, async (req, res) => {
+    try {
+      const input = api.admin.agents.setResidualStatus.input.parse(req.body);
+      const id = Number(req.params.id);
+      const agent = await storage.getAgent(id);
+      if (!agent) return res.status(404).json({ message: "Agent not found" });
+
+      const updated = await storage.updateAgent(id, { residualStatus: input.status });
+      // @ts-ignore
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'agent',
+        entityId: id,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} set residual standing of agent #${id} to "${input.status}"${input.reason ? ` (${input.reason})` : ''}`,
+        details: { from: agent.residualStatus, to: input.status, reason: input.reason ?? null },
+      });
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Failed to update residual status" });
+    }
+  });
+
   // Admin Deal Management
   app.get(api.admin.deals.list.path, requireAdmin, async (req, res) => {
     const page = Number(req.query.page) || 1;
@@ -2122,6 +2234,18 @@ export async function registerRoutes(
 
       const input = createSubSchema.parse(req.body);
 
+      // Governance (Task #473): internal member purchases use discounted member
+      // pricing and pay zero commission. There are no member Stripe price IDs
+      // configured (only retail STRIPE_PRICE_TIER_*), so we must not run a member
+      // purchase through external Stripe billing — that would charge the retail
+      // price while the record stores the member price. Reject the combination
+      // until dedicated member Stripe pricing exists.
+      if (input.isMemberPurchase && input.paymentMethodId) {
+        return res.status(400).json({
+          message: 'Member-priced purchases cannot be billed through Stripe; omit the payment method for internal member pricing.',
+        });
+      }
+
       // If a paired deal is provided, validate it exists, is funded, and belongs to this agent
       let verifiedPairedDealId: number | undefined;
       if (input.mcaPairedDealId) {
@@ -2139,7 +2263,11 @@ export async function registerRoutes(
       }
 
       const tierPrices: Record<string, number> = CONFIG.subscriptionTierPrices;
-      const monthlyAmount = tierPrices[input.tier] || 149;
+      // Governance (Task #473): internal member purchases use the discounted
+      // member price from the Manual and generate ZERO commission (handled below).
+      const monthlyAmount = input.isMemberPurchase
+        ? COMP_V2026.subscriptionPricing[input.tier].member
+        : (tierPrices[input.tier] || 149);
 
       const startDate = input.startDate ? new Date(input.startDate) : new Date();
 
@@ -2240,7 +2368,12 @@ export async function registerRoutes(
         if (agentRecord) {
           await fireSubscriptionV2026(storage, {
             sub,
-            agent: { distributorTier: agentRecord.distributorTier, agencyModel: agentRecord.agencyModel as AgencyModel },
+            agent: {
+              distributorTier: agentRecord.distributorTier,
+              agencyModel: agentRecord.agencyModel as AgencyModel,
+              residualStatus: agentRecord.residualStatus,
+              membershipActive: agentRecord.status === 'active',
+            },
             monthsSinceStart,
             periodDate: now.toISOString().split('T')[0],
             acceleratorRates: [],
@@ -2264,7 +2397,8 @@ export async function registerRoutes(
       const commType = monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
       const periodDate = now.toISOString().split('T')[0];
 
-      if (commissionAmount > 0) {
+      // Governance (Task #473): internal member purchases never pay commission.
+      if (commissionAmount > 0 && !sub.isMemberPurchase) {
         await storage.createCommission({
           agentId,
           type: commType,
@@ -2618,6 +2752,9 @@ export async function registerRoutes(
         tier: z.enum(['tier_1', 'tier_2', 'tier_3', 'tier_4']),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
+        // Governance (Task #473): internal member program — distributors buy at
+        // member pricing, and these purchases generate ZERO commission.
+        isMemberPurchase: z.boolean().optional(),
       });
       const parseResult = adminCreateSubSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -2625,7 +2762,10 @@ export async function registerRoutes(
       }
       const input = parseResult.data;
       const tierPrices: Record<string, number> = CONFIG.subscriptionTierPrices;
-      const monthlyAmount = tierPrices[input.tier] || 149;
+      // Member purchases use the discounted member price from the Manual.
+      const monthlyAmount = input.isMemberPurchase
+        ? COMP_V2026.subscriptionPricing[input.tier].member
+        : (tierPrices[input.tier] || 149);
       const startDate = input.startDate ? new Date(input.startDate) : new Date();
       const endDate = input.endDate ? new Date(input.endDate) : undefined;
       const sub = await storage.createSubscription({
@@ -2636,6 +2776,7 @@ export async function registerRoutes(
         monthlyAmount: monthlyAmount.toString(),
         startDate,
         endDate,
+        isMemberPurchase: input.isMemberPurchase ?? false,
       });
       const actorId = req.user?.id;
       if (actorId) {
@@ -3046,7 +3187,12 @@ export async function registerRoutes(
           if (!agent) { skipped++; continue; }
           const { producerAmount, commType, created } = await fireSubscriptionV2026(storage, {
             sub,
-            agent: { distributorTier: agent.distributorTier, agencyModel: agent.agencyModel as AgencyModel },
+            agent: {
+              distributorTier: agent.distributorTier,
+              agencyModel: agent.agencyModel as AgencyModel,
+              residualStatus: agent.residualStatus,
+              membershipActive: agent.status === 'active',
+            },
             monthsSinceStart,
             periodDate,
             acceleratorRates: [],

@@ -171,7 +171,12 @@ export class WebhookHandlers {
         }
         const { producerAmount } = await fireSubscriptionV2026(storage, {
           sub,
-          agent: { distributorTier: agent.distributorTier, agencyModel: agent.agencyModel as AgencyModel },
+          agent: {
+            distributorTier: agent.distributorTier,
+            agencyModel: agent.agencyModel as AgencyModel,
+            residualStatus: agent.residualStatus,
+            membershipActive: agent.status === 'active',
+          },
           monthsSinceStart,
           periodDate: periodDateV2026,
           acceleratorRates: [],

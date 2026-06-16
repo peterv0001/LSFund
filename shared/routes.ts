@@ -730,10 +730,79 @@ export const api = {
           currentRank: z.enum(['agent', 'builder', 'leader', 'director', 'partner']).optional(),
           status: z.enum(['active', 'inactive', 'suspended']).optional(),
           isAdmin: z.boolean().optional(),
+          // Governance (Task #473): membership category & agency model are
+          // admin-managed; distributorTier is NOT editable here (auto-recalc).
+          membershipType: z.enum(['individual', 'small_agency', 'growth_agency', 'enterprise_agency']).optional(),
+          agencyModel: z.enum(['independent', 'small_agency', 'leadership', 'recruiting']).optional(),
         }),
         responses: {
           200: z.custom<typeof agents.$inferSelect>(),
           400: errorSchemas.validation,
+        },
+      },
+      // Governance (Task #473): manually trigger a network-wide monthly
+      // distributor-tier recalculation (also runs automatically each month).
+      recalculateGovernance: {
+        method: 'POST' as const,
+        path: '/api/admin/agents/recalculate-governance',
+        responses: {
+          200: z.object({
+            processed: z.number(),
+            changed: z.number(),
+            changes: z.array(z.object({
+              agentId: z.number(),
+              from: z.string(),
+              to: z.string(),
+            })),
+            ranAt: z.string(),
+          }),
+        },
+      },
+      // Governance (Task #473): set an agent's residual standing with a reason.
+      setResidualStatus: {
+        method: 'POST' as const,
+        path: '/api/admin/agents/:id/residual-status',
+        input: z.object({
+          status: z.enum(['good_standing', 'reduced', 'suspended']),
+          reason: z.string().optional(),
+        }),
+        responses: {
+          200: z.custom<typeof agents.$inferSelect>(),
+          400: errorSchemas.validation,
+        },
+      },
+      // Governance (Task #473): computed tier metrics, membership waiver status
+      // and buyout-eligible subscriptions for one agent.
+      governance: {
+        method: 'GET' as const,
+        path: '/api/admin/agents/:id/governance',
+        responses: {
+          200: z.object({
+            distributorTier: z.string(),
+            qualifiedTier: z.string(),
+            metrics: z.object({
+              fundedVolume: z.number(),
+              subscriptionRevenue: z.number(),
+              activeSubscriptions: z.number(),
+            }),
+            membership: z.object({
+              membershipType: z.string(),
+              fee: z.number(),
+              waiverThreshold: z.number(),
+              waived: z.boolean(),
+              amountDue: z.number(),
+              collectedCommissionRevenue: z.number(),
+            }),
+            residualStatus: z.string(),
+            membershipActive: z.boolean(),
+            buyoutEligibleSubscriptions: z.array(z.object({
+              id: z.number(),
+              merchantName: z.string(),
+              tier: z.string(),
+              monthsActive: z.number(),
+            })),
+          }),
+          404: errorSchemas.notFound,
         },
       },
       suspend: {

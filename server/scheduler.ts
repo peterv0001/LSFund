@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { emailService } from "./email";
+import { recalculateAllGovernance } from "./governance";
 
 const DEFAULT_EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // default: 1 hour
 
@@ -261,14 +262,41 @@ export async function expireOverdueSubscriptions(): Promise<void> {
   }
 }
 
+// Governance (Task #473): distributor tiers are recalculated once per calendar
+// month from trailing production. The hourly scheduler tick calls this guard,
+// which only runs the (network-wide) recalculation when the month rolls over.
+// Best-effort: an in-memory marker is enough because the admin can also trigger
+// a recalculation manually, and a missed month self-corrects on the next run.
+let lastGovernanceMonthKey: string | null = null;
+
+function currentMonthKey(now: Date = new Date()): string {
+  return `${now.getUTCFullYear()}-${now.getUTCMonth()}`;
+}
+
+export async function recalculateGovernanceIfDue(now: Date = new Date()): Promise<void> {
+  const key = currentMonthKey(now);
+  if (lastGovernanceMonthKey === key) return;
+  lastGovernanceMonthKey = key;
+  try {
+    const summary = await recalculateAllGovernance(storage, now);
+    console.log(`[Scheduler] Monthly distributor-tier recalculation complete: ${summary.changed}/${summary.processed} agents changed`);
+  } catch (err) {
+    // Allow a retry on the next tick if this run failed.
+    lastGovernanceMonthKey = null;
+    console.error('[Scheduler] Monthly governance recalculation failed:', err);
+  }
+}
+
 export function startScheduler(): void {
   recordSchedulerRun();
   warnUpcomingExpirations();
   expireOverdueSubscriptions();
+  recalculateGovernanceIfDue();
   setInterval(() => {
     recordSchedulerRun();
     warnUpcomingExpirations();
     expireOverdueSubscriptions();
+    recalculateGovernanceIfDue();
   }, EXPIRY_CHECK_INTERVAL_MS);
   console.log(`[Scheduler] Subscription expiry scheduler started (interval: ${EXPIRY_CHECK_INTERVAL_MS}ms)`);
 }

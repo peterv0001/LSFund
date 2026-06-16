@@ -1852,6 +1852,65 @@ export class DatabaseStorage {
     return subs.reduce((sum, s) => sum + Number(s.monthlyAmount), 0);
   }
 
+  // Trailing-month COLLECTED subscription revenue for distributor-tier
+  // qualification (Task #473). Unlike getActiveSubscriptionRevenue (raw active
+  // MRR), this only counts subscriptions whose latest invoice was actually
+  // collected, so unpaid Stripe states (pending / past_due / failed) never
+  // inflate qualification and over-pay commissions. A NULL billingStatus is a
+  // manually-logged / legacy subscription with no external billing — its revenue
+  // is realized on logging, so it counts as collected. For a recurring monthly
+  // subscription, the monthly amount IS the trailing-month collected figure.
+  async getCollectedSubscriptionRevenue(agentId: number): Promise<number> {
+    const [row] = await db.select({
+      total: sql<string>`coalesce(sum(${subscriptions.monthlyAmount}), 0)`,
+    }).from(subscriptions)
+      .where(and(
+        eq(subscriptions.agentId, agentId),
+        eq(subscriptions.status, 'active'),
+        or(isNull(subscriptions.billingStatus), eq(subscriptions.billingStatus, 'active')),
+      ));
+    return Number(row?.total ?? 0);
+  }
+
+  // ==================== GOVERNANCE METRICS (Task #473) ====================
+  // Trailing-production aggregates that feed monthly distributor-tier
+  // recalculation and automatic membership waivers.
+
+  async getActiveSubscriptionCount(agentId: number): Promise<number> {
+    const [row] = await db.select({ c: count(subscriptions.id) }).from(subscriptions)
+      .where(and(eq(subscriptions.agentId, agentId), eq(subscriptions.status, 'active')));
+    return Number(row?.c ?? 0);
+  }
+
+  // Sum of funded MCA loan amounts for the agent since `since` (trailing-month
+  // funded volume). Uses COALESCE(funded_at, created_at) so funded deals are
+  // counted even if funded_at was never backfilled.
+  async getFundedVolumeSince(agentId: number, since: Date): Promise<number> {
+    const [row] = await db.select({
+      total: sql<string>`coalesce(sum(${deals.loanAmount}), 0)`,
+    }).from(deals)
+      .where(and(
+        eq(deals.agentId, agentId),
+        eq(deals.status, 'funded'),
+        gte(sql`coalesce(${deals.fundedAt}, ${deals.createdAt})`, since),
+      ));
+    return Number(row?.total ?? 0);
+  }
+
+  // Sum of the agent's collected (approved + paid) commission revenue since
+  // `since`. Drives automatic, non-discretionary membership-fee waivers.
+  async getCollectedCommissionRevenueSince(agentId: number, since: Date): Promise<number> {
+    const [row] = await db.select({
+      total: sql<string>`coalesce(sum(${commissions.amount}), 0)`,
+    }).from(commissions)
+      .where(and(
+        eq(commissions.agentId, agentId),
+        inArray(commissions.status, ['approved', 'paid']),
+        gte(commissions.createdAt, since),
+      ));
+    return Number(row?.total ?? 0);
+  }
+
   // ==================== HOLDBACKS ====================
 
   async createHoldback(holdback: {
