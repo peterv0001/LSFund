@@ -141,6 +141,9 @@ async function insertStripeSubscription(
       stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
       stripeCustomerId: "cus_webhook_test",
       billingStatus: "active",
+      // This suite locks the LEGACY subscription commission math; create legacy
+      // records explicitly so the going-forward v2026 default doesn't apply.
+      commissionModel: "legacy",
       ...overrides,
     })
     .returning();

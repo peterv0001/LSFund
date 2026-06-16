@@ -1657,6 +1657,7 @@ export class DatabaseStorage {
     mcaPairedDealId?: number;
     startDate?: Date;
     endDate?: Date;
+    isMemberPurchase?: boolean;
   }): Promise<Subscription> {
     const [newSub] = await db.insert(subscriptions).values({
       agentId: sub.agentId,
@@ -1668,6 +1669,7 @@ export class DatabaseStorage {
       mcaPairedDealId: sub.mcaPairedDealId ?? null,
       startDate: sub.startDate ?? new Date(),
       endDate: sub.endDate ?? null,
+      isMemberPurchase: sub.isMemberPurchase ?? false,
     }).returning();
     return newSub;
   }

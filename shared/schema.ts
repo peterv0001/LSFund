@@ -451,6 +451,9 @@ export const subscriptions = pgTable("subscriptions", {
   // Going-forward compensation switch. Existing rows are `legacy`; new rows
   // default to `v2026` (DB default set in the additive migration).
   commissionModel: commissionModelEnum("commission_model").default("v2026").notNull(),
+  // Internal member purchases (an agent buying for themselves) generate NO
+  // commission under the v2026 model.
+  isMemberPurchase: boolean("is_member_purchase").default(false).notNull(),
   mcaPairedDealId: integer("mca_paired_deal_id"),
   startDate: timestamp("start_date").defaultNow().notNull(),
   endDate: timestamp("end_date"),

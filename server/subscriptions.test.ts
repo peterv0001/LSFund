@@ -77,6 +77,9 @@ async function createTestSubscription(
       tier: "tier_1",
       monthlyAmount: "199.00",
       status,
+      // These suites lock the LEGACY subscription commission math; create legacy
+      // records explicitly so the going-forward v2026 default doesn't apply.
+      commissionModel: "legacy",
     })
     .returning();
   return sub;

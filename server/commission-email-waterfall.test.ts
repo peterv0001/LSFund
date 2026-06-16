@@ -121,6 +121,9 @@ async function createDeal(
       gbrAmount: "10000.00",
       fulfillmentAgentId: opts.fulfillmentAgentId ?? null,
       status: opts.status ?? "pending",
+      // This suite locks the LEGACY MCA waterfall; create legacy deals so the
+      // going-forward v2026 default doesn't apply.
+      commissionModel: "legacy",
     })
     .returning();
   return deal;
@@ -279,6 +282,92 @@ describe("deal approval waterfall – TFC fulfillment email", () => {
     expect(callsForEmail(fulfillment.email).length).toBe(0);
 
     await cleanup([fulfillment.id, primary.id], [deal.id]);
+  });
+});
+
+// ── 2b. v2026 MCA accelerator path ────────────────────────────────────────────
+//
+// Proves that the v2026 MCA engine sources real, per-record accelerators
+// (subscription attachment + repeat merchant) and persists a non-zero
+// accelerator payout (fast_start) to the opening agent when a funded deal
+// qualifies. Independent agency model → no upline override, isolating the
+// accelerator math.
+
+describe("deal approval waterfall – v2026 MCA accelerator", () => {
+  it("persists a fast_start accelerator (sub-attachment + repeat-merchant) for a qualifying v2026 deal", async () => {
+    const agent = await createAgent();
+    const MERCHANT = `Accel Merchant ${TS}`;
+
+    // Prior funded deal for the SAME merchant → repeat-merchant accelerator (+1%).
+    const [priorDeal] = await db
+      .insert(schema.deals)
+      .values({
+        agentId: agent.id,
+        merchantName: MERCHANT,
+        loanAmount: "40000.00",
+        companyRevenue: "8000.00",
+        gbrAmount: "8000.00",
+        status: "funded",
+        commissionModel: "legacy",
+      })
+      .returning();
+
+    // The deal under test (v2026), gross 10000.
+    const [deal] = await db
+      .insert(schema.deals)
+      .values({
+        agentId: agent.id,
+        merchantName: MERCHANT,
+        loanAmount: "50000.00",
+        companyRevenue: "10000.00",
+        gbrAmount: "10000.00",
+        status: "pending",
+        commissionModel: "v2026",
+      })
+      .returning();
+
+    // Subscription paired to this deal → subscription-attachment accelerator (+1%).
+    const [sub] = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: agent.id,
+        merchantName: MERCHANT,
+        tier: "tier_3",
+        monthlyAmount: "697.00",
+        status: "active",
+        startDate: new Date(),
+        mcaPairedDealId: deal.id,
+        commissionModel: "v2026",
+      })
+      .returning();
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.agentId, agent.id));
+
+    const fastStart = commissions.find((c) => c.type === "fast_start" && c.dealId === deal.id);
+    expect(fastStart).toBeDefined();
+    // gross 10000 × (0.01 sub-attachment + 0.01 repeat-merchant) = 200.00
+    expect(fastStart!.amount).toBe("200.00");
+
+    // Opening-agent producer payout (independent → full 32.5% opening pool),
+    // 70% immediately released: 10000 × 0.325 × 0.70 = 2275.00
+    const macPrimary = commissions.find((c) => c.type === "mac_primary" && c.dealId === deal.id);
+    expect(macPrimary!.amount).toBe("2275.00");
+
+    await db.delete(schema.commissions).where(eq(schema.commissions.agentId, agent.id));
+    await db.delete(schema.holdbacks).where(eq(schema.holdbacks.agentId, agent.id));
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+    await db.delete(schema.notifications).where(eq(schema.notifications.agentId, agent.id));
+    await cleanup([agent.id], [deal.id, priorDeal.id]);
   });
 });
 

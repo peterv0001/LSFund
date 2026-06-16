@@ -103,6 +103,10 @@ async function createActiveSubscription(agentId: number, startDate?: Date) {
       monthlyAmount: "199.00",
       status: "active",
       startDate: startDate ?? twoMonthsAgo,
+      // This suite locks the LEGACY calculate-commissions email/notification
+      // behavior; create legacy records so the v2026 default doesn't apply
+      // (notably tier_1 residual = 0% under v2026 would fire no commission).
+      commissionModel: "legacy",
     })
     .returning();
   return sub;
@@ -461,6 +465,9 @@ async function createPendingDeal(agentId: number, gbrAmount = "10000.00") {
       companyRevenue: gbrAmount,
       gbrAmount,
       status: "pending",
+      // These suites lock the LEGACY MCA waterfall (MAC sponsor overrides);
+      // create legacy deals so the going-forward v2026 default doesn't apply.
+      commissionModel: "legacy",
     })
     .returning();
   return deal;

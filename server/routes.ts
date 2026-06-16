@@ -15,6 +15,7 @@ import { seedDatabase } from "./seed";
 import { migrations, revertMigration, applyMigration, DUPLICATE_PLACEMENT_ERROR_PREFIX, findDuplicatePlacements, formatDuplicatePlacementReport } from "./migrations";
 import { checkSchemaHealth } from "./schema-health";
 import { CONFIG } from "./config";
+import { computeMcaV2026, deriveMcaAcceleratorRates, fireSubscriptionV2026, type AgencyModel } from "./commissionEngine";
 import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
@@ -1227,7 +1228,134 @@ export async function registerRoutes(
     const periodDate = new Date().toISOString().split('T')[0];
     const releaseDate = new Date();
     releaseDate.setDate(releaseDate.getDate() + CONFIG.holdback.deferralDays);
-      
+
+    // ====================================================================
+    // v2026 MCA ENGINE (Compensation Manual) — NEW deals only
+    // ====================================================================
+    // Gross commission splits PMF 50% / Opening Agent Pool 32.5% /
+    // Accelerator Pool 2.5% / LeaderShield EBITDA 15%. PMF and EBITDA are
+    // company/funder allocations and create no agent commission. The opening
+    // pool divides into producer + agency override (within the 32.5%, never
+    // additive); the override flows up to 3 upline levels (80/15/5). The
+    // opening agent's producer payout still runs through the 70/30 holdback +
+    // clawback schedule. Accelerators and upline overrides pay immediately.
+    if (deal.commissionModel === 'v2026') {
+      // Per-record accelerators: subscription attachment (the agent has a
+      // subscription paired to this deal) and repeat merchant (a prior funded
+      // deal for the same merchant). Volume / product-penetration accelerators
+      // depend on monthly aggregates and are sourced by the monthly recalc
+      // task. The engine clamps the total to the +2.5% cap.
+      const agentSubs = await storage.getSubscriptionsByAgent(agentId);
+      const hasPairedSubscription = agentSubs.some((s) => s.mcaPairedDealId === deal.id);
+      const dealMerchantEmail = deal.merchantEmail?.trim().toLowerCase() || null;
+      const dealMerchantName = deal.merchantName.trim().toLowerCase();
+      const agentDeals = await storage.getDealsByAgent(agentId);
+      const isRepeatMerchant = agentDeals.some((d) => {
+        if (d.id === deal.id || d.status !== 'funded') return false;
+        const dEmail = d.merchantEmail?.trim().toLowerCase() || null;
+        if (dealMerchantEmail && dEmail) return dEmail === dealMerchantEmail;
+        return d.merchantName.trim().toLowerCase() === dealMerchantName;
+      });
+
+      const result = computeMcaV2026({
+        gross: gbrAmount,
+        agencyModel: (agent?.agencyModel ?? 'independent') as AgencyModel,
+        acceleratorRates: deriveMcaAcceleratorRates({ hasPairedSubscription, isRepeatMerchant }),
+      });
+
+      // --- Opening Agent (producer) payout → 70/30 holdback ---
+      const openingImmediate = result.producerAmount * CONFIG.holdback.immediateRelease;
+      const openingDeferred = result.producerAmount * CONFIG.holdback.deferred;
+
+      const openingComm = await storage.createCommission({
+        agentId,
+        type: 'mac_primary',
+        amount: openingImmediate.toFixed(2),
+        dealId: deal.id,
+        periodDate,
+        status: 'pending',
+      });
+
+      await storage.createHoldback({
+        dealId: deal.id,
+        agentId,
+        commissionId: openingComm.id,
+        totalAmount: openingDeferred.toFixed(2),
+        releaseDate,
+      });
+
+      await storage.createNotification({
+        agentId,
+        type: 'deal_funded',
+        title: 'Deal Funded!',
+        message: `Your deal for ${deal.merchantName} ($${Number(deal.loanAmount).toLocaleString()}) has been funded. Opening Agent commission: $${openingImmediate.toFixed(2)} (+ $${openingDeferred.toFixed(2)} held for release).`,
+        dealId: deal.id,
+        isRead: false,
+        emailSent: false,
+      });
+
+      const v2026AgentPrefs = (agent!.emailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
+      if (v2026AgentPrefs.emailOnDealFunded !== false) {
+        emailService.sendDealFundedEmail(agent!.email, {
+          firstName: agent!.firstName,
+          merchantName: deal.merchantName,
+          amount: Number(deal.loanAmount),
+          commission: openingImmediate,
+        }).catch(console.error);
+      }
+
+      // --- Performance accelerator (from the 2.5% pool) → opening agent, immediate ---
+      if (result.acceleratorAmount > 0) {
+        await storage.createCommission({
+          agentId,
+          type: 'fast_start',
+          amount: result.acceleratorAmount.toFixed(2),
+          dealId: deal.id,
+          periodDate,
+          status: 'pending',
+        });
+      }
+
+      // --- Agency override → up to 3 upline levels (80/15/5), immediate ---
+      if (result.overrideAmount > 0) {
+        const upline = await storage.getUpline(agentId);
+        const overrideTypes = ['mac_sponsor_l1', 'mac_sponsor_l2', 'generation_override'] as const;
+        for (let i = 0; i < upline.length && i < result.overrideByLevel.length; i++) {
+          const amount = result.overrideByLevel[i].amount;
+          if (amount <= 0) continue;
+          const sponsor = upline[i];
+          await storage.createCommission({
+            agentId: sponsor.id,
+            type: overrideTypes[i],
+            amount: amount.toFixed(2),
+            dealId: deal.id,
+            sourceAgentId: agentId,
+            periodDate,
+            status: 'pending',
+          });
+          await storage.createNotification({
+            agentId: sponsor.id,
+            type: 'commission_earned',
+            title: 'Agency Override Earned!',
+            message: `You earned a $${amount.toFixed(2)} L${i + 1} agency override from ${agent!.firstName} ${agent!.lastName}'s deal.`,
+            isRead: false,
+            emailSent: false,
+          });
+          const sponsorOverridePrefs = (sponsor.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+          if (sponsorOverridePrefs.emailOnCommissionEarned !== false) {
+            emailService.sendCommissionEarnedEmail(sponsor.email, {
+              firstName: sponsor.firstName,
+              commissionType: `L${i + 1} Agency Override`,
+              amount,
+              description: `From ${agent!.firstName} ${agent!.lastName}'s deal (${deal.merchantName})`,
+            }).catch(console.error);
+          }
+        }
+      }
+
+      return;
+    }
+
       // === GBR WATERFALL: MAC (Merchant Acquisition Compensation) ===
       // MAC = 30% of GBR, split: Primary 22%, Senior Sponsor L1 5%, Executive Sponsor L2 3%
       
@@ -1989,6 +2117,7 @@ export async function registerRoutes(
         }, { message: 'Start date must be a valid date and not in the future' }),
         mcaPairedDealId: z.number().int().positive().optional(),
         paymentMethodId: z.string().optional(),
+        isMemberPurchase: z.boolean().optional(),
       });
 
       const input = createSubSchema.parse(req.body);
@@ -2023,6 +2152,7 @@ export async function registerRoutes(
         monthlyAmount: monthlyAmount.toString(),
         mcaPairedDealId: verifiedPairedDealId,
         startDate,
+        isMemberPurchase: input.isMemberPurchase ?? false,
       });
 
       // If paymentMethodId provided, create Stripe customer, subscription, and billing data
@@ -2102,6 +2232,21 @@ export async function registerRoutes(
       const monthsSinceStart = Math.floor(
         (now.getTime() - startDate.getTime()) / (30.44 * 24 * 60 * 60 * 1000)
       );
+
+      if (sub.commissionModel === 'v2026') {
+        // v2026 subscription engine — pool×decay split into producer + agency
+        // override (80/15/5 upline); internal member purchases pay nothing.
+        const agentRecord = await storage.getAgent(agentId);
+        if (agentRecord) {
+          await fireSubscriptionV2026(storage, {
+            sub,
+            agent: { distributorTier: agentRecord.distributorTier, agencyModel: agentRecord.agencyModel as AgencyModel },
+            monthsSinceStart,
+            periodDate: now.toISOString().split('T')[0],
+            acceleratorRates: [],
+          });
+        }
+      } else {
       let decayRate: number;
       if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
       else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;
@@ -2148,7 +2293,8 @@ export async function registerRoutes(
           }
         }
       }
-      
+      }
+
       storage.logActivity({
         actorId: agentId,
         actorType: 'agent',
@@ -2893,7 +3039,42 @@ export async function registerRoutes(
       for (const sub of activeSubs) {
         const startDate = new Date(sub.startDate);
         const monthsSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (30.44 * 24 * 60 * 60 * 1000));
-        
+
+        // v2026 subscription engine — NEW subscriptions only.
+        if (sub.commissionModel === 'v2026') {
+          const agent = await storage.getAgent(sub.agentId);
+          if (!agent) { skipped++; continue; }
+          const { producerAmount, commType, created } = await fireSubscriptionV2026(storage, {
+            sub,
+            agent: { distributorTier: agent.distributorTier, agencyModel: agent.agencyModel as AgencyModel },
+            monthsSinceStart,
+            periodDate,
+            acceleratorRates: [],
+          });
+          if (!created) { skipped++; continue; }
+          processed++;
+
+          const commissionTypeLabel = commType === 'subscription_residual' ? 'Subscription Residual' : 'Subscription Commission';
+          await storage.createNotification({
+            agentId: sub.agentId,
+            type: 'commission_earned',
+            title: `${commissionTypeLabel} Earned!`,
+            message: `You earned a $${producerAmount.toFixed(2)} ${commissionTypeLabel} from ${sub.merchantName} (period: ${periodDate}).`,
+            isRead: false,
+            emailSent: false,
+          });
+          const commPrefsV2026 = (agent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+          if (commPrefsV2026.emailOnCommissionEarned !== false) {
+            emailService.sendCommissionEarnedEmail(agent.email, {
+              firstName: agent.firstName,
+              commissionType: commissionTypeLabel,
+              amount: producerAmount,
+              description: `From your subscription (period: ${periodDate})`,
+            }).catch(console.error);
+          }
+          continue;
+        }
+
         let decayRate: number;
         if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
         else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;

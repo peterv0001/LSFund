@@ -3,6 +3,7 @@ import { subscriptions, platformSettings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
 import { CONFIG } from './config';
+import { fireSubscriptionV2026, type AgencyModel } from './commissionEngine';
 import Stripe from 'stripe';
 import { getUncachableStripeClient } from './stripeClient';
 
@@ -158,6 +159,26 @@ export class WebhookHandlers {
       const monthsSinceStart = Math.floor(
         (now.getTime() - startDate.getTime()) / (30.44 * 24 * 60 * 60 * 1000)
       );
+      const periodDateV2026 = now.toISOString().split('T')[0];
+
+      // v2026 subscription engine — NEW subscriptions only. Legacy records below
+      // keep the original pool×decay math untouched.
+      if (sub.commissionModel === 'v2026') {
+        const agent = await storage.getAgent(sub.agentId);
+        if (!agent) {
+          console.log(`[Webhook] No agent ${sub.agentId} for v2026 subscription ${sub.id}; skipping commission`);
+          return;
+        }
+        const { producerAmount } = await fireSubscriptionV2026(storage, {
+          sub,
+          agent: { distributorTier: agent.distributorTier, agencyModel: agent.agencyModel as AgencyModel },
+          monthsSinceStart,
+          periodDate: periodDateV2026,
+          acceleratorRates: [],
+        });
+        console.log(`[Webhook] Fired v2026 commissions for subscription ${sub.id}, producer: $${producerAmount.toFixed(2)}`);
+        return;
+      }
 
       let decayRate: number;
       if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;

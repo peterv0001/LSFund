@@ -641,6 +641,41 @@ export const migrations: Migration[] = [
       console.log("[migrations] Reverted 2026 compensation fields");
     },
   },
+  {
+    name: "021_add_subscription_is_member_purchase",
+    async run(client) {
+      // Internal member purchases generate no commission under v2026. Existing
+      // rows default to false (external merchant sale) so legacy behavior and
+      // historical reconciliation are unaffected.
+      await client.query(`
+        ALTER TABLE subscriptions
+          ADD COLUMN IF NOT EXISTS is_member_purchase boolean NOT NULL DEFAULT false
+      `);
+      console.log("[migrations] Added is_member_purchase to subscriptions");
+    },
+    async down(client) {
+      await client.query(`ALTER TABLE subscriptions DROP COLUMN IF EXISTS is_member_purchase`);
+      console.log("[migrations] Dropped is_member_purchase from subscriptions");
+    },
+  },
+  {
+    name: "022_add_missing_commission_type_enum_values",
+    async run(client) {
+      // The commission_type enum in shared/schema.ts declares 'fast_start' and
+      // 'leadership_pool', but the database enum was never updated to match —
+      // latent drift that only surfaces now that the v2026 MCA engine actually
+      // pays a performance accelerator as a 'fast_start' commission. Add the
+      // missing values idempotently so the DB enum reconciles with the schema.
+      await client.query(`ALTER TYPE commission_type ADD VALUE IF NOT EXISTS 'fast_start'`);
+      await client.query(`ALTER TYPE commission_type ADD VALUE IF NOT EXISTS 'leadership_pool'`);
+      console.log("[migrations] Reconciled commission_type enum (added fast_start, leadership_pool)");
+    },
+    async down() {
+      // PostgreSQL does not support removing a value from an enum type, so this
+      // migration is intentionally not reversible.
+      console.log("[migrations] 022 down is a no-op (enum values cannot be dropped)");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {
