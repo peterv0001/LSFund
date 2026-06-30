@@ -9,6 +9,10 @@ import { Loader2 } from "lucide-react";
 
 // Public Pages
 const LandingPage = lazy(() => import("@/pages/landing"));
+const FundingPage = lazy(() => import("@/pages/funding"));
+const PlatformPage = lazy(() => import("@/pages/platform"));
+const OpportunityPage = lazy(() => import("@/pages/opportunity"));
+const CommissionsPage = lazy(() => import("@/pages/commissions"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/privacy"));
 const TermsOfServicePage = lazy(() => import("@/pages/terms"));
 const RefundPolicyPage = lazy(() => import("@/pages/refund-policy"));
@@ -166,6 +170,10 @@ function Router() {
       <Route path="/">
         {user ? <Redirect to="/dashboard" /> : <LandingPage />}
       </Route>
+      <Route path="/funding" component={FundingPage} />
+      <Route path="/platform" component={PlatformPage} />
+      <Route path="/opportunity" component={OpportunityPage} />
+      <Route path="/commissions" component={CommissionsPage} />
       <Route path="/income-disclosure" component={IncomeDisclosurePage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/team" component={() => <ProtectedRoute component={TeamPage} />} />

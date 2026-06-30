@@ -5,6 +5,10 @@ import zlib from "zlib";
 
 const KNOWN_ROUTES = [
   /^\/$/,
+  /^\/funding$/,
+  /^\/platform$/,
+  /^\/opportunity$/,
+  /^\/commissions$/,
   /^\/login$/,
   /^\/signup$/,
   /^\/join\/[^/]+$/,

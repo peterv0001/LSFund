@@ -4,9 +4,9 @@ import path from "path";
 
 // Fast guard for the mobile performance win on the public home page ("/"):
 // `client/src/pages/landing.tsx` must paint the hero without pulling the heavy
-// animation library (framer-motion) or the below-the-fold sections into the
-// first-paint bundle. Those live behind a lazy() boundary in
-// `landing-sections.tsx` and must STAY there.
+// animation library (framer-motion) into the first-paint bundle. Animation-heavy
+// content lives on the separate, lazily-routed content pages (/funding,
+// /platform, /opportunity, /commissions), never in the home route.
 //
 // This test statically walks the import graph starting at landing.tsx,
 // following ONLY static imports. Dynamic `import(...)` calls (what lazy() uses)
@@ -109,21 +109,7 @@ describe("landing page initial bundle guard", () => {
     expect(
       offenders,
       `framer-motion (or a transitive dependency) was statically imported into the "/" first-paint bundle via the graph rooted at landing.tsx. ` +
-        `Move animation-heavy code into landing-sections.tsx (loaded lazily) so the mobile hero stays fast. Offending packages: ${offenders.join(", ")}`,
+        `Keep animation-heavy code off the home route (it belongs on the lazily-routed content pages) so the mobile hero stays fast. Offending packages: ${offenders.join(", ")}`,
     ).toEqual([]);
-  });
-
-  it("loads the below-the-fold sections behind a lazy boundary", () => {
-    // Sanity check that the split is actually in place: landing.tsx must
-    // reference landing-sections via a dynamic import, and must NOT statically
-    // import it (which would defeat the split).
-    const source = readFileSync(ENTRY, "utf-8");
-    expect(source).toMatch(/import\(\s*['"]@\/pages\/landing-sections['"]\s*\)/);
-
-    const sectionsFile = path.resolve(clientSrc, "pages", "landing-sections.tsx");
-    expect(
-      graph.localFiles.has(sectionsFile),
-      "landing-sections.tsx must NOT be reachable via static imports from landing.tsx — it should only be loaded lazily.",
-    ).toBe(false);
   });
 });

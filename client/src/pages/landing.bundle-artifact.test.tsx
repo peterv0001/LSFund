@@ -34,15 +34,7 @@ describe("landing page built-artifact bundle budget", () => {
     expect(
       report.animationChunkInClosure,
       `framer-motion was eagerly loaded by the "/" route via chunk "${report.animationChunkInClosure}". ` +
-        `Keep animation-heavy code behind the lazy landing-sections.tsx boundary.`,
-    ).toBeNull();
-  });
-
-  it("does not statically load the below-the-fold sections chunk on '/'", () => {
-    expect(
-      report.sectionsChunkInClosure,
-      `landing-sections was eagerly loaded by the "/" route via chunk "${report.sectionsChunkInClosure}". ` +
-        `It must remain a dynamic import.`,
+        `Keep animation-heavy code off the home route (it belongs on the lazily-routed content pages).`,
     ).toBeNull();
   });
 

@@ -11,12 +11,11 @@ import type { RollupOutput, OutputChunk } from "rollup";
 // is not perturbed by unrelated growth in the shared shell.
 //
 // Measured ~15KB today. The cap leaves headroom for small hero tweaks but trips
-// well before the ~60KB sections chunk or ~115KB animation (framer-motion) chunk
-// could leak back into the first paint.
+// well before the ~115KB animation (framer-motion) chunk could leak back into
+// the first paint.
 export const INITIAL_ROUTE_JS_BUDGET_BYTES = 50 * 1024;
 
 const LANDING_MODULE = "client/src/pages/landing.tsx";
-const LANDING_SECTIONS_MODULE = "client/src/pages/landing-sections.tsx";
 const ANIMATION_PACKAGE = "framer-motion";
 
 const norm = (p: string) => p.replace(/\\/g, "/");
@@ -29,7 +28,6 @@ export interface LandingBundleReport {
   landingDeltaBytes: number;
   landingDeltaChunks: { fileName: string; bytes: number }[];
   animationChunkInClosure: string | null;
-  sectionsChunkInClosure: string | null;
 }
 
 function chunksOf(output: RollupOutput): OutputChunk[] {
@@ -38,8 +36,8 @@ function chunksOf(output: RollupOutput): OutputChunk[] {
 
 /**
  * Analyze a Vite/Rollup build output and report the landing route's first-paint
- * JS footprint, plus whether the heavy animation/sections chunks have leaked
- * into the route's static (eagerly-loaded) closure.
+ * JS footprint, plus whether the heavy animation (framer-motion) chunk has
+ * leaked into the route's static (eagerly-loaded) closure.
  */
 export function analyzeLandingBundle(output: RollupOutput): LandingBundleReport {
   const chunks = chunksOf(output);
@@ -98,7 +96,6 @@ export function analyzeLandingBundle(output: RollupOutput): LandingBundleReport 
   };
 
   const animationFile = chunkContainingModule((m) => m.includes(ANIMATION_PACKAGE));
-  const sectionsFile = chunkContainingModule((m) => m.endsWith(LANDING_SECTIONS_MODULE));
 
   return {
     entryFile: entry.fileName,
@@ -112,14 +109,12 @@ export function analyzeLandingBundle(output: RollupOutput): LandingBundleReport 
     })),
     animationChunkInClosure:
       animationFile && landingClosure.has(animationFile) ? animationFile : null,
-    sectionsChunkInClosure:
-      sectionsFile && landingClosure.has(sectionsFile) ? sectionsFile : null,
   };
 }
 
 /**
  * Throws if the landing route violates the first-paint budget or eagerly loads
- * the animation / sections chunks. Returns the report on success.
+ * the animation (framer-motion) chunk. Returns the report on success.
  */
 export function assertLandingBundleWithinBudget(
   output: RollupOutput,
@@ -131,13 +126,7 @@ export function assertLandingBundleWithinBudget(
   if (report.animationChunkInClosure) {
     problems.push(
       `framer-motion (chunk "${report.animationChunkInClosure}") is statically loaded by the "/" route. ` +
-        `Keep animation-heavy code in landing-sections.tsx (loaded lazily) so the mobile hero stays fast.`,
-    );
-  }
-  if (report.sectionsChunkInClosure) {
-    problems.push(
-      `landing-sections (chunk "${report.sectionsChunkInClosure}") is statically loaded by the "/" route. ` +
-        `It must remain a dynamic import so it loads after the hero paints.`,
+        `Keep animation-heavy code out of landing.tsx (load it lazily) so the mobile hero stays fast.`,
     );
   }
   if (report.landingDeltaBytes > budgetBytes) {
