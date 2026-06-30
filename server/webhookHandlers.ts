@@ -2,6 +2,7 @@ import { db } from './db';
 import { subscriptions, platformSettings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
+import { emailService } from './email';
 import { CONFIG } from './config';
 import { fireSubscriptionV2026, type AgencyModel } from './commissionEngine';
 import Stripe from 'stripe';
@@ -137,6 +138,20 @@ export class WebhookHandlers {
       title: 'Payment Failed',
       message: `A payment failed for your ${sub.tier} subscription for merchant "${sub.merchantName}". Please update payment information.`,
     }).catch(console.error);
+
+    // Fire-and-forget transactional email alerting the agent, respecting their
+    // email preferences. Failures are logged, never thrown, so the webhook still
+    // returns 200 to Stripe.
+    storage.getAgent(sub.agentId).then((agent) => {
+      if (!agent?.email) return;
+      const prefs = (agent.emailPreferences as { emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+      if (prefs.emailOnPaymentRetryFailed === false) return;
+      return emailService.sendSubscriptionPaymentFailedEmail(agent.email, {
+        firstName: agent.firstName,
+        merchantName: sub.merchantName,
+        tier: sub.tier,
+      });
+    }).catch((err) => console.error('[Webhook] Failed to send payment failed email:', err));
   }
 
   static async handleSubscriptionDeleted(stripeSubscriptionId: string): Promise<void> {

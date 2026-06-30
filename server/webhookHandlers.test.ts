@@ -34,6 +34,14 @@ vi.mock('./storage.js', () => ({
     getUpline: vi.fn().mockResolvedValue([]),
     logActivity: vi.fn().mockResolvedValue({}),
     createNotification: vi.fn().mockResolvedValue({}),
+    getAgent: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+// ── Mock the email service so the payment-failed alert doesn't hit Resend ──
+vi.mock('./email.js', () => ({
+  emailService: {
+    sendSubscriptionPaymentFailedEmail: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -41,6 +49,7 @@ import { WebhookHandlers, WebhookConfigError } from './webhookHandlers.js';
 import { getUncachableStripeClient } from './stripeClient.js';
 import { db } from './db.js';
 import { storage } from './storage.js';
+import { emailService } from './email.js';
 
 // ── Helper: build a minimal mock Stripe client ────────────────────────────
 function buildMockStripeWithEvent(event: Partial<Stripe.Event>) {
@@ -350,6 +359,86 @@ describe('WebhookHandlers.handleInvoicePaymentFailed – updates billingStatus',
 
     expect(storage.logActivity).not.toHaveBeenCalled();
     expect(storage.createNotification).not.toHaveBeenCalled();
+  });
+});
+
+// ── Unit – handleInvoicePaymentFailed emails the agent ────────────────────
+describe('WebhookHandlers.handleInvoicePaymentFailed – emails the agent', () => {
+  const fakeAgent = {
+    id: 1,
+    email: 'agent@example.com',
+    firstName: 'Dana',
+    emailPreferences: {},
+  };
+
+  it("sends a payment-failed email to the subscription's agent", async () => {
+    const stripeSubId = 'sub_email_test';
+    const fakeSubscription = { id: 120, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(fakeAgent as never);
+
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    // Allow the fire-and-forget getAgent().then() chain to settle.
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(storage.getAgent).toHaveBeenCalledWith(fakeSubscription.agentId);
+    expect(emailService.sendSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(1);
+    expect(emailService.sendSubscriptionPaymentFailedEmail).toHaveBeenCalledWith(
+      fakeAgent.email,
+      expect.objectContaining({
+        firstName: fakeAgent.firstName,
+        merchantName: fakeSubscription.merchantName,
+        tier: fakeSubscription.tier,
+      })
+    );
+  });
+
+  it('respects the agent opting out via emailOnPaymentRetryFailed: false', async () => {
+    const stripeSubId = 'sub_email_optout_test';
+    const fakeSubscription = { id: 121, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce({
+      ...fakeAgent,
+      emailPreferences: { emailOnPaymentRetryFailed: false },
+    } as never);
+
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(emailService.sendSubscriptionPaymentFailedEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not email when the agent cannot be found', async () => {
+    const stripeSubId = 'sub_email_no_agent_test';
+    const fakeSubscription = { id: 122, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(undefined as never);
+
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(emailService.sendSubscriptionPaymentFailedEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not throw when the email send rejects', async () => {
+    const stripeSubId = 'sub_email_reject_test';
+    const fakeSubscription = { id: 123, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(fakeAgent as never);
+    vi.mocked(emailService.sendSubscriptionPaymentFailedEmail).mockRejectedValueOnce(
+      new Error('Resend down')
+    );
+
+    await expect(
+      WebhookHandlers.handleInvoicePaymentFailed(stripeSubId)
+    ).resolves.toBeUndefined();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(emailService.sendSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(1);
   });
 });
 
