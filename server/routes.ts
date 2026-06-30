@@ -2667,17 +2667,24 @@ export async function registerRoutes(
         userAgent: req.headers['user-agent'] ?? null,
       }).catch((err) => console.error('[ActivityLog] Failed to log payment method update:', err));
 
-      // Send notification and email if a payment was attempted
-      if (newBillingStatus === 'active' || newBillingStatus === 'failed') {
+      // Send notification and email if a payment was attempted. We notify on all
+      // three outcomes: success (active), still-pending (past_due — the invoice
+      // resolved but did not pay), and hard failure (failed).
+      if (newBillingStatus === 'active' || newBillingStatus === 'past_due' || newBillingStatus === 'failed') {
         const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
-        const isSuccess = newBillingStatus === 'active';
 
-        const notifTitle = isSuccess
-          ? `Payment Successful: ${sub.merchantName}`
-          : `Payment Failed: ${sub.merchantName}`;
-        const notifMessage = isSuccess
-          ? `Your outstanding payment for ${sub.merchantName} (${tierLabel}) has been processed successfully. Your subscription is now active.`
-          : `The payment retry for ${sub.merchantName} (${tierLabel}) has failed. Please update your payment method and try again.`;
+        let notifTitle: string;
+        let notifMessage: string;
+        if (newBillingStatus === 'active') {
+          notifTitle = `Payment Successful: ${sub.merchantName}`;
+          notifMessage = `Your outstanding payment for ${sub.merchantName} (${tierLabel}) has been processed successfully. Your subscription is now active.`;
+        } else if (newBillingStatus === 'past_due') {
+          notifTitle = `Payment Pending: ${sub.merchantName}`;
+          notifMessage = `Your payment retry for ${sub.merchantName} (${tierLabel}) is still processing and hasn't cleared yet. No action is needed right now — we'll let you know once it's confirmed or if it fails.`;
+        } else {
+          notifTitle = `Payment Failed: ${sub.merchantName}`;
+          notifMessage = `The payment retry for ${sub.merchantName} (${tierLabel}) has failed. Please update your payment method and try again.`;
+        }
 
         storage.createNotification({
           agentId,
@@ -2688,12 +2695,15 @@ export async function registerRoutes(
 
         storage.getAgent(agentId).then((agent) => {
           if (!agent) return;
-          const prefs = (agent.emailPreferences as { emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+          const prefs = (agent.emailPreferences as { emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryPending?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
           const emailData = { firstName: agent.firstName, merchantName: sub.merchantName, tier: tierLabel };
-          if (isSuccess && prefs.emailOnPaymentRetrySuccess !== false) {
+          if (newBillingStatus === 'active' && prefs.emailOnPaymentRetrySuccess !== false) {
             emailService.sendPaymentRetrySuccessEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send payment retry success email:', err));
-          } else if (!isSuccess && prefs.emailOnPaymentRetryFailed !== false) {
+          } else if (newBillingStatus === 'past_due' && prefs.emailOnPaymentRetryPending !== false) {
+            emailService.sendPaymentRetryPendingEmail(agent.email, emailData)
+              .catch((err) => console.error('[Email] Failed to send payment retry pending email:', err));
+          } else if (newBillingStatus === 'failed' && prefs.emailOnPaymentRetryFailed !== false) {
             emailService.sendPaymentRetryFailedEmail(agent.email, emailData)
               .catch((err) => console.error('[Email] Failed to send payment retry failed email:', err));
           }

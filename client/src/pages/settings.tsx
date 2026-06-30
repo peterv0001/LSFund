@@ -78,7 +78,7 @@ export default function SettingsPage() {
   });
 
   // Notification preferences state
-  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryPending?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
   const initialNotifPrefs = {
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
@@ -87,6 +87,7 @@ export default function SettingsPage() {
     emailOnTeamSignup: defaultPrefs.emailOnTeamSignup !== false,
     emailOnCommissionEarned: defaultPrefs.emailOnCommissionEarned !== false,
     emailOnPaymentRetrySuccess: defaultPrefs.emailOnPaymentRetrySuccess !== false,
+    emailOnPaymentRetryPending: defaultPrefs.emailOnPaymentRetryPending !== false,
     emailOnPaymentRetryFailed: defaultPrefs.emailOnPaymentRetryFailed !== false,
   };
   const [notifPrefs, setNotifPrefs] = useState(initialNotifPrefs);
@@ -631,6 +632,20 @@ export default function SettingsPage() {
                       data-testid="toggle-email-on-payment-retry-success"
                       checked={notifPrefs.emailOnPaymentRetrySuccess}
                       onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetrySuccess: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Payment Retry Pending</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when a payment retry for one of your subscriptions is still processing and hasn't cleared yet.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-payment-retry-pending"
+                      checked={notifPrefs.emailOnPaymentRetryPending}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetryPending: checked }))}
                     />
                   </div>
 

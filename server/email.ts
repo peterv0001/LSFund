@@ -716,6 +716,64 @@ const templates = {
     `,
   }),
 
+  paymentRetryPending: (data: { firstName: string; merchantName: string; tier: string; dashboardUrl: string }) => ({
+    subject: `⏳ Payment Pending: ${data.merchantName} is still processing`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #C9A24B 0%, #A67F2E 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">⏳</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Payment Pending</h1>
+    </div>
+
+    <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        Thanks for retrying the payment for one of your merchant subscriptions. It hasn't been declined &mdash; it's still being processed by the bank, so the subscription remains in a pending state for now.
+      </p>
+
+      <div style="background: #fdf9ef; border: 1px solid #e8d49a; border-radius: 12px; padding: 24px; margin: 20px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #718096;">Merchant</span>
+          <strong style="color: #0A1628;">${data.merchantName}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #e8d49a;">
+          <span style="color: #718096;">Tier</span>
+          <strong style="color: #A67F2E;">${data.tier}</strong>
+        </div>
+      </div>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 20px 0;">
+        No action is needed right now. We'll let you know as soon as the payment clears. If it doesn't go through, you'll get a follow-up so you can update your card and try again.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          View Your Subscriptions →
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 14px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        If you have questions about this payment, please contact support.
+      </p>
+    </div>
+
+    <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
+      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
   paymentRetryFailed: (data: { firstName: string; merchantName: string; tier: string; dashboardUrl: string }) => ({
     subject: `⚠️ Payment Failed: Action required for ${data.merchantName}`,
     html: `
@@ -1113,6 +1171,31 @@ export const emailService = {
       console.log(`[Email] Payment retry success email sent to ${to}`);
     } catch (error) {
       console.error('[Email] Failed to send payment retry success email:', error);
+    }
+  },
+
+  async sendPaymentRetryPendingEmail(to: string, data: { firstName: string; merchantName: string; tier: string }) {
+    if (!process.env.RESEND_API_KEY) {
+      console.log('[Email] Skipping payment retry pending email - RESEND_API_KEY not set');
+      return;
+    }
+
+    try {
+      const template = templates.paymentRetryPending({
+        ...data,
+        dashboardUrl: `${APP_URL}/subscriptions`,
+      });
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+
+      console.log(`[Email] Payment retry pending email sent to ${to}`);
+    } catch (error) {
+      console.error('[Email] Failed to send payment retry pending email:', error);
     }
   },
 

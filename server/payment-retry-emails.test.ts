@@ -34,6 +34,7 @@ vi.mock("./stripeClient.js", () => ({
 vi.mock("./email.js", () => ({
   emailService: {
     sendPaymentRetrySuccessEmail: vi.fn().mockResolvedValue(undefined),
+    sendPaymentRetryPendingEmail: vi.fn().mockResolvedValue(undefined),
     sendPaymentRetryFailedEmail: vi.fn().mockResolvedValue(undefined),
     sendSubscriptionPausedEmail: vi.fn().mockResolvedValue(undefined),
     sendSubscriptionCancelledEmail: vi.fn().mockResolvedValue(undefined),
@@ -78,6 +79,7 @@ async function hashPassword(password: string): Promise<string> {
 
 type EmailPrefs = {
   emailOnPaymentRetrySuccess?: boolean;
+  emailOnPaymentRetryPending?: boolean;
   emailOnPaymentRetryFailed?: boolean;
 };
 
@@ -383,11 +385,12 @@ describe("payment retry – failure email preference", () => {
   });
 });
 
-// ── Still-unpaid retry (past_due) stays quiet ──────────────────────────────
+// ── Still-unpaid retry (past_due) → "payment pending" messaging ────────────
 describe("payment retry – still-unpaid outcome (past_due)", () => {
-  it("sends NEITHER a success nor failure email when the invoice resolves still-unpaid", async () => {
-    const agent = await createAgent("unpaid-quiet", {
+  it("sends a pending email (not success/failure) when the invoice resolves still-unpaid and the preference is enabled", async () => {
+    const agent = await createAgent("unpaid-pending-on", {
       emailOnPaymentRetrySuccess: true,
+      emailOnPaymentRetryPending: true,
       emailOnPaymentRetryFailed: true,
     });
     const sub = await insertBillableSubscription(agent.id);
@@ -403,15 +406,21 @@ describe("payment retry – still-unpaid outcome (past_due)", () => {
     expect(res.body.billingStatus).toBe("past_due");
 
     await shortDelay();
+    expect(emailService.sendPaymentRetryPendingEmail).toHaveBeenCalledOnce();
+    expect(emailService.sendPaymentRetryPendingEmail).toHaveBeenCalledWith(
+      agent.email,
+      expect.objectContaining({ merchantName: "Test Merchant" })
+    );
     expect(emailService.sendPaymentRetrySuccessEmail).not.toHaveBeenCalled();
     expect(emailService.sendPaymentRetryFailedEmail).not.toHaveBeenCalled();
 
     await cleanupAgent(agent.id);
   });
 
-  it("creates NO payment success/failure in-app notification when still-unpaid", async () => {
-    const agent = await createAgent("unpaid-no-notif", {
+  it("does NOT send a pending email when emailOnPaymentRetryPending is false", async () => {
+    const agent = await createAgent("unpaid-pending-off", {
       emailOnPaymentRetrySuccess: true,
+      emailOnPaymentRetryPending: false,
       emailOnPaymentRetryFailed: true,
     });
     const sub = await insertBillableSubscription(agent.id);
@@ -425,7 +434,33 @@ describe("payment retry – still-unpaid outcome (past_due)", () => {
       .expect(200);
 
     await shortDelay();
+    expect(emailService.sendPaymentRetryPendingEmail).not.toHaveBeenCalled();
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("creates a distinct 'Payment Pending' in-app notification even when emailOnPaymentRetryPending is false", async () => {
+    const agent = await createAgent("unpaid-pending-notif", {
+      emailOnPaymentRetrySuccess: false,
+      emailOnPaymentRetryPending: false,
+      emailOnPaymentRetryFailed: false,
+    });
+    const sub = await insertBillableSubscription(agent.id);
+    useMockStripe(buildUnpaidRetryMockStripeClient());
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/payment-method`)
+      .set("Cookie", cookie)
+      .send({})
+      .expect(200);
+
+    await shortDelay();
     const notifs = await getNotificationsForAgent(agent.id);
+    expect(
+      notifs.some((n) => n.title === "Payment Pending: Test Merchant")
+    ).toBe(true);
+    // The pending message must be distinct from both success and failure copy.
     expect(
       notifs.some((n) => n.title === "Payment Successful: Test Merchant")
     ).toBe(false);
@@ -471,6 +506,24 @@ describe("payment retry – default behavior with no preference keys", () => {
 
     await shortDelay();
     expect(emailService.sendPaymentRetryFailedEmail).toHaveBeenCalledOnce();
+
+    await cleanupAgent(agent.id);
+  });
+
+  it("sends a pending email by default when no preference keys are set", async () => {
+    const agent = await createAgent("default-pending", {});
+    const sub = await insertBillableSubscription(agent.id);
+    useMockStripe(buildUnpaidRetryMockStripeClient());
+    const cookie = await loginAs(agent.email);
+
+    await request(testApp)
+      .patch(`/api/subscriptions/${sub.id}/payment-method`)
+      .set("Cookie", cookie)
+      .send({})
+      .expect(200);
+
+    await shortDelay();
+    expect(emailService.sendPaymentRetryPendingEmail).toHaveBeenCalledOnce();
 
     await cleanupAgent(agent.id);
   });
