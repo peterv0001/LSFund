@@ -27,6 +27,42 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { COMP_V2026 } from "@shared/compensation";
+import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
+
+function ViewsSparkline({ data, testId }: { data: number[]; testId: string }) {
+  const series = data && data.length > 0 ? data : [];
+  const hasViews = series.some((v) => v > 0);
+  const chartData = series.map((value, index) => ({ index, value }));
+
+  if (!hasViews) {
+    return (
+      <div
+        className="h-9 flex items-center justify-center rounded-md bg-gray-50 text-[10px] uppercase tracking-wide text-gray-300"
+        data-testid={testId}
+      >
+        No views yet
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-9 w-full" data-testid={testId}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 4, bottom: 4, left: 0, right: 0 }}>
+          <YAxis hide domain={[0, "dataMax"]} />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="hsl(var(--primary))"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 const DISMISSED_EXPIRING_SOON_KEY = "dismissed-expiring-soon-subscriptions";
 
@@ -62,7 +98,7 @@ export default function Dashboard() {
     },
   });
 
-  type ShareStat = { views: number; leads: number; views7d: number; views30d: number };
+  type ShareStat = { views: number; leads: number; views7d: number; views30d: number; dailyViews: number[] };
   const { data: shareStats } = useQuery<Record<'platform' | 'leaks' | 'scale', ShareStat>>({
     queryKey: ['share-stats'],
     queryFn: async () => {
@@ -514,6 +550,13 @@ export default function Dashboard() {
                       </span>
                       <span className="text-[10px] uppercase tracking-wide text-gray-400 mt-1">Last 30d</span>
                     </div>
+                  </div>
+                  <div className="mb-3">
+                    <span className="text-[10px] uppercase tracking-wide text-gray-400">Daily views · 30d</span>
+                    <ViewsSparkline
+                      data={shareStats?.[lp.key as 'platform' | 'leaks' | 'scale']?.dailyViews ?? []}
+                      testId={`sparkline-views-${lp.key}`}
+                    />
                   </div>
                   <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
                     <div className="font-mono text-xs text-gray-600 truncate" data-testid={`text-share-url-${lp.key}`}>

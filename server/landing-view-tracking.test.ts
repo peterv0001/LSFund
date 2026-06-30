@@ -187,4 +187,35 @@ describe("agent share stats", () => {
     expect(stats.leaks.views7d).toBe(0);
     expect(stats.leaks.views30d).toBe(0);
   });
+
+  it("returns a 30-bucket daily view series with traffic placed in the right day", async () => {
+    // Backdate one platform view to 10 days ago so it lands in a known bucket.
+    const [tenRow] = await db
+      .insert(schema.landingPageViews)
+      .values({ agentId: activeAgentId, page: "leaks" })
+      .returning();
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    await db
+      .update(schema.landingPageViews)
+      .set({ createdAt: tenDaysAgo })
+      .where(eq(schema.landingPageViews.id, tenRow.id));
+
+    const stats = await storage.getShareStats(activeAgentId);
+
+    // Series is always 30 daily buckets (oldest -> newest), one per page.
+    expect(stats.platform.dailyViews).toHaveLength(30);
+    expect(stats.leaks.dailyViews).toHaveLength(30);
+    expect(stats.scale.dailyViews).toHaveLength(30);
+
+    // The summed series matches the 30-day window count for that page.
+    const sum = (a: number[]) => a.reduce((t, n) => t + n, 0);
+    expect(sum(stats.platform.dailyViews)).toBe(stats.platform.views30d);
+    expect(sum(stats.scale.dailyViews)).toBe(stats.scale.views30d);
+
+    // The leaks view we backdated to 10 days ago lands ~20 buckets from the start.
+    const leaksDayIndex = stats.leaks.dailyViews.findIndex((n) => n > 0);
+    expect(leaksDayIndex).toBeGreaterThanOrEqual(18);
+    expect(leaksDayIndex).toBeLessThanOrEqual(21);
+    expect(sum(stats.leaks.dailyViews)).toBe(1);
+  });
 });

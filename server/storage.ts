@@ -1441,7 +1441,7 @@ export class DatabaseStorage {
   // each link was opened (views) and how many leads it produced. Lead counts
   // come from leads assigned to the agent whose source matches the page's
   // campaign tag (source = `landing:<campaign>`).
-  async getShareStats(agentId: number): Promise<Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number }>> {
+  async getShareStats(agentId: number): Promise<Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number; dailyViews: number[] }>> {
     const campaignByPage: Record<'platform' | 'leaks' | 'scale', string> = {
       platform: 'landing:lp-platform-overview',
       leaks: 'landing:lp-platform-leaks',
@@ -1463,6 +1463,38 @@ export class DatabaseStorage {
       .where(eq(landingPageViews.agentId, agentId))
       .groupBy(landingPageViews.page);
 
+    // Per-day view counts over the trailing 30 days, used to render an inline
+    // sparkline of each shared page's traffic trend.
+    const DAY_BUCKETS = 30;
+    const startOfTodayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const seriesStart = new Date(startOfTodayUTC.getTime() - (DAY_BUCKETS - 1) * 24 * 60 * 60 * 1000);
+
+    const dailyRows = await db
+      .select({
+        page: landingPageViews.page,
+        day: sql<string>`to_char((${landingPageViews.createdAt} AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')`,
+        cnt: count(),
+      })
+      .from(landingPageViews)
+      .where(and(eq(landingPageViews.agentId, agentId), gte(landingPageViews.createdAt, seriesStart)))
+      .groupBy(landingPageViews.page, sql`(${landingPageViews.createdAt} AT TIME ZONE 'UTC')::date`);
+
+    const dayKeys: string[] = [];
+    for (let i = 0; i < DAY_BUCKETS; i++) {
+      const d = new Date(seriesStart.getTime() + i * 24 * 60 * 60 * 1000);
+      dayKeys.push(d.toISOString().slice(0, 10));
+    }
+
+    const dailyByPage = new Map<string, Map<string, number>>();
+    for (const r of dailyRows) {
+      let m = dailyByPage.get(r.page);
+      if (!m) {
+        m = new Map();
+        dailyByPage.set(r.page, m);
+      }
+      m.set(r.day, Number(r.cnt));
+    }
+
     const leadRows = await db
       .select({ source: leads.source, cnt: count() })
       .from(leads)
@@ -1472,14 +1504,16 @@ export class DatabaseStorage {
     const viewByPage = new Map(viewRows.map((r) => [r.page, r]));
     const leadBySource = new Map(leadRows.map((r) => [r.source, Number(r.cnt)]));
 
-    const result = {} as Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number }>;
+    const result = {} as Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number; dailyViews: number[] }>;
     for (const page of ['platform', 'leaks', 'scale'] as const) {
       const row = viewByPage.get(page);
+      const dayMap = dailyByPage.get(page);
       result[page] = {
         views: row ? Number(row.cnt) : 0,
         views7d: row ? Number(row.cnt7) : 0,
         views30d: row ? Number(row.cnt30) : 0,
         leads: leadBySource.get(campaignByPage[page]) ?? 0,
+        dailyViews: dayKeys.map((k) => dayMap?.get(k) ?? 0),
       };
     }
     return result;

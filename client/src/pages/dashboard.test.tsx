@@ -28,7 +28,7 @@ vi.mock("@/components/Sidebar", () => ({
 
 import Dashboard from "./dashboard";
 
-type ShareStat = { views: number; leads: number };
+type ShareStat = { views: number; leads: number; views7d?: number; views30d?: number; dailyViews?: number[] };
 
 function jsonResponse(body: unknown) {
   return {
@@ -81,6 +81,12 @@ function renderDashboard() {
 }
 
 beforeEach(() => {
+  // Recharts' ResponsiveContainer relies on ResizeObserver, which jsdom lacks.
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
   authState.user = { id: 1, firstName: "Test", referralCode: "ABC123" };
 });
 
@@ -93,9 +99,9 @@ afterEach(() => {
 describe("Dashboard share cards: views and leads counts", () => {
   it("renders the Views and Leads values from /api/agents/share-stats on each card", async () => {
     const shareStats: Record<"platform" | "leaks" | "scale", ShareStat> = {
-      platform: { views: 120, leads: 8 },
-      leaks: { views: 45, leads: 3 },
-      scale: { views: 7, leads: 0 },
+      platform: { views: 120, leads: 8, dailyViews: [0, 1, 3, 2, 5] },
+      leaks: { views: 45, leads: 3, dailyViews: [1, 0, 2] },
+      scale: { views: 7, leads: 0, dailyViews: [0, 0, 0] },
     };
     vi.stubGlobal("fetch", mockFetch(shareStats));
 
@@ -114,6 +120,12 @@ describe("Dashboard share cards: views and leads counts", () => {
     expect(screen.getByTestId("stats-share-platform")).toBeTruthy();
     expect(screen.getByTestId("stats-share-leaks")).toBeTruthy();
     expect(screen.getByTestId("stats-share-scale")).toBeTruthy();
+
+    // Each card renders an inline sparkline of daily views.
+    expect(screen.getByTestId("sparkline-views-platform")).toBeTruthy();
+    expect(screen.getByTestId("sparkline-views-leaks")).toBeTruthy();
+    // A page with no daily views shows the empty-state copy rather than a line.
+    expect(screen.getByTestId("sparkline-views-scale").textContent).toContain("No views yet");
   });
 
   it("falls back to 0 for every card when share stats are missing", async () => {
