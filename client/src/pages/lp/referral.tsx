@@ -1,57 +1,65 @@
-import { ArrowIcon, LpFooter, LpHeader, useLandingForm, usePageMeta } from "./lp-common";
+import { ArrowIcon, CheckIcon, LpFooter, LpHeader, useLandingForm, usePageMeta } from "./lp-common";
 
 export default function LpReferral() {
   usePageMeta(
-    "You know a business that needs capital. — Leader Shield Partner Network",
-    "Join the Leader Shield referral partner program: make the introduction and earn 1% of factoring origination on every funded referral. No quotas, no sales role.",
+    "Two income streams. One agent role. — LeaderShield Funding Agents",
+    "Become a LeaderShield Funding agent and earn on two streams: MCA funding commissions plus recurring Merchant Growth Platform subscription commissions and lifetime residuals.",
   );
-  const { formRef, onSubmit, triggerSubmit } = useLandingForm("lp-partner-referral", "signup");
+  const { formRef, onSubmit, triggerSubmit } = useLandingForm("lp-agent-recruiting", "signup");
 
   return (
     <div className="lp-page" data-testid="page-lp-referral">
-      <LpHeader partner safe={<>Referral partner program</>} />
+      <LpHeader partner safe={<>LeaderShield Funding agent program</>} />
 
       <section className="hero">
         <div className="wrap">
           <div>
             <span className="eyebrow">
-              <span className="dot" /> Referral partners · 1% of origination
+              <span className="dot" /> Become an agent · two income streams
             </span>
             <h1>
-              You know a business that needs capital. <em>That's the whole job.</em>
+              Two income streams. <em>One agent role.</em>
             </h1>
             <p className="sub">
-              Accountants, consultants, POS reps, brokers, lenders who decline files — you already sit next
-              to businesses that need funding. Make the introduction; we handle{" "}
-              <b>sales, underwriting, funding, and service</b>. You earn on every deal that funds.
+              As a <b>LeaderShield Funding</b> agent you write merchant cash advances <b>and</b> place the
+              Merchant Growth Platform — earning on funding commissions plus recurring subscription
+              commissions and lifetime residuals. We handle underwriting, funding, and platform delivery;
+              you build the book.
             </p>
-            <div className="payout" aria-label="Illustrative payout example">
-              <div className="k">Referral compensation</div>
-              <div className="big">1%</div>
-              <div className="s">of factoring origination on every funded referral</div>
+            <div className="payout" aria-label="Illustrative agent compensation">
+              <div className="k">Agent compensation</div>
+              <div className="row">
+                <span>MCA Opening Agent Pool</span>
+                <span className="v green">32.5%</span>
+              </div>
+              <div className="row">
+                <span>Performance accelerators</span>
+                <span className="v">up to +2.5%</span>
+              </div>
               <div className="div" />
               <div className="row">
-                <span>Average funded deal</span>
-                <span className="v">$75,000</span>
+                <span>Platform subscription commission</span>
+                <span className="v green">up to 55%</span>
               </div>
               <div className="row">
-                <span>Example referral payout</span>
-                <span className="v green">~$750</span>
+                <span>With accelerators</span>
+                <span className="v">up to 60%</span>
               </div>
               <div className="row">
-                <span>Your obligations after the intro</span>
-                <span className="v">None</span>
+                <span>Lifetime subscription residuals</span>
+                <span className="v">up to 15%</span>
               </div>
               <div className="fine">
-                Illustrative example. Actual compensation depends on funded amount and program terms.
+                Illustrative compensation ranges. Independent agents keep the full Opening Agent Pool share.
+                Actual earnings depend on production, product mix, and program terms.
               </div>
             </div>
           </div>
 
           <form ref={formRef} className="form-card" onSubmit={onSubmit} data-testid="form-lead">
-            <div className="fc-eyebrow">● Free to join · no quotas</div>
-            <h2>Become a referral partner</h2>
-            <p className="fc-sub">Register in two minutes. Your first referral can be submitted the same day.</p>
+            <div className="fc-eyebrow">● Free to apply · build your own book</div>
+            <h2>Become a LeaderShield Funding agent</h2>
+            <p className="fc-sub">Apply in two minutes. We'll walk you through onboarding and the comp plan.</p>
             <div className="field">
               <label htmlFor="rn">Your name</label>
               <input id="rn" name="name" required autoComplete="name" data-testid="input-name" />
@@ -64,27 +72,27 @@ export default function LpReferral() {
               <label htmlFor="role">What best describes you?</label>
               <select id="role" name="role" required defaultValue="" data-testid="select-role">
                 <option value="">Select</option>
-                <option>Accountant / bookkeeper</option>
-                <option>Business consultant / coach</option>
-                <option>POS / merchant services rep</option>
-                <option>Lender / broker with declined files</option>
-                <option>Other professional with business clients</option>
+                <option>New to MCA / funding sales</option>
+                <option>Experienced MCA / ISO producer</option>
+                <option>Financial / business services pro</option>
+                <option>SaaS / platform sales background</option>
+                <option>Other sales professional</option>
               </select>
             </div>
             <div className="field">
-              <label htmlFor="rf">Businesses you could refer this quarter</label>
-              <select id="rf" name="referral_capacity" required defaultValue="" data-testid="select-referral-capacity">
+              <label htmlFor="rf">Your funding sales experience</label>
+              <select id="rf" name="agent_experience" required defaultValue="" data-testid="select-agent-experience">
                 <option value="">Select</option>
-                <option>1–2</option>
-                <option>3–10</option>
-                <option>10+</option>
-                <option>Not sure yet</option>
+                <option>Just getting started</option>
+                <option>Under 1 year</option>
+                <option>1–3 years</option>
+                <option>3+ years</option>
               </select>
             </div>
             <button className="btn btn-primary" type="submit" data-testid="button-submit-lead">
-              Register as a referral partner <ArrowIcon />
+              Apply to become an agent <ArrowIcon />
             </button>
-            <p className="fc-fine">No fees, no quotas, no sales obligations. Just the introduction.</p>
+            <p className="fc-fine">No fees to apply. Build recurring income alongside your funding deals.</p>
           </form>
         </div>
       </section>
@@ -93,37 +101,132 @@ export default function LpReferral() {
         <div className="wrap">
           <div className="sec-head">
             <span className="eyebrow on-light">
-              <span className="dot" /> How it works
+              <span className="dot" /> How agents get paid
             </span>
-            <h2>Three steps. One of them is yours.</h2>
-            <p>The entire model is built so the introduction is the only thing you ever have to do.</p>
+            <h2>One relationship. Two ways to earn.</h2>
+            <p>
+              Every merchant you bring to LeaderShield Funding can fund and subscribe — so a single client can
+              pay you twice, with the platform side paying you again every month.
+            </p>
           </div>
           <div className="how">
             <div className="hcard">
               <div className="num">01</div>
-              <h3>Make the introduction</h3>
+              <h3>Fund the deal</h3>
               <p>
-                Submit the business through your partner link or a 60-second referral form. That's your entire
-                role.
+                Place a merchant cash advance and earn from the <b>Opening Agent Pool — 32.5% of the gross
+                funding commission</b>. Independent agents keep the full 32.5%, with performance accelerators
+                adding up to +2.5%.
               </p>
             </div>
             <div className="hcard">
               <div className="num">02</div>
-              <h3>We run the file</h3>
+              <h3>Place the platform</h3>
               <p>
-                Our desk handles outreach, underwriting, structuring, disclosures, funding, and every renewal
-                after — with the total cost shown to the merchant before they sign.
+                Add the Merchant Growth Platform and earn <b>up to 55% of the commissionable basis</b> on
+                premium products at the Elite tier — up to 60% with accelerators.
               </p>
             </div>
             <div className="hcard">
               <div className="num">03</div>
-              <h3>You're paid on funding</h3>
+              <h3>Earn for the lifetime</h3>
               <p>
-                1% of factoring origination on every referral that funds, tracked in your partner portal.
-                Renewals from your referrals keep crediting you.
+                Keep tiered lifetime residuals on active subscriptions, so the book you build keeps paying you
+                month after month — not just on the first sale.
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="section" id="plans">
+        <div className="wrap">
+          <div className="sec-head">
+            <span className="eyebrow on-light">
+              <span className="dot" /> Recurring residual income
+            </span>
+            <h2>Build a book that pays every month.</h2>
+            <p>
+              Subscription commissions are earned up front; residuals keep crediting you for the life of each
+              active subscription. Starter is commission-eligible but not residual-eligible.
+            </p>
+          </div>
+          <div className="tiers">
+            <div className="tier">
+              <h3 className="tname">Starter</h3>
+              <div className="trole">Lead generation</div>
+              <div className="price mono">
+                $149<small>/mo</small>
+              </div>
+              <p className="pitch">Entry point for merchants filling the pipeline. Commission-eligible.</p>
+              <ul>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> Up-front subscription commission
+                </li>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> Not residual-eligible
+                </li>
+              </ul>
+            </div>
+
+            <div className="tier">
+              <h3 className="tname">Growth Foundation</h3>
+              <div className="trole">Visibility &amp; stability</div>
+              <div className="price mono">
+                $497<small>/mo</small>
+              </div>
+              <p className="pitch">The organized, responsive foundation — and your first residual tier.</p>
+              <ul>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> Up-front subscription commission
+                </li>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> 10% lifetime residual
+                </li>
+              </ul>
+            </div>
+
+            <div className="tier pop">
+              <span className="flag">Most popular</span>
+              <h3 className="tname">Revenue Growth System</h3>
+              <div className="trole">Revenue growth &amp; optimization</div>
+              <div className="price mono">
+                $997<small>/mo</small>
+              </div>
+              <p className="pitch">The active engine merchants stay on — and a stronger residual for you.</p>
+              <ul>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> Up-front subscription commission
+                </li>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> 15% lifetime residual
+                </li>
+              </ul>
+            </div>
+
+            <div className="tier">
+              <span className="flag best">Best value</span>
+              <h3 className="tname">Revenue Scale AI</h3>
+              <div className="trole">AI-driven scale &amp; optimization</div>
+              <div className="price mono">
+                $1,497<small>/mo</small>
+              </div>
+              <p className="pitch">The full AI marketing-and-sales department — your highest-value placement.</p>
+              <ul>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> Up-front subscription commission
+                </li>
+                <li>
+                  <CheckIcon strokeWidth={2.4} /> 15% lifetime residual
+                </li>
+              </ul>
+            </div>
+          </div>
+          <p className="tier-note">
+            Subscription commission earns up to 55% of the commissionable basis on premium products at the
+            Elite tier (up to 60% with accelerators). Residual percentages apply to active subscriptions and
+            are governed by the agent compensation plan.
+          </p>
         </div>
       </section>
 
@@ -131,26 +234,26 @@ export default function LpReferral() {
         <div className="wrap">
           <div>
             <span className="eyebrow on-light">
-              <span className="dot" /> Who refers well
+              <span className="dot" /> Who does well here
             </span>
-            <h2>If businesses already trust you, you're halfway done.</h2>
+            <h2>If you can open a conversation with a business owner, you can earn here.</h2>
             <p>
-              The best referral partners aren't salespeople — they're professionals whose clients already
-              bring them money problems. Your introduction carries weight precisely because you're <b>not</b>{" "}
-              the one selling. And because we show merchants the full cost up front, the introduction you make
-              is one your reputation can stand behind.
+              The strongest agents pair funding with the platform — solving a merchant's cash need today and
+              their growth need every month after. You don't need a book of MCA deals to start; you need
+              merchants who want capital, customers, or both. We provide the products, the underwriting, and
+              the back office.
             </p>
           </div>
           <div>
             <div className="chips">
-              <span className="chip">Accountants &amp; bookkeepers</span>
+              <span className="chip">MCA &amp; ISO producers</span>
+              <span className="chip">Independent funding agents</span>
               <span className="chip">Business consultants</span>
-              <span className="chip">POS &amp; merchant services reps</span>
+              <span className="chip">SaaS &amp; platform sellers</span>
+              <span className="chip">Financial services pros</span>
               <span className="chip">Insurance agents</span>
               <span className="chip">Commercial realtors</span>
-              <span className="chip">Lenders with declined files</span>
-              <span className="chip">Web &amp; marketing agencies</span>
-              <span className="chip">Trade association leaders</span>
+              <span className="chip">New sales professionals</span>
             </div>
           </div>
         </div>
@@ -159,15 +262,15 @@ export default function LpReferral() {
       <section className="section final">
         <div className="wrap">
           <span className="eyebrow on-light">
-            <span className="dot" /> Free to join
+            <span className="dot" /> Free to apply
           </span>
-          <h2>The introduction you'd make anyway. Now it pays.</h2>
+          <h2>Write the deal. Place the platform. Get paid twice.</h2>
           <p>
-            Register in two minutes. No fees, no quotas, no sales role — and a funding partner your clients
-            can verify is straight with them.
+            Apply in two minutes and build a book with recurring income — backed by a funding partner that
+            shows merchants the total cost before they sign.
           </p>
           <button type="button" className="btn btn-primary" onClick={triggerSubmit} data-testid="button-cta-secondary">
-            Register as a referral partner
+            Apply to become an agent
           </button>
         </div>
       </section>
@@ -175,12 +278,13 @@ export default function LpReferral() {
       <LpFooter
         disclosure={
           <>
-            <b>Referral program disclosure.</b> Referral compensation is 1% of factoring origination on
-            funded referrals and is governed by the Leader Shield referral partner agreement. The payout
-            example shown is illustrative only; actual compensation depends on funded amount and program
-            terms. No level of earnings is guaranteed. Referral partners are independent contractors, not
-            employees. Merchant cash advance funding is the purchase of future receivables and is not a
-            traditional APR-based loan; all merchant terms are subject to underwriting review.
+            <b>Income disclosure.</b> Compensation figures shown — including the Opening Agent Pool share,
+            performance accelerators, subscription commission rates, and lifetime residual percentages — are
+            illustrative and governed by the LeaderShield Funding agent compensation plan, which is subject to
+            change. Agents are independent contractors, not employees, and earnings vary based on production,
+            product mix, and effort. No level of earnings is guaranteed. Merchant cash advance funding is the
+            purchase of future receivables and is not a traditional APR-based loan; all merchant terms are
+            subject to underwriting review.
           </>
         }
       />

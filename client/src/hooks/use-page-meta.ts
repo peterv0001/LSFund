@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const DEFAULT_TITLE = "Leader Shield Funding";
+const DEFAULT_TITLE = "LeaderShield Funding";
 const DEFAULT_OG_IMAGE = "https://leadershieldfunding.com/og-image.png";
 
 function setMetaContent(selector: string, content: string): string | null {

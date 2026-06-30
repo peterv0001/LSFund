@@ -2,7 +2,7 @@ import { ArrowIcon, CheckIcon, LpFooter, LpHeader, useLandingForm, usePageMeta }
 
 export default function LpConsolidation() {
   usePageMeta(
-    "Too many daily debits? See the math on one payment. — Leader Shield Funding",
+    "Too many daily debits? See the math on one payment. — LeaderShield Funding",
     "Get a free consolidation analysis: map every advance you're carrying and see what one structured payment could do for your daily cash flow.",
   );
   const { formRef, onSubmit, triggerSubmit } = useLandingForm("lp-merchant-consolidation", "apply");
@@ -135,7 +135,7 @@ export default function LpConsolidation() {
         <div className="wrap">
           <div>
             <span className="eyebrow on-light">
-              <span className="dot" /> Why Leader Shield
+              <span className="dot" /> Why LeaderShield
             </span>
             <h2>Built to end the stack, not add to it.</h2>
             <p>

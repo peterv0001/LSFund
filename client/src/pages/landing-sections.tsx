@@ -281,70 +281,6 @@ export default function LandingSections() {
         </div>
       </section>
 
-      {/* Affiliate / Referral Opportunity */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <AnimatedSection>
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-sm font-medium text-primary mb-6">
-                <Handshake className="w-4 h-4" />
-                Affiliate Opportunity
-              </span>
-              <h2 className="text-4xl lg:text-5xl font-display font-bold text-primary mb-6">
-                Refer the opportunity.<br />We handle the execution.
-              </h2>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                Referral partners can monetize business funding opportunities without managing sales, underwriting, fulfillment, customer service, or the ongoing client relationship. Leader Shield manages the process from intake through funding and future renewals.
-              </p>
-              <div className="space-y-3 mb-8">
-                {[
-                  "Affiliate compensation is 1% of factoring origination.",
-                  "On an average $75,000 funded deal, the example payout is approximately $750.",
-                  "No sales, underwriting, or service obligations — just the introduction.",
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{item}</span>
-                  </div>
-                ))}
-              </div>
-              <Link href="/signup">
-                <Button size="lg" className="h-14 px-8 text-base font-bold shadow-lg transition-all hover:scale-105" data-testid="button-affiliate-cta">
-                  Become a Referral Partner
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-            </AnimatedSection>
-
-            <AnimatedSection delay={0.2}>
-              <div className="relative">
-                <div className="absolute -inset-3 bg-gradient-to-br from-primary/10 to-transparent rounded-3xl blur-2xl" />
-                <Card className="relative border-border/50 shadow-xl overflow-hidden" data-testid="card-affiliate-example">
-                  <div className="bg-gradient-to-br from-[#0A1628] to-[#15294B] p-8 text-center">
-                    <p className="text-white/50 text-sm font-medium uppercase tracking-wider mb-3">Example Payout</p>
-                    <p className="text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#C9A24B] to-[#A07B22]">1%</p>
-                    <p className="text-white/60 mt-2">of factoring origination</p>
-                  </div>
-                  <CardContent className="p-8">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between pb-4 border-b border-border">
-                        <span className="text-muted-foreground">Average funded deal</span>
-                        <span className="text-2xl font-bold text-primary">$75,000</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Example referral payout</span>
-                        <span className="text-2xl font-bold text-emerald-600">~$750</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-6">*Illustrative example. Actual compensation depends on funded amount and program terms.</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </AnimatedSection>
-          </div>
-        </div>
-      </section>
-
       {/* The Opportunity — Why Now */}
       <section id="opportunity" className="py-24 px-6 bg-muted/30">
         <div className="max-w-7xl mx-auto">
@@ -355,10 +291,10 @@ export default function LandingSections() {
                 The Opportunity
               </span>
               <h2 className="text-4xl lg:text-5xl font-display font-bold text-primary mb-6">
-                Beyond Referrals: Build a<br />Full Agent Business.
+                Build a Full Agent Business<br />With Two Revenue Streams.
               </h2>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                Refer for 1% — or go further. Full agents earn enhanced MCA commissions AND build recurring subscription revenue that compounds every month. Two engines. One unstoppable career.
+                Full agents earn enhanced MCA commissions AND build recurring subscription revenue that compounds every month. Two engines. One unstoppable career.
               </p>
             </div>
           </AnimatedSection>
@@ -475,7 +411,7 @@ export default function LandingSections() {
                 <h3 className="text-xl font-bold text-white mb-1">The Power of Pairing</h3>
                 <p className="text-white/60">
                   Attach a subscription to a funded MCA (or fund a subscribing merchant) and you trigger attachment accelerators on
-                  both products — earning more on each side. This is the compound advantage that sets Leader Shield apart.
+                  both products — earning more on each side. This is the compound advantage that sets LeaderShield apart.
                 </p>
               </div>
             </div>
@@ -496,7 +432,7 @@ export default function LandingSections() {
                 You Open. We Close. Everyone Grows.
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Leader Shield is built so you can focus on relationships and opening opportunities — our partners handle the heavy
+                LeaderShield is built so you can focus on relationships and opening opportunities — our partners handle the heavy
                 lifting of closing, underwriting, and fulfillment.
               </p>
             </div>
@@ -988,7 +924,7 @@ export default function LandingSections() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { name: "Marcus T.", role: "Full-Time Producer", location: "Atlanta, GA", quote: "I was doing traditional MCA for 3 years. When I added the subscription platform, my monthly income went from unpredictable to a steady climb. The residuals changed everything.", months: "14 months" },
-              { name: "Sarah K.", role: "Team Builder", location: "Phoenix, AZ", quote: "I started part-time while working my corporate job. Within 6 months, my Leader Shield income surpassed my salary. The training academy gave me everything I needed to succeed.", months: "11 months" },
+              { name: "Sarah K.", role: "Team Builder", location: "Phoenix, AZ", quote: "I started part-time while working my corporate job. Within 6 months, my LeaderShield income surpassed my salary. The training academy gave me everything I needed to succeed.", months: "11 months" },
               { name: "David R.", role: "Agency Partner", location: "Miami, FL", quote: "Building a team was the multiplier. My personal production earns well, but the overrides from my team of 8 agents have created the financial freedom I always wanted.", months: "18 months" },
             ].map((item, i) => (
               <AnimatedSection key={i} delay={i * 0.15}>
@@ -1003,7 +939,7 @@ export default function LandingSections() {
                       <div>
                         <p className="font-bold text-primary">{item.name}</p>
                         <p className="text-sm text-muted-foreground">{item.role} - {item.location}</p>
-                        <p className="text-xs text-muted-foreground">{item.months} with Leader Shield</p>
+                        <p className="text-xs text-muted-foreground">{item.months} with LeaderShield</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1203,27 +1139,23 @@ export default function LandingSections() {
               <CardContent className="p-6 md:p-8">
                 <FAQItem
                   question="How does merchant cash advance funding work?"
-                  answer="Funding is structured as a merchant cash advance with a fixed factor rate (15%–49%), not a traditional APR-based loan. Amounts range from $2,000 to $2,000,000, with repayment over 30 days to 24 months via ACH or card processing holdbacks. Every file is reviewed individually based on revenue, time in business, credit, and cash flow."
+                  answer="Funding is structured as a merchant cash advance with a factor rate that is typically 15%–49%, set by underwriting based on the merchant's profile — not a traditional APR-based loan. A factor rate means the merchant repays the advance plus a single fixed fee, not interest that compounds over time. Amounts range from $2,000 to $2,000,000, with repayment over 30 days to 24 months via ACH or card processing holdbacks. Every file is reviewed individually based on revenue, time in business, credit, and cash flow."
                 />
                 <FAQItem
                   question="How fast can a business get funded?"
                   answer="With minimal paperwork — a one-page application, three to six months of bank statements, a driver's license, and a voided business check — funding can be available as quickly as one business day after underwriting review."
                 />
                 <FAQItem
-                  question="How does the 1% affiliate referral work?"
-                  answer="Referral partners simply introduce the opportunity. Affiliate compensation is 1% of factoring origination — on an average $75,000 funded deal, that's an example payout of approximately $750. Leader Shield manages sales, underwriting, fulfillment, service, and the ongoing client relationship."
-                />
-                <FAQItem
                   question="What is the Merchant Growth Platform?"
-                  answer="The Merchant Growth Platform is a subscription-based service designed to help merchants improve their financial visibility, accelerate revenue, and automate their marketing. It's a recurring revenue product that provides a stable, long-term income stream for full agents."
+                  answer="The Merchant Growth Platform is a subscription suite of lead-generation, marketing-automation, CRM, and AI customer-acquisition tools that help merchants attract, capture, and convert more customers. Powered by Marketing Titan AI and Lead Titan AI, it's a recurring revenue product that provides a stable, long-term income stream for full agents."
                 />
                 <FAQItem
                   question="Do I need experience to get started?"
-                  answer="No prior experience is required. Our comprehensive training academy covers everything from product knowledge and sales techniques to compliance guidelines. You'll have access to scripts, objection handlers, and ongoing support from our team."
+                  answer="No prior experience is required — drive and relationships matter more than your background. Our comprehensive training academy covers everything from product knowledge and sales techniques to compliance guidelines. You'll have access to scripts, objection handlers, and ongoing support from our team."
                 />
                 <FAQItem
                   question="Can I sell both MCA and subscriptions to the same merchant?"
-                  answer="Absolutely, and we encourage it. Distributors can sell both products. Attaching a subscription to a funded MCA (or funding a subscribing merchant) triggers attachment accelerators on both products, so you earn more on each side."
+                  answer="Yes — when it's the right fit for the merchant. Distributors can offer both products, and consistent MCA-plus-subscription attachment is one of the performance accelerators that can lift your subscription commission pool by up to an additional +5%. It's an accelerator earned across your production, not a standalone per-deal pairing bonus, and you should only place products that genuinely suit the merchant's needs."
                 />
                 <FAQItem
                   question="How are commissions calculated and how often am I paid?"
@@ -1238,8 +1170,8 @@ export default function LandingSections() {
                   answer={`Override commissions flow up to ${maxDownlineLevels} levels deep in your organization — ${pct(downlineLevels.level1)} on Level 1, ${pct(downlineLevels.level2)} on Level 2, and ${pct(downlineLevels.level3)} on Level 3 of the override portion you've allocated to your team.`}
                 />
                 <FAQItem
-                  question="Is there a fee to be a Leader Shield distributor?"
-                  answer={`Distributors pay a ${usd(membership.individual.fee)} monthly membership for access to the CRM, reporting, training, and support. It is automatically waived in any month you collect at least ${usd(membership.individual.waiverThreshold)} in commissions, so active producers effectively pay nothing. Agency plans are available at ${usd(membership.small_agency.fee)}, ${usd(membership.growth_agency.fee)}, and ${usd(membership.enterprise_agency.fee)} per month with higher waiver thresholds. Referral-only affiliates have no membership fee.`}
+                  question="Is there a fee to be a LeaderShield distributor?"
+                  answer={`Distributors pay a ${usd(membership.individual.fee)} monthly membership for access to the CRM, reporting, training, and support. It is automatically waived in any month you collect at least ${usd(membership.individual.waiverThreshold)} in commissions, so active producers effectively pay nothing. Agency plans are available at ${usd(membership.small_agency.fee)}, ${usd(membership.growth_agency.fee)}, and ${usd(membership.enterprise_agency.fee)} per month with higher waiver thresholds.`}
                 />
               </CardContent>
             </Card>
@@ -1263,7 +1195,7 @@ export default function LandingSections() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E0C27E] to-white/70">With the Capital They Need?</span>
             </h2>
             <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto">
-              Join Leader Shield Funding. Refer for 1%, or build a full agent business with two revenue streams. We'll handle the execution and train you every step of the way.
+              Join LeaderShield Funding. Build a full agent business with two revenue streams. We'll handle the execution and train you every step of the way.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
@@ -1289,23 +1221,23 @@ export default function LandingSections() {
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Income Disclaimer</h4>
-              <p>The income figures presented on this website are examples only and are not intended to represent or guarantee that anyone will achieve the same or similar results. Your individual results will vary and depend on many factors, including but not limited to your individual capacity, work ethic, business experience and knowledge, level of commitment, diligence in applying Leader Shield Funding's training and sales system, and market conditions. Leader Shield Funding does not guarantee any level of income or earnings to any agent.</p>
+              <p>The income figures presented on this website are examples only and are not intended to represent or guarantee that anyone will achieve the same or similar results. Your individual results will vary and depend on many factors, including but not limited to your individual capacity, work ethic, business experience and knowledge, level of commitment, diligence in applying LeaderShield Funding's training and sales system, and market conditions. LeaderShield Funding does not guarantee any level of income or earnings to any agent.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Independent Contractor Status</h4>
-              <p>Leader Shield Funding agents are independent contractors, not employees. As an independent contractor, you are responsible for your own taxes, insurance, and business expenses. Leader Shield Funding does not provide employment benefits, and agents are not entitled to minimum wage protections or overtime compensation.</p>
+              <p>LeaderShield Funding agents are independent contractors, not employees. As an independent contractor, you are responsible for your own taxes, insurance, and business expenses. LeaderShield Funding does not provide employment benefits, and agents are not entitled to minimum wage protections or overtime compensation.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">No Guaranteed Income</h4>
-              <p>There is no guarantee that you will earn any income as a Leader Shield Funding agent. Success requires consistent effort, effective sales techniques, and the ability to build and maintain a productive team. Many participants in network marketing businesses earn little to no income. Past performance does not guarantee future results.</p>
+              <p>There is no guarantee that you will earn any income as a LeaderShield Funding agent. Success requires consistent effort, effective sales techniques, and the ability to build and maintain a productive team. Many participants in network marketing businesses earn little to no income. Past performance does not guarantee future results.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Business Opportunity Disclosure</h4>
-              <p>This is a business opportunity, not a job offer. Before joining Leader Shield Funding, you should carefully review all materials and disclosures. Consult with a qualified financial or legal advisor if you have questions about the opportunity. Some states require additional disclosures for business opportunities.</p>
+              <p>This is a business opportunity, not a job offer. Before joining LeaderShield Funding, you should carefully review all materials and disclosures. Consult with a qualified financial or legal advisor if you have questions about the opportunity. Some states require additional disclosures for business opportunities.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Commission Structure Disclosure</h4>
-              <p>Commission rates, residual percentages, and bonus structures described on this website are subject to the terms of the Leader Shield Funding Agent Agreement. Commission decay schedules, payout splits, and accelerator qualifications are detailed in the full compensation plan document provided during onboarding.</p>
+              <p>Commission rates, residual percentages, and bonus structures described on this website are subject to the terms of the LeaderShield Funding Agent Agreement. Commission decay schedules, payout splits, and accelerator qualifications are detailed in the full compensation plan document provided during onboarding.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Testimonial Disclaimer</h4>
@@ -1313,15 +1245,15 @@ export default function LandingSections() {
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Anti-Pyramid Scheme Disclosure</h4>
-              <p>Leader Shield Funding commissions are earned exclusively from the sale of legitimate products and services to end-user merchants — not from recruitment fees or the enrollment of other agents. Agents are never required to purchase products or inventory to participate. Our compensation plan rewards product sales performance, not headcount. Leader Shield Funding complies with all applicable FTC guidelines regarding multi-level marketing and business opportunity practices.</p>
+              <p>LeaderShield Funding commissions are earned exclusively from the sale of legitimate products and services to end-user merchants — not from recruitment fees or the enrollment of other agents. Agents are never required to purchase products or inventory to participate. Our compensation plan rewards product sales performance, not headcount. LeaderShield Funding complies with all applicable FTC guidelines regarding multi-level marketing and business opportunity practices.</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">Material Connection Disclosure</h4>
-              <p>Some individuals featured on this website, including those providing testimonials, endorsements, or success stories, have a material connection to Leader Shield Funding. They may be current agents, affiliates, or compensated participants. Their experiences and results are their own and should not be considered typical. Any compensation or benefits received are disclosed in accordance with the FTC's Endorsement Guides (16 CFR Part 255).</p>
+              <p>Some individuals featured on this website, including those providing testimonials, endorsements, or success stories, have a material connection to LeaderShield Funding. They may be current agents, affiliates, or compensated participants. Their experiences and results are their own and should not be considered typical. Any compensation or benefits received are disclosed in accordance with the FTC's Endorsement Guides (16 CFR Part 255).</p>
             </div>
             <div>
               <h4 className="font-semibold text-foreground mb-1">State-Specific Business Opportunity Notice</h4>
-              <p>Certain states, including but not limited to California, Maryland, New York, and others, may require the registration or filing of business opportunity disclosures before an offer or sale can be made. Leader Shield Funding complies with all applicable state business opportunity laws. If you reside in a state with specific business opportunity registration requirements, additional disclosures may apply. Please contact compliance@leadershieldfunding.com for state-specific information before enrolling.</p>
+              <p>Certain states, including but not limited to California, Maryland, New York, and others, may require the registration or filing of business opportunity disclosures before an offer or sale can be made. LeaderShield Funding complies with all applicable state business opportunity laws. If you reside in a state with specific business opportunity registration requirements, additional disclosures may apply. Please contact compliance@leadershieldfunding.com for state-specific information before enrolling.</p>
             </div>
             <div className="pt-4 border-t border-border">
               <p>For complete details, please review our <Link href="/income-disclosure"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-ids">Income Disclosure Statement</span></Link>, <Link href="/terms"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-terms">Terms of Service</span></Link>, <Link href="/privacy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-privacy">Privacy Policy</span></Link>, and <Link href="/refund-policy"><span className="text-primary underline cursor-pointer" data-testid="link-disclosure-refund">Refund Policy</span></Link>.</p>
@@ -1385,7 +1317,7 @@ export default function LandingSections() {
           </div>
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-white/30">
-              &copy; 2026 Leader Shield Funding. All rights reserved.
+              &copy; 2026 LeaderShield&trade;. All rights reserved. LeaderShield Funding is the capital (MCA) arm of LeaderShield&trade;.
             </p>
             <div className="flex flex-wrap items-center justify-center md:justify-end gap-4 text-xs text-white/30">
               <Link href="/income-disclosure"><span className="hover:text-white transition-colors cursor-pointer" data-testid="footer-bottom-income-disclosure">Income Disclosure</span></Link>

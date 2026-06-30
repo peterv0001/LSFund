@@ -2,7 +2,7 @@ import { ArrowIcon, CheckIcon, LpFooter, LpHeader, useLandingForm, usePageMeta }
 
 export default function LpDeclined() {
   usePageMeta(
-    "The bank said no. Your revenue says yes. — Leader Shield Funding",
+    "The bank said no. Your revenue says yes. — LeaderShield Funding",
     "Get the 24-Hour Funding Checklist: exactly what to prepare so your business file can move from application to funded capital in as little as one business day.",
   );
   const { formRef, onSubmit, triggerSubmit } = useLandingForm("lp-merchant-declined", "apply");
@@ -119,11 +119,11 @@ export default function LpDeclined() {
         <div className="wrap">
           <div>
             <span className="eyebrow">
-              <span className="dot" /> Why Leader Shield
+              <span className="dot" /> Why LeaderShield
             </span>
             <h2>A decline isn't a verdict. It's a mismatch.</h2>
             <p>
-              Banks lend against credit history. Leader Shield funds against business performance — $2K to
+              Banks lend against credit history. LeaderShield funds against business performance — $2K to
               $2M, reviewed file by file, with the <b>total cost shown before you sign</b>. No APR sleight
               of hand, no surprise holdbacks.
             </p>

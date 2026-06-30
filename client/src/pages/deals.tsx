@@ -317,7 +317,7 @@ function MCADealDialog() {
   const avgMonthly = form.watch("avgMonthlyRevenue");
   const requestedAmount = form.watch("requestedAmount");
   const estimatedGbr = loanAmount ? Number(loanAmount) * 0.10 : 0;
-  const macEstimate = estimatedGbr * 0.22;
+  const macEstimate = estimatedGbr * 0.325;
 
   const step1Fields: (keyof DealFormData)[] = [
     "merchantName", "merchantPhone", "businessAddress", "businessCity", "businessState", "businessZip", "merchantEmail", "ein"
@@ -801,7 +801,7 @@ function MCADealDialog() {
                         </div>
                         <div className="bg-white rounded-lg p-3 border border-blue-100">
                           <p className="text-lg font-mono font-bold text-primary">${macEstimate.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                          <p className="text-xs text-gray-500">Your MAC (22%)</p>
+                          <p className="text-xs text-gray-500">Your Share (32.5%)</p>
                         </div>
                         <div className="bg-white rounded-lg p-3 border border-blue-100">
                           <p className="text-lg font-mono font-bold text-blue-600">

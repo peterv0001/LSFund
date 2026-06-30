@@ -39,7 +39,7 @@ interface RouteMeta {
   description: string;
 }
 
-const SITE = "Leader Shield Funding";
+const SITE = "LeaderShield Funding";
 const DOMAIN = "https://leadershieldfunding.com";
 
 export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
@@ -48,7 +48,7 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Business Funding & Merchant Cash Advance | ${SITE}`,
       description:
-        "Leader Shield Funding helps businesses access fast merchant cash advances and grow recurring revenue. Join our agent network or apply for capital today.",
+        "LeaderShield Funding helps businesses access fast merchant cash advances and grow recurring revenue. Join our agent network or apply for capital today.",
     },
   },
   {
@@ -56,7 +56,7 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Agent Sign In | ${SITE}`,
       description:
-        "Sign in to your Leader Shield Funding agent portal to manage deals, track commissions, and grow your team.",
+        "Sign in to your LeaderShield Funding agent portal to manage deals, track commissions, and grow your team.",
     },
   },
   {
@@ -64,22 +64,22 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Create Agent Account | ${SITE}`,
       description:
-        "Join Leader Shield Funding as an agent. Earn multi-tiered commissions on MCA deals and Merchant Growth Platform subscriptions.",
+        "Join LeaderShield Funding as an agent. Earn multi-tiered commissions on MCA deals and Merchant Growth Platform subscriptions.",
     },
   },
   {
     pattern: /^\/join\//,
     meta: {
-      title: `Join Leader Shield Funding`,
+      title: `Join LeaderShield Funding`,
       description:
-        "You've been invited to join Leader Shield Funding. Create your agent account and start earning commissions on MCA deals and subscriptions.",
+        "You've been invited to join LeaderShield Funding. Create your agent account and start earning commissions on MCA deals and subscriptions.",
     },
   },
   {
     pattern: /^\/forgot-password$/,
     meta: {
       title: `Forgot Password | ${SITE}`,
-      description: "Reset your Leader Shield Funding agent portal password.",
+      description: "Reset your LeaderShield Funding agent portal password.",
     },
   },
   {
@@ -87,7 +87,7 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Reset Password | ${SITE}`,
       description:
-        "Create a new password for your Leader Shield Funding agent portal account.",
+        "Create a new password for your LeaderShield Funding agent portal account.",
     },
   },
   {
@@ -95,7 +95,7 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Privacy Policy | ${SITE}`,
       description:
-        "Leader Shield Funding privacy policy: how we collect, use, and protect your personal information.",
+        "LeaderShield Funding privacy policy: how we collect, use, and protect your personal information.",
     },
   },
   {
@@ -103,7 +103,7 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Terms of Service | ${SITE}`,
       description:
-        "Leader Shield Funding terms of service governing use of the platform, agent agreements, and commission structures.",
+        "LeaderShield Funding terms of service governing use of the platform, agent agreements, and commission structures.",
     },
   },
   {
@@ -111,7 +111,7 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Refund Policy | ${SITE}`,
       description:
-        "Leader Shield Funding refund and cancellation policy for Merchant Growth Platform subscriptions.",
+        "LeaderShield Funding refund and cancellation policy for Merchant Growth Platform subscriptions.",
     },
   },
   {
@@ -119,7 +119,7 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     meta: {
       title: `Income Disclosure Statement | ${SITE}`,
       description:
-        "FTC-compliant income disclosure for Leader Shield Funding agents. Actual earnings vary based on effort, experience, and market conditions.",
+        "FTC-compliant income disclosure for LeaderShield Funding agents. Actual earnings vary based on effort, experience, and market conditions.",
     },
   },
   {
@@ -165,9 +165,9 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
   {
     pattern: /^\/lp\/referral$/,
     meta: {
-      title: `You Know a Business That Needs Capital. | ${SITE}`,
+      title: `Two Income Streams. One Agent Role. | ${SITE}`,
       description:
-        "Join the Leader Shield referral partner program: make the introduction and earn 1% of factoring origination on every funded referral. No quotas, no sales role.",
+        "Become a LeaderShield Funding agent: earn the 32.5% Opening Agent Pool on funded MCA deals plus recurring Merchant Growth Platform subscription commissions (up to 55%) and lifetime residuals.",
     },
   },
 ];

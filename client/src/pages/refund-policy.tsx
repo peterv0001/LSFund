@@ -5,8 +5,8 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function RefundPolicyPage() {
   usePageMeta(
-    "Refund Policy | Leader Shield Funding",
-    "Leader Shield Funding refund and cancellation policy for Merchant Growth Platform subscriptions.",
+    "Refund Policy | LeaderShield Funding",
+    "LeaderShield Funding refund and cancellation policy for Merchant Growth Platform subscriptions.",
   );
   return (
     <div className="min-h-screen bg-background">
@@ -14,7 +14,7 @@ export default function RefundPolicyPage() {
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between gap-4 flex-wrap">
           <Link href="/" data-testid="link-logo-refund-policy" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Shield className="w-4 h-4 text-primary shrink-0" />
-            <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Funding</span>
+            <span className="font-display font-bold text-primary text-base tracking-wide">LeaderShield Funding</span>
           </Link>
           <Link href="/">
             <Button variant="ghost" size="sm" data-testid="button-back-home">
@@ -42,7 +42,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">1. Overview</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              This Refund & Cancellation Policy applies to the subscription products offered through the Leader Shield
+              This Refund & Cancellation Policy applies to the subscription products offered through the LeaderShield
               Funding Merchant Growth Platform, including Starter, Growth Foundation, Revenue Growth System, and Revenue
               Scale AI (collectively, "Subscription Products"). By purchasing or subscribing to any of these products,
               you agree to the terms outlined in this policy.
@@ -64,11 +64,11 @@ export default function RefundPolicyPage() {
               </div>
               <div className="flex items-start gap-3">
                 <span className="font-semibold text-foreground min-w-[200px]">Growth Foundation</span>
-                <span className="text-muted-foreground">$397/month — Advanced AI Brand Intelligence, native AI CRM, 24/7 AI chatbot lead capture, AI visual email, and a performance dashboard.</span>
+                <span className="text-muted-foreground">$497/month — Advanced AI Brand Intelligence, native AI CRM, 24/7 AI chatbot lead capture, AI visual email, and a performance dashboard.</span>
               </div>
               <div className="flex items-start gap-3">
                 <span className="font-semibold text-foreground min-w-[200px]">Revenue Growth System</span>
-                <span className="text-muted-foreground">$697/month — Everything in Growth Foundation plus 2,000 lead credits/mo, Darwin AI Chief of Staff, AI social content, and expanded CRM automation.</span>
+                <span className="text-muted-foreground">$997/month — Everything in Growth Foundation plus 2,000 lead credits/mo, Darwin AI Chief of Staff, AI social content, and expanded CRM automation.</span>
               </div>
               <div className="flex items-start gap-3">
                 <span className="font-semibold text-foreground min-w-[200px]">Revenue Scale AI</span>
@@ -107,7 +107,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">4. Cooling-Off Period</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Leader Shield Funding provides a <span className="font-semibold text-foreground">14-day cooling-off period</span> for all new subscription purchases. This means:
+              LeaderShield Funding provides a <span className="font-semibold text-foreground">14-day cooling-off period</span> for all new subscription purchases. This means:
             </p>
             <ul className="list-disc pl-6 space-y-3 text-muted-foreground">
               <li>If you are a new subscriber and wish to cancel within 14 calendar days of your initial purchase date, you are entitled to a full refund of your first month's subscription fee.</li>
@@ -124,7 +124,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">5. Refund Eligibility</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Beyond the 14-day cooling-off period, refunds may be issued at Leader Shield Funding's discretion under the following circumstances:
+              Beyond the 14-day cooling-off period, refunds may be issued at LeaderShield Funding's discretion under the following circumstances:
             </p>
             <ul className="list-disc pl-6 space-y-3 text-muted-foreground">
               <li>
@@ -185,7 +185,7 @@ export default function RefundPolicyPage() {
                 <span className="font-semibold text-foreground">Training Materials & Digital Content:</span> Any training courses, digital downloads, or educational materials that have been accessed or downloaded are non-refundable.
               </li>
               <li>
-                <span className="font-semibold text-foreground">Agent Enrollment Fees:</span> Fees paid by agents to join the Leader Shield Funding as independent contractors are non-refundable after the 14-day cooling-off period.
+                <span className="font-semibold text-foreground">Agent Enrollment Fees:</span> Fees paid by agents to join the LeaderShield Funding as independent contractors are non-refundable after the 14-day cooling-off period.
               </li>
               <li>
                 <span className="font-semibold text-foreground">Custom Integrations & Add-Ons:</span> Any custom development, API integrations, or premium add-on services that have been delivered or initiated are non-refundable.
@@ -214,7 +214,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-bold text-primary m-0">9. Modifications to This Policy</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Leader Shield Funding reserves the right to modify this Refund & Cancellation Policy at any time. Changes will be
+              LeaderShield Funding reserves the right to modify this Refund & Cancellation Policy at any time. Changes will be
               posted on this page with an updated "Last Updated" date. Material changes will be communicated to active subscribers
               via email at least 30 days prior to taking effect. Continued use of the Subscription Products after changes are posted
               constitutes your acceptance of the revised policy.
@@ -234,13 +234,13 @@ export default function RefundPolicyPage() {
               <p><span className="font-semibold text-foreground">Email:</span> support@leadershieldfunding.com</p>
               <p><span className="font-semibold text-foreground">Billing Inquiries:</span> billing@leadershieldfunding.com</p>
               <p><span className="font-semibold text-foreground">Legal Escalations:</span> legal@leadershieldfunding.com</p>
-              <p><span className="font-semibold text-foreground">Mailing Address:</span> Leader Shield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
+              <p><span className="font-semibold text-foreground">Mailing Address:</span> LeaderShield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
             </div>
           </section>
 
           <div className="mt-12 pt-8 border-t border-border">
             <p className="text-sm text-muted-foreground text-center">
-              This Refund & Cancellation Policy is part of the Leader Shield Funding Terms of Service. For complete terms governing
+              This Refund & Cancellation Policy is part of the LeaderShield Funding Terms of Service. For complete terms governing
               your use of our platform and services, please review our{" "}
               <Link href="/terms" className="text-primary hover:underline" data-testid="link-terms">Terms of Service</Link>,{" "}
               <Link href="/privacy" className="text-primary hover:underline" data-testid="link-privacy">Privacy Policy</Link>, and{" "}

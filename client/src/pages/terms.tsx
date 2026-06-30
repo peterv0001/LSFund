@@ -5,8 +5,8 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function TermsOfServicePage() {
   usePageMeta(
-    "Terms of Service | Leader Shield Funding",
-    "Leader Shield Funding terms of service governing use of the platform, agent agreements, and commission structures.",
+    "Terms of Service | LeaderShield Funding",
+    "LeaderShield Funding terms of service governing use of the platform, agent agreements, and commission structures.",
   );
   return (
     <div className="min-h-screen bg-background">
@@ -14,7 +14,7 @@ export default function TermsOfServicePage() {
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between gap-4 flex-wrap">
           <Link href="/" data-testid="link-logo-terms" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Shield className="w-4 h-4 text-primary shrink-0" />
-            <span className="font-display font-bold text-primary text-base tracking-wide">Leader Shield Funding</span>
+            <span className="font-display font-bold text-primary text-base tracking-wide">LeaderShield Funding</span>
           </Link>
           <Link href="/">
             <Button variant="ghost" size="sm" data-testid="button-back-home">
@@ -33,7 +33,7 @@ export default function TermsOfServicePage() {
           <section data-testid="section-introduction">
             <h2 className="text-2xl font-bold text-primary mb-4">1. Introduction and Acceptance</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Welcome to Leader Shield Funding ("Company," "we," "us," or "our"). These Terms of Service ("Terms") govern your access to and use of the Leader Shield Funding platform, website, mobile applications, and all related services (collectively, the "Platform"). By creating an account, accessing, or using the Platform, you ("Agent," "you," or "your") acknowledge that you have read, understood, and agree to be bound by these Terms and all applicable laws and regulations.
+              Welcome to LeaderShield Funding ("Company," "we," "us," or "our"). These Terms of Service ("Terms") govern your access to and use of the LeaderShield Funding platform, website, mobile applications, and all related services (collectively, the "Platform"). By creating an account, accessing, or using the Platform, you ("Agent," "you," or "your") acknowledge that you have read, understood, and agree to be bound by these Terms and all applicable laws and regulations.
             </p>
             <p className="text-muted-foreground leading-relaxed">
               If you do not agree with any part of these Terms, you must not access or use the Platform. We reserve the right to modify these Terms at any time. Your continued use of the Platform following any changes constitutes acceptance of those changes.
@@ -42,13 +42,13 @@ export default function TermsOfServicePage() {
 
           <section data-testid="section-eligibility">
             <h2 className="text-2xl font-bold text-primary mb-4">2. Account Eligibility</h2>
-            <p className="text-muted-foreground leading-relaxed mb-4">To create an account and participate as an independent agent on the Leader Shield Funding Platform, you must:</p>
+            <p className="text-muted-foreground leading-relaxed mb-4">To create an account and participate as an independent agent on the LeaderShield Funding Platform, you must:</p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>Be at least 18 years of age (or the age of majority in your jurisdiction, whichever is greater).</li>
               <li>Be a legal resident of the United States or a U.S. territory where participation is permitted.</li>
               <li>Provide accurate, current, and complete information during registration and maintain the accuracy of such information.</li>
               <li>Have the legal capacity to enter into a binding agreement.</li>
-              <li>Not have been previously terminated or suspended from the Leader Shield Funding for cause.</li>
+              <li>Not have been previously terminated or suspended from the LeaderShield Funding for cause.</li>
               <li>Comply with all applicable federal, state, and local laws and regulations, including those related to financial services, merchant cash advance brokering, and direct selling.</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-4">
@@ -59,7 +59,7 @@ export default function TermsOfServicePage() {
           <section data-testid="section-independent-contractor">
             <h2 className="text-2xl font-bold text-primary mb-4">3. Independent Contractor Relationship</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              You expressly acknowledge and agree that you are an independent contractor and NOT an employee, partner, joint venturer, franchisee, or legal representative of Leader Shield Funding. As an independent contractor:
+              You expressly acknowledge and agree that you are an independent contractor and NOT an employee, partner, joint venturer, franchisee, or legal representative of LeaderShield Funding. As an independent contractor:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>You have no authority to bind the Company to any contract, obligation, or representation.</li>
@@ -74,23 +74,23 @@ export default function TermsOfServicePage() {
           <section data-testid="section-commission-terms">
             <h2 className="text-2xl font-bold text-primary mb-4">4. Commission Terms and Conditions</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Leader Shield Funding offers multiple compensation streams. All commission rates, structures, and terms are subject to the current Compensation Plan, which is incorporated herein by reference.
+              LeaderShield Funding offers multiple compensation streams. All commission rates, structures, and terms are subject to the current Compensation Plan, which is incorporated herein by reference.
             </p>
 
             <h3 className="text-lg font-semibold text-primary mt-6 mb-3">4.1 MCA (Merchant Cash Advance) Commissions</h3>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-              <li>Commissions are calculated as a percentage of the Gross Brokerage Revenue (GBR) generated from funded MCA deals.</li>
-              <li>The base commission rate is 22% of GBR, subject to adjustments based on performance tiers and accelerators.</li>
+              <li>Commissions are calculated from the gross funding commission generated by funded MCA deals.</li>
+              <li>The Opening Agent Pool is 32.5% of the gross funding commission. An Independent agent keeps the full 32.5%; agency models allocate part of this pool as team overrides (producer + override always sums to 32.5%).</li>
               <li>70% of the commission is paid upon funding; the remaining 30% is deferred and paid upon satisfactory performance of the advance.</li>
-              <li>Quarterly performance accelerators of up to an additional 3% may apply based on volume targets.</li>
+              <li>Performance accelerators of up to an additional 2.5% may apply based on subscription attachment, repeat merchants, and volume.</li>
             </ul>
 
             <h3 className="text-lg font-semibold text-primary mt-6 mb-3">4.2 Subscription Platform Commissions</h3>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-              <li>Commissions on Merchant Growth Platform subscriptions are paid from a commission pool ranging from 25% to 50% of the subscription fee, depending on the tier.</li>
-              <li>Aggressive upfront payouts apply during months 1 through 3 of each subscription.</li>
-              <li>After month 12, agents receive a lifetime 10% residual commission for as long as the subscription remains active.</li>
-              <li>The Pairing Enhancement Bonus of +5% applies when a subscription is bundled with an MCA deal within the qualifying period.</li>
+              <li>Commissions on Merchant Growth Platform subscriptions are paid from a commission pool of up to 55% of the commissionable basis (premium products at the Elite distributor tier), depending on the tier and the agent's distributor level.</li>
+              <li>Aggressive upfront payouts apply during months 1 through 3 of each subscription, then step down on a published decay schedule.</li>
+              <li>From month 13 onward, agents receive a lifetime residual for as long as the subscription remains active — 10% for Growth Foundation and 15% for Revenue Growth System and Revenue Scale AI. Starter is not residual-eligible.</li>
+              <li>Subscription performance accelerators of up to +5% (lifting the top rate to 60% at Elite) apply based on volume, retention, premium product mix, and MCA attachment.</li>
             </ul>
 
             <h3 className="text-lg font-semibold text-primary mt-6 mb-3">4.3 Override and Team Commissions</h3>
@@ -111,7 +111,7 @@ export default function TermsOfServicePage() {
           <section data-testid="section-clawback">
             <h2 className="text-2xl font-bold text-primary mb-4">5. Clawback and Chargeback Policies</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              To protect the integrity of the Leader Shield Funding and its financial partners, the following clawback and chargeback provisions apply:
+              To protect the integrity of the LeaderShield Funding and its financial partners, the following clawback and chargeback provisions apply:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li><strong>MCA Clawbacks:</strong> If a funded MCA deal defaults, is fraudulently obtained, or is subject to early payoff within the first 90 days, the deferred 30% commission will not be paid and any previously paid commission may be subject to partial or full clawback.</li>
@@ -123,14 +123,14 @@ export default function TermsOfServicePage() {
 
           <section data-testid="section-acceptable-use">
             <h2 className="text-2xl font-bold text-primary mb-4">6. Acceptable Use Policy</h2>
-            <p className="text-muted-foreground leading-relaxed mb-4">When using the Platform and representing Leader Shield Funding, you agree to:</p>
+            <p className="text-muted-foreground leading-relaxed mb-4">When using the Platform and representing LeaderShield Funding, you agree to:</p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>Conduct all business activities honestly, ethically, and in compliance with applicable laws.</li>
               <li>Not make any income claims, guarantees, or representations that are false, misleading, or not substantiated by the Company's official Income Disclosure Statement.</li>
               <li>Not engage in high-pressure sales tactics, spam, or unsolicited bulk communications.</li>
               <li>Not misrepresent the nature of the business opportunity, the products, or the compensation plan.</li>
               <li>Not use the Company's trademarks, logos, or materials in any unauthorized or misleading manner.</li>
-              <li>Not recruit agents for competing business opportunities while active with Leader Shield Funding.</li>
+              <li>Not recruit agents for competing business opportunities while active with LeaderShield Funding.</li>
               <li>Comply with all FTC guidelines regarding endorsements, testimonials, and income representations.</li>
               <li>Not attempt to circumvent, hack, reverse engineer, or otherwise interfere with the Platform's security or functionality.</li>
               <li>Not upload or transmit any viruses, malware, or other harmful code.</li>
@@ -159,7 +159,7 @@ export default function TermsOfServicePage() {
 
             <h3 className="text-lg font-semibold text-primary mt-6 mb-3">7.3 Effects of Termination</h3>
             <p className="text-muted-foreground leading-relaxed">
-              Upon termination, your access to the Platform will be revoked, and you must immediately cease representing yourself as a Leader Shield Funding agent. Any pending commissions will be reviewed and paid in accordance with the Compensation Plan, less any applicable clawbacks, chargebacks, or amounts owed to the Company.
+              Upon termination, your access to the Platform will be revoked, and you must immediately cease representing yourself as a LeaderShield Funding agent. Any pending commissions will be reviewed and paid in accordance with the Compensation Plan, less any applicable clawbacks, chargebacks, or amounts owed to the Company.
             </p>
           </section>
 
@@ -198,24 +198,24 @@ export default function TermsOfServicePage() {
           <section data-testid="section-indemnification">
             <h2 className="text-2xl font-bold text-primary mb-4">10. Indemnification</h2>
             <p className="text-muted-foreground leading-relaxed">
-              You agree to indemnify, defend, and hold harmless Leader Shield Funding, its officers, directors, employees, agents, affiliates, and partners from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or in any way connected with: (a) your access to or use of the Platform; (b) your violation of these Terms; (c) your violation of any applicable law or regulation; (d) your representations or conduct in connection with your role as an agent; or (e) any dispute between you and a third party, including merchants, customers, or other agents.
+              You agree to indemnify, defend, and hold harmless LeaderShield Funding, its officers, directors, employees, agents, affiliates, and partners from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or in any way connected with: (a) your access to or use of the Platform; (b) your violation of these Terms; (c) your violation of any applicable law or regulation; (d) your representations or conduct in connection with your role as an agent; or (e) any dispute between you and a third party, including merchants, customers, or other agents.
             </p>
           </section>
 
           <section data-testid="section-intellectual-property">
             <h2 className="text-2xl font-bold text-primary mb-4">11. Intellectual Property</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              All content, features, and functionality of the Platform, including but not limited to text, graphics, logos, trademarks, training materials, software, and documentation, are the exclusive property of Leader Shield Funding or its licensors and are protected by copyright, trademark, and other intellectual property laws.
+              All content, features, and functionality of the Platform, including but not limited to text, graphics, logos, trademarks, training materials, software, and documentation, are the exclusive property of LeaderShield Funding or its licensors and are protected by copyright, trademark, and other intellectual property laws.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              You are granted a limited, non-exclusive, non-transferable, revocable license to access and use the Platform solely for the purpose of conducting authorized business activities as a Leader Shield Funding agent. This license does not include the right to modify, reproduce, distribute, or create derivative works from any Platform content without prior written consent.
+              You are granted a limited, non-exclusive, non-transferable, revocable license to access and use the Platform solely for the purpose of conducting authorized business activities as a LeaderShield Funding agent. This license does not include the right to modify, reproduce, distribute, or create derivative works from any Platform content without prior written consent.
             </p>
           </section>
 
           <section data-testid="section-confidentiality">
             <h2 className="text-2xl font-bold text-primary mb-4">12. Confidentiality</h2>
             <p className="text-muted-foreground leading-relaxed">
-              You agree to keep confidential all non-public information disclosed by the Company, including but not limited to business strategies, financial data, agent lists, customer information, commission structures, and proprietary technology. This obligation survives termination of your participation in the Leader Shield Funding. Unauthorized disclosure of confidential information may result in immediate termination and legal action.
+              You agree to keep confidential all non-public information disclosed by the Company, including but not limited to business strategies, financial data, agent lists, customer information, commission structures, and proprietary technology. This obligation survives termination of your participation in the LeaderShield Funding. Unauthorized disclosure of confidential information may result in immediate termination and legal action.
             </p>
           </section>
 
@@ -252,17 +252,17 @@ export default function TermsOfServicePage() {
               If you have questions or concerns about these Terms of Service, please contact us:
             </p>
             <div className="bg-muted/30 border border-border rounded-md p-6 text-muted-foreground space-y-2">
-              <p><strong className="text-foreground">Leader Shield Funding Legal Department</strong></p>
+              <p><strong className="text-foreground">LeaderShield Funding Legal Department</strong></p>
               <p>Email: legal@leadershieldfunding.com</p>
               <p>Phone: 1-800-LEADER-1</p>
-              <p>Address: Leader Shield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
+              <p>Address: LeaderShield Funding LLC, 777 Brickell Ave, Miami, FL 33131</p>
             </div>
           </section>
         </div>
 
         <div className="mt-16 pt-8 border-t border-border text-center">
           <p className="text-sm text-muted-foreground mb-4">
-            By using the Leader Shield Funding Platform, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
+            By using the LeaderShield Funding Platform, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Link href="/privacy">

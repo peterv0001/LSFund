@@ -1,7 +1,9 @@
-# Leader Shield Funding
+# LeaderShield Funding
 
-> Leader Shield Funding is a network marketing platform for Merchant Cash Advance (MCA) lending and recurring subscription products. Agents earn multi-tiered commissions by referring merchants and recruiting new agents via binary tree hierarchy.
+> LeaderShield Funding is a network marketing platform for Merchant Cash Advance (MCA) lending and recurring subscription products. Agents earn multi-tiered commissions by referring merchants and recruiting new agents via a binary tree hierarchy.
 > URL: https://leadershieldfunding.com
+
+> Brand hierarchy: LeaderShield™ is the parent brand; LeaderShield Funding is its merchant cash advance (capital) arm, delivered alongside the Merchant Growth Platform subscription products.
 
 ## Key Pages
 
@@ -18,15 +20,17 @@
 - [Growth Capital](https://leadershieldfunding.com/lp/growth): Landing page for merchants seeking growth capital.
 - [Seasonal Funding](https://leadershieldfunding.com/lp/seasonal): Landing page for merchants with seasonal cash flow needs.
 - [For Partners & ISOs](https://leadershieldfunding.com/lp/partners): Partner and call center ISO recruitment page.
-- [Agent Referral Program](https://leadershieldfunding.com/lp/referral): Agent referral and recruitment landing page.
+- [Become an Agent](https://leadershieldfunding.com/lp/referral): Agent recruitment landing page covering both income streams — MCA producer commissions and recurring Merchant Growth Platform subscription commissions.
 
 ## Products
 
-- **Merchant Cash Advance (MCA):** Capital access for merchants with commissions earned by agents on funded deals via GBR waterfall.
+- **Merchant Cash Advance (MCA):** Capital access for merchants. Agents earn from the MCA Opening Agent Pool (32.5% of the gross funding commission), with performance accelerators up to an additional +2.5%.
 - **Merchant Growth Platform — Tier 1 (Starter, $149/mo):** 750 verified lead credits/mo, 5 email outreach sequences, Basic AI Brand Intelligence, integrates with existing CRM. Powered by Lead Titan AI.
-- **Merchant Growth Platform — Tier 2 (Growth Foundation, $397/mo):** Advanced AI Brand Intelligence, native AI CRM (1,000 contacts + scoring), 24/7 AI chatbot lead capture, AI visual email, performance dashboard.
-- **Merchant Growth Platform — Tier 3 (Revenue Growth System, $697/mo, Most Popular):** Everything in Growth Foundation plus 2,000 lead credits/mo, Darwin AI Chief of Staff, AI social content to Meta, Ask AI, CRM 10,000 contacts + automation.
+- **Merchant Growth Platform — Tier 2 (Growth Foundation, $497/mo):** Advanced AI Brand Intelligence, native AI CRM (1,000 contacts + scoring), 24/7 AI chatbot lead capture, AI visual email, performance dashboard.
+- **Merchant Growth Platform — Tier 3 (Revenue Growth System, $997/mo, Most Popular):** Everything in Growth Foundation plus 2,000 lead credits/mo, Darwin AI Chief of Staff, AI social content to Meta, Ask AI, CRM 10,000 contacts + automation.
 - **Merchant Growth Platform — Tier 4 (Revenue Scale AI, $1,497/mo, Best Value):** Everything in Revenue Growth System plus AI Caller (750 outbound min/mo), AI paid ads + ad designer + insights, social to Meta/LinkedIn/X, AI blogs, CRM 25,000 contacts + advanced automation. Powered by Marketing Titan + Lead Titan AI.
+
+Subscription commissions are paid on the commissionable revenue basis (premium products up to 55%, up to 60% with accelerators), with tiered lifetime residuals (Growth Foundation 10%, Revenue Growth System & Revenue Scale AI 15%; Starter is commission-eligible but not residual-eligible).
 
 ## Agent Sign-Up
 

@@ -13,7 +13,7 @@
 
 ## Target audience
 - Business owners looking for merchant cash advance and working-capital options
-- Prospective agents, referral partners, and recruiting traffic for the Leader Shield network
+- Prospective agents and recruiting traffic for the LeaderShield network
 
 ## Primary keywords
 - Merchant cash advance funding

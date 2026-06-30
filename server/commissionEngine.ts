@@ -77,10 +77,10 @@ export function deriveMcaAcceleratorRates(ctx: {
 /**
  * Per-record-derivable subscription accelerators. MCA attachment (the
  * subscription is paired to a funded MCA deal) is knowable from the record.
- * The remaining subscription accelerators (revenue-mix, volume, quality,
- * organizational development) depend on monthly organizational aggregates and
- * are sourced by the monthly recalculation task (out of scope here). The
- * engine still clamps the total to the +7% cap.
+ * The remaining subscription accelerators (volume, retention, premium-product
+ * mix) depend on monthly organizational aggregates and are sourced by the
+ * monthly recalculation task (out of scope here). The engine still clamps the
+ * total to the +5% cap.
  */
 export function deriveSubscriptionAcceleratorRates(ctx: {
   hasPairedMca?: boolean;
@@ -89,6 +89,16 @@ export function deriveSubscriptionAcceleratorRates(ctx: {
   const rates: number[] = [];
   if (ctx.hasPairedMca) rates.push(a.mcaAttachment);
   return rates;
+}
+
+/**
+ * Commissionable Revenue Basis (CRB) for a subscription product — retail price
+ * less wholesale cost (Manual v1.1 Section 05). All subscription pool and
+ * accelerator percentages are applied to this basis, NOT to full retail.
+ */
+export function commissionableBasis(tier: SubscriptionProduct): number {
+  const p = COMP_V2026.subscriptionPricing[tier];
+  return p.retail - p.wholesale;
 }
 
 /**
@@ -180,18 +190,26 @@ export function computeSubscriptionV2026(params: SubscriptionV2026Params): Subsc
     tier: params.tier,
   });
 
-  const poolAmount = params.collectedRevenue * poolRate * govFactor;
+  // All subscription compensation is paid on the Commissionable Revenue Basis
+  // (retail − wholesale), NOT full collected retail (Manual v1.1 Section 05).
+  // A period with no collected revenue pays nothing.
+  const basis = params.collectedRevenue > 0 ? commissionableBasis(params.tier) : 0;
+  const poolAmount = basis * poolRate * govFactor;
 
   const splitKey = SUBSCRIPTION_SPLIT_BY_AGENCY_MODEL[params.agencyModel];
   const split = COMP_V2026.subscriptionAgencySplits[splitKey];
   const producerAmount = poolAmount * split.producer;
   const overrideAmount = poolAmount * split.override;
 
-  const acceleratorRate = cappedAcceleratorRate(
-    params.acceleratorRates,
-    COMP_V2026.subscriptionAccelerators.cap,
-  );
-  const acceleratorAmount = params.collectedRevenue * acceleratorRate * govFactor;
+  // Accelerators apply to premium products only — Starter (tier_1) is never
+  // eligible (Manual v1.1 Section 06).
+  const acceleratorRate = params.tier === 'tier_1'
+    ? 0
+    : cappedAcceleratorRate(
+        params.acceleratorRates,
+        COMP_V2026.subscriptionAccelerators.cap,
+      );
+  const acceleratorAmount = basis * acceleratorRate * govFactor;
 
   return {
     bucket,

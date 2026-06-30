@@ -108,15 +108,15 @@ type Deal = {
 
 const TIER_LABELS: Record<string, string> = {
   tier_1: "Starter — $149/mo",
-  tier_2: "Growth Foundation — $397/mo",
-  tier_3: "Revenue Growth System — $697/mo",
+  tier_2: "Growth Foundation — $497/mo",
+  tier_3: "Revenue Growth System — $997/mo",
   tier_4: "Revenue Scale AI — $1,497/mo",
 };
 
 const TIER_PRICES: Record<string, number> = {
   tier_1: 149,
-  tier_2: 397,
-  tier_3: 697,
+  tier_2: 497,
+  tier_3: 997,
   tier_4: 1497,
 };
 
@@ -344,10 +344,10 @@ function LogSubscriptionDialogInner({ deals, onClose }: { deals: Deal[]; onClose
                     Starter — $149/mo
                   </SelectItem>
                   <SelectItem value="tier_2" data-testid="option-tier-2">
-                    Growth Foundation — $397/mo
+                    Growth Foundation — $497/mo
                   </SelectItem>
                   <SelectItem value="tier_3" data-testid="option-tier-3">
-                    Revenue Growth System — $697/mo
+                    Revenue Growth System — $997/mo
                   </SelectItem>
                   <SelectItem value="tier_4" data-testid="option-tier-4">
                     Revenue Scale AI — $1,497/mo

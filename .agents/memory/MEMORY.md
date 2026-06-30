@@ -12,3 +12,4 @@
 - [Test DB FK constraints](test-db-fk-constraints.md) — only real FK is commissions.subscription_id→subscriptions (ON DELETE SET NULL); FK violations only come from INSERTing commissions for vanished subs (global calc-commissions route + leaked active subs across test files).
 - [Going-forward model flag breaks fixtures](going-forward-model-flag-tests.md) — a per-record flag defaulting to a NEW model silently routes existing legacy-locking test fixtures through the new engine; pin them with commissionModel:"legacy".
 - [Governance qualification metric](governance-qualification-metric.md) — distributor-tier "subscription revenue" must use COLLECTED MRR (getCollectedSubscriptionRevenue), not raw active MRR, or unpaid Stripe subs over-qualify/over-pay.
+- [Public content mirrored 4x](ssr-meta-duplication.md) — public price/brand/copy lives in client pages, server/static.ts SSR meta, index.html JSON-LD, AND client/public/llms.txt (not root); change all four.

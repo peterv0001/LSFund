@@ -28,33 +28,35 @@ export const COMP_V2026 = {
   // --- Subscription product pricing (Retail / Member / Wholesale) ---
   // Member purchases inside the LeaderShield network pay NO commission.
   subscriptionPricing: {
-    tier_1: { retail: 149, member: 99, wholesale: 59 },
-    tier_2: { retail: 397, member: 249, wholesale: 175 },
-    tier_3: { retail: 697, member: 449, wholesale: 300 },
-    tier_4: { retail: 1497, member: 899, wholesale: 600 },
+    tier_1: { retail: 149, member: 99, wholesale: 59 },   // CRB $90
+    tier_2: { retail: 497, member: 249, wholesale: 175 },  // CRB $322
+    tier_3: { retail: 997, member: 449, wholesale: 300 },  // CRB $697
+    tier_4: { retail: 1497, member: 899, wholesale: 600 }, // CRB $897
   } as Record<SubscriptionProduct, { retail: number; member: number; wholesale: number }>,
 
-  // --- Subscription commission pools (% of collected revenue) ---
-  // Indexed by distributor tier → product → decay bucket.
-  // residual = Month 13+. Starter (tier_1) has NO residual (0%).
+  // --- Subscription commission pools (% of the Commissionable Revenue Basis) ---
+  // Indexed by distributor tier → product → decay bucket. Per Manual v1.1
+  // Section 05: the three premium products (Growth Foundation, Revenue Growth
+  // System, Revenue Scale AI) share ONE unified schedule; Starter has its own.
+  // residual = Month 13+ (GF 10%, RGS/Scale 15%, Starter 0% — not eligible).
   subscriptionPools: {
     standard: {
-      tier_1: { m1to3: 0.20, m4to6: 0.15, m7to9: 0.10, m10to12: 0.10, residual: 0.00 },
+      tier_1: { m1to3: 0.25, m4to6: 0.20, m7to9: 0.15, m10to12: 0.15, residual: 0.00 },
       tier_2: { m1to3: 0.45, m4to6: 0.35, m7to9: 0.25, m10to12: 0.15, residual: 0.10 },
+      tier_3: { m1to3: 0.45, m4to6: 0.35, m7to9: 0.25, m10to12: 0.15, residual: 0.15 },
+      tier_4: { m1to3: 0.45, m4to6: 0.35, m7to9: 0.25, m10to12: 0.15, residual: 0.15 },
+    },
+    enhanced: {
+      tier_1: { m1to3: 0.30, m4to6: 0.25, m7to9: 0.20, m10to12: 0.20, residual: 0.00 },
+      tier_2: { m1to3: 0.50, m4to6: 0.40, m7to9: 0.30, m10to12: 0.20, residual: 0.10 },
       tier_3: { m1to3: 0.50, m4to6: 0.40, m7to9: 0.30, m10to12: 0.20, residual: 0.15 },
       tier_4: { m1to3: 0.50, m4to6: 0.40, m7to9: 0.30, m10to12: 0.20, residual: 0.15 },
     },
-    enhanced: {
-      tier_1: { m1to3: 0.25, m4to6: 0.20, m7to9: 0.15, m10to12: 0.15, residual: 0.00 },
-      tier_2: { m1to3: 0.50, m4to6: 0.40, m7to9: 0.30, m10to12: 0.20, residual: 0.10 },
+    elite: {
+      tier_1: { m1to3: 0.35, m4to6: 0.30, m7to9: 0.25, m10to12: 0.25, residual: 0.00 },
+      tier_2: { m1to3: 0.55, m4to6: 0.45, m7to9: 0.35, m10to12: 0.25, residual: 0.10 },
       tier_3: { m1to3: 0.55, m4to6: 0.45, m7to9: 0.35, m10to12: 0.25, residual: 0.15 },
       tier_4: { m1to3: 0.55, m4to6: 0.45, m7to9: 0.35, m10to12: 0.25, residual: 0.15 },
-    },
-    elite: {
-      tier_1: { m1to3: 0.30, m4to6: 0.25, m7to9: 0.20, m10to12: 0.20, residual: 0.00 },
-      tier_2: { m1to3: 0.55, m4to6: 0.45, m7to9: 0.35, m10to12: 0.25, residual: 0.10 },
-      tier_3: { m1to3: 0.60, m4to6: 0.50, m7to9: 0.40, m10to12: 0.30, residual: 0.15 },
-      tier_4: { m1to3: 0.60, m4to6: 0.50, m7to9: 0.40, m10to12: 0.30, residual: 0.15 },
     },
   } as Record<DistributorTier, Record<SubscriptionProduct, Record<DecayBucket, number>>>,
 
@@ -106,14 +108,15 @@ export const COMP_V2026 = {
   maxDownlineLevels: 3,
 
   // --- Subscription performance accelerators (recalculated monthly) ---
-  // Separate from pools; additive up to the cap.
+  // Manual v1.1 Section 06: four triggers, premium products only (Starter is
+  // not eligible). Separate from pools; additive up to the +5% cap → 60% top
+  // rate at Elite. Applied to the Commissionable Revenue Basis.
   subscriptionAccelerators: {
-    mcaAttachment: 0.02,
-    revenueGrowthSystemMix: 0.02,
-    volume: 0.02,
-    quality: 0.01,
-    organizationalDevelopment: 0.01,
-    cap: 0.07,
+    volume: 0.02,            // 20+ active subscriptions
+    retention: 0.01,         // Quality & Retention (12-mo churn below thresholds)
+    premiumProductMix: 0.01, // 60%+ of subs in Revenue Growth System / Revenue Scale AI
+    mcaAttachment: 0.01,     // Merchant Outcomes — strong MCA ↔ subscription attachment
+    cap: 0.05,
   },
 
   // --- MCA performance accelerators (paid from the 2.5% pool, monthly) ---

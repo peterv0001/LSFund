@@ -422,10 +422,10 @@ export default function TrainingPage() {
             <div>
               <h1 className="text-3xl font-display font-bold text-primary flex items-center gap-3" data-testid="text-training-heading">
                 <GraduationCap className="w-8 h-8" />
-                Leader Shield Academy
+                LeaderShield Academy
               </h1>
               <p className="text-muted-foreground mt-2">
-                Complete all modules to become a Certified Leader Shield Agent.
+                Complete all modules to become a Certified LeaderShield Agent.
               </p>
             </div>
             <div className="text-right">
@@ -471,7 +471,7 @@ export default function TrainingPage() {
                     Congratulations!
                   </h2>
                   <p className="text-muted-foreground">
-                    You've completed all training modules. You're now a Certified Leader Shield Agent!
+                    You've completed all training modules. You're now a Certified LeaderShield Agent!
                   </p>
                 </CardContent>
               </Card>
@@ -503,7 +503,7 @@ function SalesResources() {
         <CardContent className="prose prose-sm max-w-none">
           <h3 className="flex items-center gap-2"><Target className="w-4 h-4 text-primary" /> The Cold Call Opening</h3>
           <div className="bg-gray-50 p-4 rounded-lg font-mono text-sm">
-            "Hi [Name], this is [Your Name] with Leader Shield Funding. I work with business owners like yourself to help them access working capital quickly — usually funded within 48 hours, no impact to your credit to check options.<br/><br/>
+            "Hi [Name], this is [Your Name] with LeaderShield Funding. I work with business owners like yourself to help them access working capital quickly — usually funded within 48 hours, no impact to your credit to check options.<br/><br/>
             Do you have 2 minutes to see if this could help your business?"
           </div>
 
@@ -559,7 +559,7 @@ function SalesResources() {
             <Layers className="w-5 h-5" />
             Merchant Growth Platform Sales
           </CardTitle>
-          <CardDescription>Consultative selling approach from the Leader Shield Sales Playbook</CardDescription>
+          <CardDescription>Consultative selling approach from the LeaderShield Sales Playbook</CardDescription>
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none">
           <h3 className="flex items-center gap-2"><ArrowRight className="w-4 h-4 text-primary" /> Step 1: Discovery &amp; Qualification</h3>
@@ -612,19 +612,19 @@ function SalesResources() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="w-5 h-5" />
-            MCA Pairing Enhancement
+            MCA Subscription-Attachment Accelerator
           </CardTitle>
           <CardDescription>Maximize earnings by combining MCA deals with platform subscriptions</CardDescription>
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none">
           <div className="bg-primary/5 p-4 rounded-lg mb-4">
-            <strong className="text-primary">+5% Pairing Enhancement:</strong>
-            <span className="text-muted-foreground ml-1">When a merchant has an active Merchant Growth Platform subscription, your MCA commission increases by 5% of GBR.</span>
+            <strong className="text-primary">Subscription-Attachment Accelerator:</strong>
+            <span className="text-muted-foreground ml-1">When a merchant has an active Merchant Growth Platform subscription, the subscription-attachment accelerator boosts your MCA commission (accelerators stack to a +2.5% cap of the gross funding commission).</span>
           </div>
           <h3 className="flex items-center gap-2"><Star className="w-4 h-4 text-primary" /> Key Selling Points</h3>
           <ul>
             <li><strong>Two revenue streams, one relationship:</strong> Earn immediate MCA commissions plus recurring platform residuals from the same merchant</li>
-            <li><strong>Higher MCA conversions:</strong> Merchants using the platform have better financial visibility, making them stronger MCA candidates</li>
+            <li><strong>Higher MCA conversions:</strong> Merchants using the platform's lead generation, marketing automation, CRM, and AI customer-acquisition tools grow faster, making them stronger MCA candidates</li>
             <li><strong>Sticky relationships:</strong> Platform subscribers are more engaged and more likely to do repeat MCA transactions</li>
             <li><strong>Compounding income:</strong> MCA deals are one-time earnings; platform subscriptions build long-term recurring wealth</li>
           </ul>
@@ -650,8 +650,8 @@ function SalesResources() {
                 <tr className="border-b">
                   <th className="text-left py-2 pr-4 font-semibold">Feature</th>
                   <th className="text-center py-2 px-2 font-semibold">Starter<br/><span className="text-muted-foreground font-normal">$149/mo</span></th>
-                  <th className="text-center py-2 px-2 font-semibold">Growth Foundation<br/><span className="text-muted-foreground font-normal">$397/mo</span></th>
-                  <th className="text-center py-2 px-2 font-semibold">Revenue Growth System<br/><span className="text-muted-foreground font-normal">$697/mo</span></th>
+                  <th className="text-center py-2 px-2 font-semibold">Growth Foundation<br/><span className="text-muted-foreground font-normal">$497/mo</span></th>
+                  <th className="text-center py-2 px-2 font-semibold">Revenue Growth System<br/><span className="text-muted-foreground font-normal">$997/mo</span></th>
                   <th className="text-center py-2 px-2 font-semibold">Revenue Scale AI<br/><span className="text-muted-foreground font-normal">$1,497/mo</span></th>
                 </tr>
               </thead>
@@ -745,7 +745,7 @@ function SalesResources() {
             <Calendar className="w-5 h-5" />
             Your First 30 Days
           </CardTitle>
-          <CardDescription>Week-by-week roadmap to launch your Leader Shield business</CardDescription>
+          <CardDescription>Week-by-week roadmap to launch your LeaderShield business</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
@@ -757,7 +757,7 @@ function SalesResources() {
               <div className="pb-6">
                 <h4 className="font-semibold mb-2">Week 1: Foundation</h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Complete Leader Shield Academy training modules</li>
+                  <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Complete LeaderShield Academy training modules</li>
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Set up your agent portal and CRM access</li>
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Learn the four subscription tiers and key features</li>
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" /> Practice cold call scripts with your sponsor</li>
@@ -821,7 +821,7 @@ function SalesResources() {
             <Users className="w-5 h-5" />
             Agent Role Descriptions
           </CardTitle>
-          <CardDescription>Understanding the different agent roles in the Leader Shield Funding</CardDescription>
+          <CardDescription>Understanding the different agent roles in the LeaderShield Funding</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-3 gap-4">
@@ -837,7 +837,7 @@ function SalesResources() {
                 <ul className="space-y-1">
                   <li className="flex items-start gap-2"><ArrowRight className="w-3 h-3 mt-1 shrink-0" /> Sources and contacts new merchant leads</li>
                   <li className="flex items-start gap-2"><ArrowRight className="w-3 h-3 mt-1 shrink-0" /> Conducts initial qualification</li>
-                  <li className="flex items-start gap-2"><ArrowRight className="w-3 h-3 mt-1 shrink-0" /> Earns 22% of GBR on MCA deals</li>
+                  <li className="flex items-start gap-2"><ArrowRight className="w-3 h-3 mt-1 shrink-0" /> Earns the 32.5% opening-agent share of the gross funding commission on MCA deals (Independent)</li>
                   <li className="flex items-start gap-2"><ArrowRight className="w-3 h-3 mt-1 shrink-0" /> Earns primary commission on platform subscriptions</li>
                 </ul>
               </CardContent>

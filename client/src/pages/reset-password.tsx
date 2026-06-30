@@ -24,8 +24,8 @@ type ResetPasswordForm = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
   usePageMeta(
-    "Reset Password | Leader Shield Funding",
-    "Create a new password for your Leader Shield Funding agent portal account.",
+    "Reset Password | LeaderShield Funding",
+    "Create a new password for your LeaderShield Funding agent portal account.",
   );
   const [status, setStatus] = useState<"form" | "success" | "error">("form");
   const [errorMessage, setErrorMessage] = useState("");

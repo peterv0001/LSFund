@@ -2,7 +2,7 @@ import { ArrowIcon, CheckIcon, LpFooter, LpHeader, useLandingForm, usePageMeta }
 
 export default function LpSeasonal() {
   usePageMeta(
-    "Stock the season before the season. — Leader Shield Funding",
+    "Stock the season before the season. — LeaderShield Funding",
     "Get the Seasonal Capital Calendar: when to secure inventory and staffing capital ahead of your peak — retail, e-commerce, restaurants, and trades.",
   );
   const { formRef, onSubmit, triggerSubmit } = useLandingForm("lp-merchant-seasonal", "apply");
@@ -154,7 +154,7 @@ export default function LpSeasonal() {
         <div className="wrap">
           <div>
             <span className="eyebrow">
-              <span className="dot" /> Why Leader Shield
+              <span className="dot" /> Why LeaderShield
             </span>
             <h2>Capital that respects the calendar.</h2>
             <p>

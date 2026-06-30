@@ -8,6 +8,7 @@ import {
   deriveMcaAcceleratorRates,
   deriveSubscriptionAcceleratorRates,
   fireSubscriptionV2026,
+  commissionableBasis,
 } from './commissionEngine';
 import { COMP_V2026 } from './config';
 
@@ -69,36 +70,38 @@ describe('distributeOverride', () => {
 });
 
 describe('computeSubscriptionV2026', () => {
-  it('computes pool × split for a standard independent tier_3 in months 1-3', () => {
+  it('computes pool × split on the commissionable basis for a standard independent tier_3 in months 1-3', () => {
     const r = computeSubscriptionV2026({
       tier: 'tier_3',
       distributorTier: 'standard',
-      collectedRevenue: 697,
+      collectedRevenue: 997,
       monthsSinceStart: 0,
       agencyModel: 'independent',
     });
+    const basis = commissionableBasis('tier_3'); // 997 − 300 = 697
     expect(r.bucket).toBe('m1to3');
     expect(r.isResidual).toBe(false);
     expect(r.commType).toBe('subscription_commission');
-    // standard/tier_3/m1to3 = 0.50 pool; independent = 100% producer
-    approx(r.poolRate, 0.5);
-    approx(r.poolAmount, 697 * 0.5);
-    approx(r.producerAmount, 697 * 0.5);
+    // unified premium standard/m1to3 = 0.45 pool; independent = 100% producer
+    approx(r.poolRate, 0.45);
+    approx(r.poolAmount, basis * 0.45);
+    approx(r.producerAmount, basis * 0.45);
     approx(r.overrideAmount, 0);
-    approx(r.producerTotal, 697 * 0.5);
+    approx(r.producerTotal, basis * 0.45);
   });
 
   it('carves agency override and distributes it 80/15/5 (recruiting split)', () => {
     const r = computeSubscriptionV2026({
       tier: 'tier_2',
       distributorTier: 'enhanced',
-      collectedRevenue: 397,
+      collectedRevenue: 497,
       monthsSinceStart: 0,
       agencyModel: 'recruiting',
     });
+    const basis = commissionableBasis('tier_2'); // 497 − 175 = 322
     // enhanced/tier_2/m1to3 = 0.50 pool; recruiting split 80/20
     approx(r.poolRate, 0.5);
-    const pool = 397 * 0.5;
+    const pool = basis * 0.5;
     approx(r.producerAmount, pool * 0.8);
     approx(r.overrideAmount, pool * 0.2);
     approx(r.overrideByLevel[0].amount, pool * 0.2 * 0.8);
@@ -110,12 +113,13 @@ describe('computeSubscriptionV2026', () => {
     const r = computeSubscriptionV2026({
       tier: 'tier_3',
       distributorTier: 'elite',
-      collectedRevenue: 1000,
+      collectedRevenue: 997,
       monthsSinceStart: 0,
       agencyModel: 'small_agency',
     });
-    // elite/tier_3/m1to3 = 0.60 pool
-    const pool = 1000 * 0.6;
+    const basis = commissionableBasis('tier_3'); // 697
+    // unified premium elite/m1to3 = 0.55 pool
+    const pool = basis * 0.55;
     approx(r.producerAmount, pool * 0.9);
     approx(r.overrideAmount, pool * 0.1);
   });
@@ -139,34 +143,52 @@ describe('computeSubscriptionV2026', () => {
     const r = computeSubscriptionV2026({
       tier: 'tier_2',
       distributorTier: 'standard',
-      collectedRevenue: 397,
+      collectedRevenue: 497,
       monthsSinceStart: 13,
       agencyModel: 'independent',
     });
+    const basis = commissionableBasis('tier_2'); // 322
     expect(r.commType).toBe('subscription_residual');
     approx(r.poolRate, 0.1);
-    approx(r.producerTotal, 397 * 0.1);
+    approx(r.producerTotal, basis * 0.1);
   });
 
-  it('adds capped accelerator on top of the producer pool share', () => {
+  it('adds capped accelerator (basis-based) on top of the producer pool share', () => {
     const r = computeSubscriptionV2026({
       tier: 'tier_3',
       distributorTier: 'standard',
-      collectedRevenue: 697,
+      collectedRevenue: 997,
       monthsSinceStart: 0,
       agencyModel: 'independent',
-      acceleratorRates: [0.02, 0.02, 0.02, 0.02, 0.02], // 0.10 → capped to 0.07
+      acceleratorRates: [0.02, 0.01, 0.01, 0.01, 0.01], // 0.06 → capped to 0.05
     });
-    approx(r.acceleratorRate, 0.07);
-    approx(r.acceleratorAmount, 697 * 0.07);
-    approx(r.producerTotal, 697 * 0.5 + 697 * 0.07);
+    const basis = commissionableBasis('tier_3'); // 697
+    approx(r.acceleratorRate, 0.05);
+    approx(r.acceleratorAmount, basis * 0.05);
+    approx(r.producerTotal, basis * 0.45 + basis * 0.05);
+  });
+
+  it('never pays an accelerator on Starter (tier_1)', () => {
+    const r = computeSubscriptionV2026({
+      tier: 'tier_1',
+      distributorTier: 'elite',
+      collectedRevenue: 149,
+      monthsSinceStart: 0,
+      agencyModel: 'independent',
+      acceleratorRates: [0.02, 0.01, 0.01, 0.01],
+    });
+    const basis = commissionableBasis('tier_1'); // 90
+    approx(r.acceleratorRate, 0);
+    approx(r.acceleratorAmount, 0);
+    // elite/tier_1/m1to3 = 0.35 pool, no accelerator
+    approx(r.producerTotal, basis * 0.35);
   });
 
   it('pays nothing for an internal member purchase', () => {
     const r = computeSubscriptionV2026({
       tier: 'tier_3',
       distributorTier: 'elite',
-      collectedRevenue: 697,
+      collectedRevenue: 997,
       monthsSinceStart: 0,
       agencyModel: 'recruiting',
       isMemberPurchase: true,
@@ -269,20 +291,20 @@ describe('deriveSubscriptionAcceleratorRates', () => {
   });
 
   it('feeds computeSubscriptionV2026 a real accelerator end-to-end', () => {
-    const rev = 697;
     const rates = deriveSubscriptionAcceleratorRates({ hasPairedMca: true });
     const r = computeSubscriptionV2026({
       tier: 'tier_3',
       distributorTier: 'standard',
-      collectedRevenue: rev,
+      collectedRevenue: 997,
       monthsSinceStart: 0,
       agencyModel: 'independent',
       acceleratorRates: rates,
     });
-    // standard/tier_3/m1to3 pool 0.50 + 2.0% MCA-attachment accelerator
-    approx(r.acceleratorRate, 0.02);
-    approx(r.acceleratorAmount, rev * 0.02);
-    approx(r.producerTotal, rev * 0.5 + rev * 0.02);
+    const basis = commissionableBasis('tier_3'); // 697
+    // unified premium standard/m1to3 pool 0.45 + 1.0% MCA-attachment accelerator
+    approx(r.acceleratorRate, 0.01);
+    approx(r.acceleratorAmount, basis * 0.01);
+    approx(r.producerTotal, basis * 0.45 + basis * 0.01);
   });
 });
 
@@ -294,32 +316,34 @@ describe('fireSubscriptionV2026 (persistence path)', () => {
         id: 1,
         agentId: 10,
         tier: 'tier_3',
-        monthlyAmount: '697.00',
-        mcaPairedDealId: 555, // paired → +2% accelerator sourced inside the helper
+        monthlyAmount: '997.00',
+        mcaPairedDealId: 555, // paired → +1% accelerator sourced inside the helper
       },
       agent: { distributorTier: 'standard', agencyModel: 'independent' },
       monthsSinceStart: 0,
       periodDate: '2026-06-01',
     });
 
-    // pool 0.50 × 697 + 0.02 × 697 accelerator = 348.50 + 13.94 = 362.44
+    // basis 697 × (pool 0.45 + 0.01 accelerator) = 313.65 + 6.97 = 320.62
+    const basis = commissionableBasis('tier_3'); // 697
     expect(res.created).toBe(true);
-    approx(res.producerAmount, 697 * 0.5 + 697 * 0.02);
+    approx(res.producerAmount, basis * 0.45 + basis * 0.01);
     const producerRow = storage.created.find((c) => c.type === 'subscription_commission');
     expect(producerRow).toBeDefined();
-    expect(producerRow.amount).toBe((697 * 0.5 + 697 * 0.02).toFixed(2));
+    expect(producerRow.amount).toBe((basis * 0.45 + basis * 0.01).toFixed(2));
   });
 
   it('pays no accelerator when the subscription is not MCA-paired', async () => {
     const storage = makeFakeStorage();
     await fireSubscriptionV2026(storage as any, {
-      sub: { id: 2, agentId: 10, tier: 'tier_3', monthlyAmount: '697.00', mcaPairedDealId: null },
+      sub: { id: 2, agentId: 10, tier: 'tier_3', monthlyAmount: '997.00', mcaPairedDealId: null },
       agent: { distributorTier: 'standard', agencyModel: 'independent' },
       monthsSinceStart: 0,
       periodDate: '2026-06-01',
     });
+    const basis = commissionableBasis('tier_3'); // 697
     const producerRow = storage.created.find((c) => c.type === 'subscription_commission');
-    expect(producerRow.amount).toBe((697 * 0.5).toFixed(2));
+    expect(producerRow.amount).toBe((basis * 0.45).toFixed(2));
   });
 
   it('persists nothing for an internal member purchase', async () => {
@@ -329,7 +353,7 @@ describe('fireSubscriptionV2026 (persistence path)', () => {
         id: 3,
         agentId: 10,
         tier: 'tier_3',
-        monthlyAmount: '697.00',
+        monthlyAmount: '997.00',
         mcaPairedDealId: 555,
         isMemberPurchase: true,
       },
@@ -349,15 +373,15 @@ describe('fireSubscriptionV2026 (persistence path)', () => {
 describe('fireSubscriptionV2026 residual governance (standing → payout)', () => {
   // tier_2 / standard / residual bucket pool rate = 0.10; independent model means
   // the producer keeps the whole pool, so the persisted amount is a clean
-  // collectedRevenue × 0.10 × standingFactor with no override noise.
-  const fullResidual = 397 * 0.1;
+  // commissionableBasis × 0.10 × standingFactor with no override noise.
+  const fullResidual = commissionableBasis('tier_2') * 0.1; // 322 × 0.10
 
   function fireResidual(
     storage: ReturnType<typeof makeFakeStorage>,
     agent: { residualStatus?: 'good_standing' | 'reduced' | 'suspended'; membershipActive?: boolean },
   ) {
     return fireSubscriptionV2026(storage as any, {
-      sub: { id: 7, agentId: 10, tier: 'tier_2', monthlyAmount: '397.00', mcaPairedDealId: null },
+      sub: { id: 7, agentId: 10, tier: 'tier_2', monthlyAmount: '497.00', mcaPairedDealId: null },
       agent: { distributorTier: 'standard', agencyModel: 'independent', ...agent },
       monthsSinceStart: 13,
       periodDate: '2026-06-01',
@@ -401,7 +425,7 @@ describe('fireSubscriptionV2026 residual governance (standing → payout)', () =
   it('leaves an active (Month 1-12) subscription untouched even for a suspended agent', async () => {
     const storage = makeFakeStorage();
     const res = await fireSubscriptionV2026(storage as any, {
-      sub: { id: 8, agentId: 10, tier: 'tier_2', monthlyAmount: '397.00', mcaPairedDealId: null },
+      sub: { id: 8, agentId: 10, tier: 'tier_2', monthlyAmount: '497.00', mcaPairedDealId: null },
       agent: {
         distributorTier: 'standard',
         agencyModel: 'independent',
@@ -412,7 +436,7 @@ describe('fireSubscriptionV2026 residual governance (standing → payout)', () =
       periodDate: '2026-06-01',
     });
     // m1to3 active pool, paid in full — standing never gates active (Month 1-12) commissions.
-    const activePool = 397 * COMP_V2026.subscriptionPools.standard.tier_2.m1to3;
+    const activePool = commissionableBasis('tier_2') * COMP_V2026.subscriptionPools.standard.tier_2.m1to3;
     expect(res.created).toBe(true);
     expect(res.commType).toBe('subscription_commission');
     approx(res.producerAmount, activePool);

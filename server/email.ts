@@ -2,13 +2,13 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'Leader Shield Funding <noreply@leadershieldfunding.com>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'LeaderShield Funding <noreply@leadershieldfunding.com>';
 const APP_URL = process.env.APP_URL || 'https://leadershieldfunding.com';
 
 // Email templates
 const templates = {
   welcome: (data: { firstName: string; email: string; loginUrl: string }) => ({
-    subject: '🎉 Welcome to Leader Shield Funding!',
+    subject: '🎉 Welcome to LeaderShield Funding!',
     html: `
 <!DOCTYPE html>
 <html>
@@ -19,7 +19,7 @@ const templates = {
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
-      <h1 style="color: #C9A24B; margin: 0; font-size: 28px;">Leader Shield Funding</h1>
+      <h1 style="color: #C9A24B; margin: 0; font-size: 28px;">LeaderShield Funding</h1>
       <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0;">Agent Platform</p>
     </div>
     
@@ -27,7 +27,7 @@ const templates = {
       <h2 style="color: #0A1628; margin: 0 0 20px 0;">Welcome, ${data.firstName}! 🎉</h2>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
-        Congratulations on joining Leader Shield Funding! You're now part of an elite network of MCA professionals 
+        Congratulations on joining LeaderShield Funding! You're now part of an elite network of MCA professionals 
         building two revenue streams.
       </p>
       
@@ -54,7 +54,7 @@ const templates = {
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -112,7 +112,7 @@ const templates = {
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -121,7 +121,7 @@ const templates = {
   }),
 
   passwordReset: (data: { firstName: string; resetUrl: string }) => ({
-    subject: 'Reset Your Password - Leader Shield Funding',
+    subject: 'Reset Your Password - LeaderShield Funding',
     html: `
 <!DOCTYPE html>
 <html>
@@ -159,7 +159,7 @@ const templates = {
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -168,7 +168,7 @@ const templates = {
   }),
 
   teamInvitation: (data: { inviterName: string; prospectName: string; acceptUrl: string }) => ({
-    subject: `${data.inviterName} invited you to join Leader Shield Funding`,
+    subject: `${data.inviterName} invited you to join LeaderShield Funding`,
     html: `
 <!DOCTYPE html>
 <html>
@@ -179,7 +179,7 @@ const templates = {
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
-      <h1 style="color: #C9A24B; margin: 0; font-size: 28px;">Leader Shield Funding</h1>
+      <h1 style="color: #C9A24B; margin: 0; font-size: 28px;">LeaderShield Funding</h1>
       <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0;">You've been invited</p>
     </div>
 
@@ -187,7 +187,7 @@ const templates = {
       <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.prospectName},</h2>
 
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
-        <strong>${data.inviterName}</strong> has invited you to join their team on Leader Shield Funding —
+        <strong>${data.inviterName}</strong> has invited you to join their team on LeaderShield Funding —
         an elite network of MCA professionals building two revenue streams.
       </p>
 
@@ -212,7 +212,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -274,7 +274,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -340,7 +340,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -402,7 +402,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -464,7 +464,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -526,7 +526,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -588,7 +588,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -650,7 +650,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -708,7 +708,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -766,7 +766,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -824,7 +824,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -882,7 +882,7 @@ const templates = {
     </div>
 
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>
@@ -910,7 +910,7 @@ const templates = {
       <h2 style="color: #0A1628; margin: 0 0 20px 0;">Great news, ${data.firstName}!</h2>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
-        <strong>${data.newMemberName}</strong> just joined Leader Shield Funding using your referral link!
+        <strong>${data.newMemberName}</strong> just joined LeaderShield Funding using your referral link!
       </p>
       
       <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
@@ -926,7 +926,7 @@ const templates = {
     </div>
     
     <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
-      © ${new Date().getFullYear()} Leader Shield Funding. All rights reserved.
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
     </p>
   </div>
 </body>

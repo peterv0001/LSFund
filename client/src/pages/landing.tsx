@@ -55,8 +55,8 @@ class SectionsErrorBoundary extends Component<{ children: ReactNode }, { hasErro
 
 export default function LandingPage() {
   usePageMeta(
-    "Business Funding & Merchant Cash Advance | Leader Shield Funding",
-    "Leader Shield Funding helps businesses access fast merchant cash advances and grow recurring revenue. Join our agent network or apply for capital today.",
+    "Business Funding & Merchant Cash Advance | LeaderShield Funding",
+    "LeaderShield Funding helps businesses access fast merchant cash advances and grow recurring revenue. Join our agent network or apply for capital today.",
   );
   const [scrolled, setScrolled] = useState(false);
 
@@ -168,7 +168,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-xl text-white/60 mb-10 max-w-lg leading-relaxed">
-                Leader Shield Funding helps business owners access fast, flexible merchant cash advance funding — and rewards the agents who connect them with capital.
+                LeaderShield Funding helps business owners access fast, flexible merchant cash advance funding — and rewards the agents who connect them with capital.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">

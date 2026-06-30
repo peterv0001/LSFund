@@ -128,7 +128,7 @@ export function LeadThanks({ title, message }: { title: string; message: string 
       <div className="lead-thanks-check" aria-hidden="true">
         <CheckIcon strokeWidth={2.6} />
       </div>
-      <p className="fc-fine">A Leader Shield advisor will reach out shortly to book your walkthrough.</p>
+      <p className="fc-fine">A LeaderShield advisor will reach out shortly to book your walkthrough.</p>
     </div>
   );
 }
@@ -163,8 +163,8 @@ export function AgentBar() {
   return (
     <div className="agentbar show" data-testid="bar-agent-attribution">
       {name
-        ? `Shared with you by ${name}, your Leader Shield advisor`
-        : "Shared with you by your Leader Shield advisor"}
+        ? `Shared with you by ${name}, your LeaderShield advisor`
+        : "Shared with you by your LeaderShield advisor"}
     </div>
   );
 }
@@ -230,7 +230,7 @@ export function LpFooter({ disclosure }: { disclosure: React.ReactNode }) {
       <div className="wrap">
         <p>{disclosure}</p>
         <p>
-          © 2026 Leader Shield Funding. All rights reserved. ·{" "}
+          © 2026 LeaderShield Funding. All rights reserved. ·{" "}
           <Link href="/privacy" data-testid="link-footer-privacy">Privacy</Link> ·{" "}
           <Link href="/terms" data-testid="link-footer-terms">Terms</Link> · Disclosures
         </p>

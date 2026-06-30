@@ -30,10 +30,10 @@ export default function AuthPage() {
   const { login, register, isLoggingIn, isRegistering } = useAuth();
   const [location] = useLocation();
   usePageMeta(
-    isLogin ? "Agent Sign In | Leader Shield Funding" : "Create Agent Account | Leader Shield Funding",
+    isLogin ? "Agent Sign In | LeaderShield Funding" : "Create Agent Account | LeaderShield Funding",
     isLogin
-      ? "Sign in to your Leader Shield Funding agent portal to manage deals, track commissions, and grow your team."
-      : "Join Leader Shield Funding as an agent. Earn multi-tiered commissions on MCA deals and Merchant Growth Platform subscriptions.",
+      ? "Sign in to your LeaderShield Funding agent portal to manage deals, track commissions, and grow your team."
+      : "Join LeaderShield Funding as an agent. Earn multi-tiered commissions on MCA deals and Merchant Growth Platform subscriptions.",
   );
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -65,9 +65,9 @@ export default function AuthPage() {
 
           <div className="space-y-3">
             {[
-              { icon: DollarSign, text: "22% MCA commission on every funded deal", color: "text-emerald-400" },
-              { icon: Repeat, text: "25-50% recurring subscription commissions", color: "text-blue-400" },
-              { icon: Zap, text: "+5% pairing enhancement bonus", color: "text-[#E0C27E]" },
+              { icon: DollarSign, text: "32.5% MCA producer share on every funded deal", color: "text-emerald-400" },
+              { icon: Repeat, text: "Up to 55% recurring subscription commissions", color: "text-blue-400" },
+              { icon: Zap, text: "Performance accelerators up to +5%", color: "text-[#E0C27E]" },
               { icon: Users, text: "Override income from your team", color: "text-purple-400" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">

@@ -1889,8 +1889,8 @@ describe("POST /api/subscriptions – member pricing & zero commission", () => {
       .expect(201);
 
     try {
-      // Retail rate for tier_2 is 397.
-      expect(Number(res.body.monthlyAmount)).toBe(397);
+      // Retail rate for tier_2 is 497.
+      expect(Number(res.body.monthlyAmount)).toBe(497);
       expect(res.body.isMemberPurchase).toBe(false);
     } finally {
       await cleanupCommissionsForSubscriptions([res.body.id]);

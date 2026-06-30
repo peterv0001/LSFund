@@ -38,8 +38,8 @@ type Preview = {
 
 export default function AcceptInvitePage() {
   usePageMeta(
-    "Accept Invitation | Leader Shield Funding",
-    "Accept your invitation to join Leader Shield Funding.",
+    "Accept Invitation | LeaderShield Funding",
+    "Accept your invitation to join LeaderShield Funding.",
   );
   const { toast } = useToast();
   const [, setLocation] = useLocation();

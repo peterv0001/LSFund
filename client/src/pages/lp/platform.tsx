@@ -20,7 +20,7 @@ function PlusIcon() {
 
 export default function LpPlatform() {
   usePageMeta(
-    "Your marketing department. Run by AI. — Leader Shield Merchant Growth Platform",
+    "Your marketing department. Run by AI. — LeaderShield Merchant Growth Platform",
     "The Merchant Growth Platform is a fully AI-native marketing and sales engine: brand intelligence, AI CRM, lead generation, outreach, social content, and AI-managed ads — from $149/mo.",
   );
   const { formRef, onSubmit, triggerSubmit, selectTier, submitted } = useLandingForm(
@@ -63,7 +63,7 @@ export default function LpPlatform() {
           {submitted ? (
             <LeadThanks
               title="Your walkthrough is booked"
-              message="We have your details. A Leader Shield advisor will reach out to set up your free growth walkthrough using your actual brand and market."
+              message="We have your details. A LeaderShield advisor will reach out to set up your free growth walkthrough using your actual brand and market."
             />
           ) : (
             <form ref={formRef} className="form-card" onSubmit={onSubmit} data-testid="form-lead">
@@ -158,7 +158,7 @@ export default function LpPlatform() {
               <h3 className="tname">Growth Foundation</h3>
               <div className="trole">Visibility &amp; stability</div>
               <div className="price mono">
-                $397<small>/mo</small>
+                $497<small>/mo</small>
               </div>
               <p className="pitch">
                 Stop leaking the opportunities you already have. The organized, responsive foundation.
@@ -195,7 +195,7 @@ export default function LpPlatform() {
               <h3 className="tname">Revenue Growth System</h3>
               <div className="trole">Revenue growth &amp; optimization</div>
               <div className="price mono">
-                $697<small>/mo</small>
+                $997<small>/mo</small>
               </div>
               <p className="pitch">
                 The active engine. New leads in, automated follow-up out, and an AI Chief of Staff
@@ -389,7 +389,7 @@ export default function LpPlatform() {
             <div>
               <h3>Need capital to fund the growth?</h3>
               <p>
-                Leader Shield also funds U.S. businesses $2K–$2M, with the total cost shown before you
+                LeaderShield also funds U.S. businesses $2K–$2M, with the total cost shown before you
                 sign. Ask your advisor about pairing capital with the platform.
               </p>
             </div>

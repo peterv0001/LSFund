@@ -2,7 +2,7 @@ import { ArrowIcon, LpFooter, LpHeader, useLandingForm, usePageMeta, CheckIcon }
 
 export default function LpGrowth() {
   usePageMeta(
-    "Growth doesn't wait for the bank. — Leader Shield Funding",
+    "Growth doesn't wait for the bank. — LeaderShield Funding",
     "Get the Capital ROI Playbook: how operators decide when fast capital beats waiting — with worked examples on inventory turns, marketing payback, and expansion math.",
   );
   const { formRef, onSubmit, triggerSubmit } = useLandingForm("lp-merchant-growth", "apply");
@@ -144,7 +144,7 @@ export default function LpGrowth() {
         <div className="wrap">
           <div>
             <span className="eyebrow">
-              <span className="dot" /> Why Leader Shield
+              <span className="dot" /> Why LeaderShield
             </span>
             <h2>Capital priced in the open, sized to the play.</h2>
             <p>

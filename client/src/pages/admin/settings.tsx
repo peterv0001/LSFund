@@ -141,7 +141,7 @@ export default function AdminSettings() {
   useEffect(() => {
     if (settings) {
       setCompanyInfo({
-        name: settings.companyInfo?.name ?? "Leader Shield Funding",
+        name: settings.companyInfo?.name ?? "LeaderShield Funding",
         supportEmail: settings.companyInfo?.supportEmail ?? "support@leadershieldfunding.com",
       });
       setRankReqs(settings.rankRequirements ?? {
@@ -426,16 +426,16 @@ export default function AdminSettings() {
                     Commission Configuration (Reference)
                   </CardTitle>
                   <CardDescription>
-                    Current GBR waterfall and holdback configuration. Edit in the server config file to change.
+                    Active 2026 commission model and holdback configuration. Edit in the server config / compensation files to change.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="space-y-1">
-                      <p className="font-medium text-gray-700">GBR Waterfall (MAC)</p>
-                      <p className="text-gray-500">Primary Agent: 22%</p>
-                      <p className="text-gray-500">Senior Sponsor L1: 5%</p>
-                      <p className="text-gray-500">Executive Sponsor L2: 3%</p>
+                      <p className="font-medium text-gray-700">MCA Producer Economics (2026)</p>
+                      <p className="text-gray-500">Opening Agent Pool: 32.5% of gross funding commission</p>
+                      <p className="text-gray-500">Independent agent keeps full 32.5%</p>
+                      <p className="text-gray-500">Performance accelerators: up to +2.5%</p>
                     </div>
                     <div className="space-y-1">
                       <p className="font-medium text-gray-700">Holdback Policy</p>
@@ -444,11 +444,11 @@ export default function AdminSettings() {
                       <p className="text-gray-500">Deferral Period: 90 days</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="font-medium text-gray-700">Subscription Pools</p>
-                      <p className="text-gray-500">Starter ($149/mo): 25%</p>
-                      <p className="text-gray-500">Growth Foundation ($397/mo): 35%</p>
-                      <p className="text-gray-500">Revenue Growth System ($697/mo): 45%</p>
-                      <p className="text-gray-500">Revenue Scale AI ($1,497/mo): 50%</p>
+                      <p className="font-medium text-gray-700">Subscription Pools (first 90 days)</p>
+                      <p className="text-gray-500">Premium (GF $497 / RGS $997 / Scale $1,497): Standard 45% · Enhanced 50% · Elite 55%</p>
+                      <p className="text-gray-500">Starter ($149/mo): 25%–35%</p>
+                      <p className="text-gray-500">Accelerators: up to +5% (top rate 60% at Elite)</p>
+                      <p className="text-gray-500">Residual (mo 13+): GF 10% · RGS/Scale 15% · Starter none</p>
                     </div>
                     <div className="space-y-1">
                       <p className="font-medium text-gray-700">Subscription Decay</p>

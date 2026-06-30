@@ -2,7 +2,7 @@ import { ArrowIcon, CheckIcon, LpFooter, LpHeader, useLandingForm, usePageMeta }
 
 export default function LpCallCenterIso() {
   usePageMeta(
-    "Your dialers. Our paper. — Leader Shield Partner Network",
+    "Your dialers. Our paper. — LeaderShield Partner Network",
     "An institutional MCA partner program for call centers, ISOs, and brokerages: transparent per-deal economics, fast funding payouts, and full compliance coverage.",
   );
   const { formRef, onSubmit, triggerSubmit } = useLandingForm("lp-partner-callcenter-iso", "signup");
@@ -104,9 +104,9 @@ export default function LpCallCenterIso() {
           <div className="econ">
             <div className="ecard">
               <div className="big">
-                22%<em> GBR</em>
+                32.5%<em> share</em>
               </div>
-              <p>Base commission on gross brokerage revenue per funded deal</p>
+              <p>Opening-agent share of the gross funding commission per funded deal</p>
             </div>
             <div className="ecard">
               <div className="big">
@@ -288,7 +288,7 @@ export default function LpCallCenterIso() {
         disclosure={
           <>
             <b>Partner program disclosure.</b> Commission rates, payout splits, accelerator qualifications,
-            and renewal terms are governed by the Leader Shield partner agreement and may vary by program.
+            and renewal terms are governed by the LeaderShield partner agreement and may vary by program.
             Partners are independent contractors, not employees. No level of earnings is guaranteed; partner
             results depend on volume, deal quality, retention, and market conditions. Merchant cash advance
             funding is the purchase of future receivables and is not a traditional APR-based loan; all

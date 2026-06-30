@@ -20,8 +20,8 @@ type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
   usePageMeta(
-    "Forgot Password | Leader Shield Funding",
-    "Reset your Leader Shield Funding agent portal password.",
+    "Forgot Password | LeaderShield Funding",
+    "Reset your LeaderShield Funding agent portal password.",
   );
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();

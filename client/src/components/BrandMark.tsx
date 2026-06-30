@@ -20,7 +20,7 @@ export function BrandMark({ size = "md", onDark = false, className = "" }: Brand
       viewBox="0 0 38 42"
       fill="none"
       role="img"
-      aria-label="Leader Shield Funding crest"
+      aria-label="LeaderShield Funding crest"
       data-testid="brand-mark"
       className={`${crestSizeMap[size]} w-auto shrink-0 ${className}`}
     >
@@ -75,7 +75,8 @@ export function BrandLockup({
       <span className="leading-tight">
         <span className={`block font-display tracking-tight ${wordSizeMap[size]}`}>
           <span className={onDark ? "font-black text-white" : "font-black text-[#0A1628]"}>Leader</span>
-          <span className="font-semibold text-[#C9A24B]"> Shield</span>
+          <span className="font-semibold text-[#C9A24B]">Shield</span>
+          <span className="align-super text-[0.5em] font-semibold text-[#C9A24B]">™</span>
         </span>
         {showTagline && (
           <span

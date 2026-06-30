@@ -11,7 +11,7 @@ import {
 
 export default function LpScale() {
   usePageMeta(
-    "Scale the revenue. Skip the headcount. — Leader Shield Growth Platform",
+    "Scale the revenue. Skip the headcount. — LeaderShield Growth Platform",
     "Revenue Scale AI is a full AI marketing-and-sales department: an AI Caller that books meetings, AI-managed paid ads, content across Meta, LinkedIn and X — $1,497/mo instead of payroll.",
   );
   const { formRef, onSubmit, triggerSubmit, submitted } = useLandingForm("lp-platform-scale", "thanks");
@@ -68,7 +68,7 @@ export default function LpScale() {
           {submitted ? (
             <LeadThanks
               title="Your scale walkthrough is booked"
-              message="We have your details. A Leader Shield advisor will reach out to show the department scripted, branded, and ready to run on your business."
+              message="We have your details. A LeaderShield advisor will reach out to show the department scripted, branded, and ready to run on your business."
             />
           ) : (
             <form ref={formRef} className="form-card" onSubmit={onSubmit} data-testid="form-lead">

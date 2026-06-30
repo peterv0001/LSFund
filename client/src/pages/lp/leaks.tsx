@@ -20,8 +20,8 @@ function XIcon() {
 
 export default function LpLeaks() {
   usePageMeta(
-    "You don't have a leads problem. You have a leaks problem. — Leader Shield Growth Platform",
-    "Missed calls, unanswered chats, leads that never get a follow-up. The Merchant Growth Platform captures every inquiry 24/7 and follows up automatically — from $397/mo.",
+    "You don't have a leads problem. You have a leaks problem. — LeaderShield Growth Platform",
+    "Missed calls, unanswered chats, leads that never get a follow-up. The Merchant Growth Platform captures every inquiry 24/7 and follows up automatically — from $497/mo.",
   );
   const { formRef, onSubmit, triggerSubmit, submitted } = useLandingForm("lp-platform-leaks", "thanks");
   useLandingView("leaks");
@@ -66,7 +66,7 @@ export default function LpLeaks() {
           {submitted ? (
             <LeadThanks
               title="Your leak check is booked"
-              message="We have your details. A Leader Shield advisor will reach out to walk through exactly where inquiries slip today — and what capture-and-follow-up looks like running for you."
+              message="We have your details. A LeaderShield advisor will reach out to walk through exactly where inquiries slip today — and what capture-and-follow-up looks like running for you."
             />
           ) : (
             <form ref={formRef} className="form-card" onSubmit={onSubmit} data-testid="form-lead">
@@ -164,7 +164,7 @@ export default function LpLeaks() {
             <div className="plan">
               <h3>Growth Foundation</h3>
               <div className="price mono">
-                $397<small>/mo</small>
+                $497<small>/mo</small>
               </div>
               <ul>
                 <li>
@@ -189,7 +189,7 @@ export default function LpLeaks() {
               <span className="flag">Most popular</span>
               <h3>Revenue Growth System</h3>
               <div className="price mono">
-                $697<small>/mo</small>
+                $997<small>/mo</small>
               </div>
               <ul>
                 <li>

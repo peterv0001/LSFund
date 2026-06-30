@@ -16,8 +16,8 @@ async function createProducts() {
 
     const tiers = [
       { name: 'Subscription Tier 1 — Starter', amount: 14900, meta: 'tier_1' },
-      { name: 'Subscription Tier 2 — Growth Foundation', amount: 39700, meta: 'tier_2' },
-      { name: 'Subscription Tier 3 — Revenue Growth System', amount: 69700, meta: 'tier_3' },
+      { name: 'Subscription Tier 2 — Growth Foundation', amount: 49700, meta: 'tier_2' },
+      { name: 'Subscription Tier 3 — Revenue Growth System', amount: 99700, meta: 'tier_3' },
       { name: 'Subscription Tier 4 — Revenue Scale AI', amount: 149700, meta: 'tier_4' },
     ];
 
@@ -40,10 +40,17 @@ async function createProducts() {
           recurring: { interval: 'month' } as any,
         });
 
-        if (existingPrices.data.length > 0) {
-          priceIds[tier.meta] = existingPrices.data[0].id;
-          console.log(`  Price: ${existingPrices.data[0].id}`);
+        // Only reuse a price whose amount matches the current tier amount.
+        // After a price change (e.g. tier_2 $397 -> $497) the old price stays
+        // attached but must NOT be reused; we create a fresh one below instead.
+        const matching = existingPrices.data.find((p) => p.unit_amount === tier.amount);
+        if (matching) {
+          priceIds[tier.meta] = matching.id;
+          console.log(`  Price: ${matching.id} ($${(tier.amount / 100).toFixed(2)}/mo)`);
           continue;
+        }
+        if (existingPrices.data.length > 0) {
+          console.log(`  Existing price(s) found at a different amount — creating a new $${(tier.amount / 100).toFixed(2)}/mo price.`);
         }
       } else {
         const product = await stripe.products.create({

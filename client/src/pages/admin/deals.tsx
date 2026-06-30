@@ -63,6 +63,37 @@ const COMMISSION_TYPE_LABELS: Record<string, string> = {
 
 function WaterfallBreakdown({ deal }: { deal: any }) {
   const gbrAmount = Number(deal.gbrAmount || 0);
+  const isV2026 = deal.commissionModel === "v2026";
+
+  if (isV2026) {
+    const openingPool = gbrAmount * 0.325;
+    const acceleratorMax = gbrAmount * 0.025;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Gross Funding Commission</span>
+          <span className="text-lg font-bold">${gbrAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </div>
+        <div className="space-y-2">
+          <div className="text-sm font-semibold">Opening Agent Pool (32.5% = ${openingPool.toFixed(2)})</div>
+          <p className="ml-4 text-sm text-muted-foreground">
+            Independent agents keep the full 32.5%. Agency models (Small Agency, Leadership, Recruiting)
+            allocate part of this pool as team overrides — producer + override always sums to 32.5%.
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-2 text-sm">
+          <span className="font-semibold">Performance Accelerators (up to +2.5%)</span>
+          <span className="font-medium">up to ${acceleratorMax.toFixed(2)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Subscription Attachment, Repeat Merchant, and volume accelerators stack to a 2.5% cap of the
+          gross funding commission.
+        </p>
+      </div>
+    );
+  }
+
+  // Legacy GBR waterfall — records created before the 2026 producer model.
   const macTotal = gbrAmount * 0.30;
   const macPrimary = gbrAmount * 0.22;
   const macL1 = gbrAmount * 0.05;
@@ -76,7 +107,7 @@ function WaterfallBreakdown({ deal }: { deal: any }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-muted-foreground">GBR Amount</span>
+        <span className="text-sm font-medium text-muted-foreground">GBR Amount (legacy)</span>
         <span className="text-lg font-bold">${gbrAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
       </div>
       <div className="space-y-2">

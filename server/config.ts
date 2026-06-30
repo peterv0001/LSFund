@@ -73,8 +73,8 @@ export const CONFIG = {
   },
   subscriptionTierPrices: {
     tier_1: 149,
-    tier_2: 397,
-    tier_3: 697,
+    tier_2: 497,
+    tier_3: 997,
     tier_4: 1497,
   } as Record<string, number>,
   platformFee: {

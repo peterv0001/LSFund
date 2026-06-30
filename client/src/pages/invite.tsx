@@ -86,7 +86,7 @@ function legLabel(leg: string) {
 
 export default function InvitePage() {
   usePageMeta(
-    "Invite a Teammate | Leader Shield Funding",
+    "Invite a Teammate | LeaderShield Funding",
     "Invite a prospect to join your team by email.",
   );
   const { toast } = useToast();

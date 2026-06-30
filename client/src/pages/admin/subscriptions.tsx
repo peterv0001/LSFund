@@ -144,8 +144,8 @@ const ACTION_COLORS: Record<string, string> = {
 
 const TIER_LABELS: Record<string, string> = {
   tier_1: "Starter — $149/mo",
-  tier_2: "Growth Foundation — $397/mo",
-  tier_3: "Revenue Growth System — $697/mo",
+  tier_2: "Growth Foundation — $497/mo",
+  tier_3: "Revenue Growth System — $997/mo",
   tier_4: "Revenue Scale AI — $1,497/mo",
 };
 
@@ -2010,8 +2010,8 @@ export default function AdminSubscriptions() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tier_1">Starter — $149/mo</SelectItem>
-                  <SelectItem value="tier_2">Growth Foundation — $397/mo</SelectItem>
-                  <SelectItem value="tier_3">Revenue Growth System — $697/mo</SelectItem>
+                  <SelectItem value="tier_2">Growth Foundation — $497/mo</SelectItem>
+                  <SelectItem value="tier_3">Revenue Growth System — $997/mo</SelectItem>
                   <SelectItem value="tier_4">Revenue Scale AI — $1,497/mo</SelectItem>
                 </SelectContent>
               </Select>
