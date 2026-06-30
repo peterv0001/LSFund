@@ -341,3 +341,82 @@ describe('fireSubscriptionV2026 (persistence path)', () => {
     expect(storage.created).toHaveLength(0);
   });
 });
+
+// Proves the residual governance factor (Task #473) actually flows through the
+// real billing path: an admin setting an agent to "reduced"/"suspended" must
+// halve/zero a Month 13+ residual payout — not just in the unit-tested pure
+// function, but in the commission record that fireSubscriptionV2026 persists.
+describe('fireSubscriptionV2026 residual governance (standing → payout)', () => {
+  // tier_2 / standard / residual bucket pool rate = 0.10; independent model means
+  // the producer keeps the whole pool, so the persisted amount is a clean
+  // collectedRevenue × 0.10 × standingFactor with no override noise.
+  const fullResidual = 397 * 0.1;
+
+  function fireResidual(
+    storage: ReturnType<typeof makeFakeStorage>,
+    agent: { residualStatus?: 'good_standing' | 'reduced' | 'suspended'; membershipActive?: boolean },
+  ) {
+    return fireSubscriptionV2026(storage as any, {
+      sub: { id: 7, agentId: 10, tier: 'tier_2', monthlyAmount: '397.00', mcaPairedDealId: null },
+      agent: { distributorTier: 'standard', agencyModel: 'independent', ...agent },
+      monthsSinceStart: 13,
+      periodDate: '2026-06-01',
+    });
+  }
+
+  it('pays a full residual for a good-standing, active-membership agent (control)', async () => {
+    const storage = makeFakeStorage();
+    const res = await fireResidual(storage, { residualStatus: 'good_standing', membershipActive: true });
+    expect(res.created).toBe(true);
+    expect(res.commType).toBe('subscription_residual');
+    approx(res.producerAmount, fullResidual);
+    const row = storage.created.find((c) => c.type === 'subscription_residual');
+    expect(row.amount).toBe(fullResidual.toFixed(2));
+  });
+
+  it('halves a residual payout when the agent is in reduced standing', async () => {
+    const storage = makeFakeStorage();
+    const res = await fireResidual(storage, { residualStatus: 'reduced', membershipActive: true });
+    expect(res.created).toBe(true);
+    approx(res.producerAmount, fullResidual * 0.5);
+    const row = storage.created.find((c) => c.type === 'subscription_residual');
+    expect(row.amount).toBe((fullResidual * 0.5).toFixed(2));
+  });
+
+  it('zeroes a residual payout (persists nothing) when the agent is suspended', async () => {
+    const storage = makeFakeStorage();
+    const res = await fireResidual(storage, { residualStatus: 'suspended', membershipActive: true });
+    expect(res.created).toBe(false);
+    approx(res.producerAmount, 0);
+    expect(storage.created).toHaveLength(0);
+  });
+
+  it('zeroes a residual payout when the membership is inactive', async () => {
+    const storage = makeFakeStorage();
+    const res = await fireResidual(storage, { residualStatus: 'good_standing', membershipActive: false });
+    expect(res.created).toBe(false);
+    expect(storage.created).toHaveLength(0);
+  });
+
+  it('leaves an active (Month 1-12) subscription untouched even for a suspended agent', async () => {
+    const storage = makeFakeStorage();
+    const res = await fireSubscriptionV2026(storage as any, {
+      sub: { id: 8, agentId: 10, tier: 'tier_2', monthlyAmount: '397.00', mcaPairedDealId: null },
+      agent: {
+        distributorTier: 'standard',
+        agencyModel: 'independent',
+        residualStatus: 'suspended',
+        membershipActive: false,
+      },
+      monthsSinceStart: 0,
+      periodDate: '2026-06-01',
+    });
+    // m1to3 active pool, paid in full — standing never gates active (Month 1-12) commissions.
+    const activePool = 397 * COMP_V2026.subscriptionPools.standard.tier_2.m1to3;
+    expect(res.created).toBe(true);
+    expect(res.commType).toBe('subscription_commission');
+    approx(res.producerAmount, activePool);
+    const row = storage.created.find((c) => c.type === 'subscription_commission');
+    expect(row.amount).toBe(activePool.toFixed(2));
+  });
+});
