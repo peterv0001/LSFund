@@ -676,6 +676,49 @@ export const migrations: Migration[] = [
       console.log("[migrations] 022 down is a no-op (enum values cannot be dropped)");
     },
   },
+  {
+    name: "023_add_agent_onboarding_fields",
+    async run(client) {
+      // Placement state enum: existing agents are all 'placed'; new agents whose
+      // binary-tree slot can't be resolved at signup land in 'pending' for an
+      // admin to resolve, instead of failing the signup with a 500.
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE placement_status AS ENUM ('placed', 'pending');
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+      // Onboarding columns. email_verified_at is NULL for all existing agents;
+      // we backfill them to verified below so the new verification gate never
+      // locks out accounts that pre-date this feature.
+      await client.query(`
+        ALTER TABLE agents
+          ADD COLUMN IF NOT EXISTS email_verified_at timestamp,
+          ADD COLUMN IF NOT EXISTS email_verification_token text,
+          ADD COLUMN IF NOT EXISTS placement_status placement_status NOT NULL DEFAULT 'placed',
+          ADD COLUMN IF NOT EXISTS onboarding_dismissed_at timestamp
+      `);
+      // Backfill: treat every pre-existing account as already email-verified so
+      // the new deal/subscription gate doesn't retroactively block them. Only
+      // agents created from now on start unverified.
+      const result = await client.query(`
+        UPDATE agents SET email_verified_at = now() WHERE email_verified_at IS NULL
+      `);
+      console.log(
+        `[migrations] Added onboarding fields to agents and backfilled ${result.rowCount ?? 0} existing agent(s) as verified`
+      );
+    },
+    async down(client) {
+      await client.query(`
+        ALTER TABLE agents
+          DROP COLUMN IF EXISTS email_verified_at,
+          DROP COLUMN IF EXISTS email_verification_token,
+          DROP COLUMN IF EXISTS placement_status,
+          DROP COLUMN IF EXISTS onboarding_dismissed_at
+      `);
+      await client.query(`DROP TYPE IF EXISTS placement_status`);
+      console.log("[migrations] Reverted agent onboarding fields");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

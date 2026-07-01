@@ -220,6 +220,55 @@ const templates = {
     `,
   }),
 
+  emailVerification: (data: { firstName: string; verifyUrl: string }) => ({
+    subject: `Verify your email — LeaderShield Funding`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: linear-gradient(135deg, #0A1628 0%, #05101F 100%); border-radius: 16px 16px 0 0; padding: 40px; text-align: center;">
+      <h1 style="color: #C9A24B; margin: 0; font-size: 28px;">LeaderShield Funding</h1>
+      <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0;">Confirm your email address</p>
+    </div>
+
+    <div style="background: white; padding: 40px; border-radius: 0 0 16px 16px;">
+      <h2 style="color: #0A1628; margin: 0 0 20px 0;">Hi ${data.firstName},</h2>
+
+      <p style="color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+        Welcome to LeaderShield Funding! Please confirm your email address to unlock deal
+        submissions, subscriptions, and the rest of your agent portal.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.verifyUrl}" style="display: inline-block; background: linear-gradient(135deg, #C9A24B 0%, #A07B22 100%); color: #0A1628; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+          Verify Email →
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 14px; line-height: 1.6; margin: 20px 0;">
+        This link will expire in <strong>24 hours</strong>. If you didn't create this account, you can safely ignore this email.
+      </p>
+
+      <p style="color: #a0aec0; font-size: 12px; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        If the button above doesn't work, copy and paste this link into your browser:<br/>
+        <a href="${data.verifyUrl}" style="color: #0A1628; word-break: break-all;">${data.verifyUrl}</a>
+      </p>
+    </div>
+
+    <p style="color: #a0aec0; font-size: 12px; text-align: center; margin: 20px 0 0 0;">
+      © ${new Date().getFullYear()} LeaderShield Funding. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  }),
+
   subscriptionPaused: (data: { firstName: string; merchantName: string; tier: string; effectiveDate: string; dashboardUrl: string }) => ({
     subject: `⏸ Subscription Paused: ${data.merchantName}`,
     html: `
@@ -1029,6 +1078,28 @@ export const emailService = {
       console.log(`[Email] Team invitation email sent to ${to}`);
     } catch (error) {
       console.error('[Email] Failed to send team invitation email:', error);
+    }
+  },
+
+  async sendVerificationEmail(to: string, data: { firstName: string; verifyUrl: string }) {
+    if (!process.env.RESEND_API_KEY) {
+      console.log('[Email] Skipping verification email - RESEND_API_KEY not set');
+      return;
+    }
+
+    try {
+      const template = templates.emailVerification(data);
+
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+
+      console.log(`[Email] Verification email sent to ${to}`);
+    } catch (error) {
+      console.error('[Email] Failed to send verification email:', error);
     }
   },
 

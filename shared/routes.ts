@@ -127,6 +127,25 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    // Public: confirm an email address from the link in the verification email.
+    verifyEmail: {
+      method: 'GET' as const,
+      path: '/api/auth/verify-email/:token',
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+      },
+    },
+    // Authenticated unverified agent requests a fresh verification email.
+    resendVerification: {
+      method: 'POST' as const,
+      path: '/api/auth/resend-verification',
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
   },
 
   // === PUBLIC (unauthenticated) ===
@@ -313,6 +332,34 @@ export const api = {
           leaks: z.object({ views: z.number(), leads: z.number(), views7d: z.number(), views30d: z.number(), dailyViews: z.array(z.number()) }),
           scale: z.object({ views: z.number(), leads: z.number(), views7d: z.number(), views30d: z.number(), dailyViews: z.array(z.number()) }),
         }),
+      },
+    },
+    // Onboarding checklist completion state for the "Getting Started" card.
+    onboarding: {
+      method: 'GET' as const,
+      path: '/api/agents/me/onboarding',
+      responses: {
+        200: z.object({
+          profileComplete: z.boolean(),
+          emailVerified: z.boolean(),
+          module1Complete: z.boolean(),
+          firstDealLogged: z.boolean(),
+          firstInviteSent: z.boolean(),
+          completedCount: z.number(),
+          totalCount: z.number(),
+          dismissed: z.boolean(),
+          allComplete: z.boolean(),
+        }),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    // Persist the agent's dismissal of the onboarding checklist card.
+    dismissOnboarding: {
+      method: 'POST' as const,
+      path: '/api/agents/me/onboarding/dismiss',
+      responses: {
+        200: z.object({ message: z.string() }),
+        401: errorSchemas.unauthorized,
       },
     },
   },
@@ -711,11 +758,80 @@ export const api = {
           }),
         },
       },
+      // Onboarding cohort (Task #509): agents who signed up in the last 30 days,
+      // with per-agent onboarding signals. Static path — registered before :id.
+      onboarding: {
+        method: 'GET' as const,
+        path: '/api/admin/agents/onboarding',
+        responses: {
+          200: z.array(z.object({
+            id: z.number(),
+            firstName: z.string(),
+            lastName: z.string(),
+            email: z.string(),
+            createdAt: z.string(),
+            daysSinceSignup: z.number(),
+            emailVerified: z.boolean(),
+            module1Complete: z.boolean(),
+            checklistPercent: z.number(),
+            placementStatus: z.string(),
+          })),
+        },
+      },
+      // Count of unverified accounts for the admin nav badge.
+      unverifiedCount: {
+        method: 'GET' as const,
+        path: '/api/admin/agents/unverified-count',
+        responses: {
+          200: z.object({ count: z.number() }),
+        },
+      },
+      // Agents stuck in the pending-placement queue (Task #509). Static path.
+      pendingPlacement: {
+        method: 'GET' as const,
+        path: '/api/admin/agents/pending-placement',
+        responses: {
+          200: z.array(z.custom<typeof agents.$inferSelect>()),
+        },
+      },
       get: {
         method: 'GET' as const,
         path: '/api/admin/agents/:id',
         responses: {
           200: z.custom<typeof agents.$inferSelect>(),
+          404: errorSchemas.notFound,
+        },
+      },
+      // Admin manually marks an agent's email as verified (Task #509).
+      verifyEmail: {
+        method: 'POST' as const,
+        path: '/api/admin/agents/:id/verify-email',
+        responses: {
+          200: z.custom<typeof agents.$inferSelect>(),
+          404: errorSchemas.notFound,
+        },
+      },
+      // Admin resends a verification email to an unverified agent (Task #509).
+      resendVerification: {
+        method: 'POST' as const,
+        path: '/api/admin/agents/:id/resend-verification',
+        responses: {
+          200: z.object({ message: z.string() }),
+          400: errorSchemas.validation,
+          404: errorSchemas.notFound,
+        },
+      },
+      // Admin assigns a binary-tree slot to a pending-placement agent (Task #509).
+      resolvePlacement: {
+        method: 'POST' as const,
+        path: '/api/admin/agents/:id/resolve-placement',
+        input: z.object({
+          placementId: z.number().int().positive(),
+          leg: z.enum(['left', 'right']),
+        }),
+        responses: {
+          200: z.custom<typeof agents.$inferSelect>(),
+          400: errorSchemas.validation,
           404: errorSchemas.notFound,
         },
       },
@@ -1434,6 +1550,48 @@ export const api = {
         }),
         responses: {
           200: z.object({ success: z.boolean() }),
+        },
+      },
+    },
+
+    // Network-wide invitation management (Task #509). Admins can see every
+    // invitation, filter by status, and resend/cancel any pending one.
+    invitations: {
+      list: {
+        method: 'GET' as const,
+        path: '/api/admin/invitations',
+        responses: {
+          200: z.array(z.object({
+            id: z.number(),
+            inviterId: z.number(),
+            inviterName: z.string(),
+            firstName: z.string(),
+            lastName: z.string(),
+            email: z.string(),
+            placementLeg: z.string(),
+            status: z.string(),
+            expiresAt: z.string(),
+            acceptedAgentId: z.number().nullable(),
+            createdAt: z.string(),
+          })),
+        },
+      },
+      resend: {
+        method: 'POST' as const,
+        path: '/api/admin/invitations/:id/resend',
+        responses: {
+          200: z.object({ message: z.string() }),
+          400: errorSchemas.validation,
+          404: errorSchemas.notFound,
+        },
+      },
+      cancel: {
+        method: 'POST' as const,
+        path: '/api/admin/invitations/:id/cancel',
+        responses: {
+          200: z.object({ message: z.string() }),
+          400: errorSchemas.validation,
+          404: errorSchemas.notFound,
         },
       },
     },

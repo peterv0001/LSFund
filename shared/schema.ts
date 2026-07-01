@@ -25,6 +25,10 @@ export const subscriptionBillingStatusEnum = pgEnum("subscription_billing_status
 export const holdbackStatusEnum = pgEnum("holdback_status", ['held', 'partially_released', 'released', 'clawed_back']);
 export const fulfillmentTierLevelEnum = pgEnum("fulfillment_tier_level", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
 export const invitationStatusEnum = pgEnum("invitation_status", ['pending', 'accepted', 'cancelled', 'expired']);
+// Binary-tree placement state. 'placed' = the agent has a resolved
+// placement_id/leg slot; 'pending' = placement could not be resolved at signup
+// (e.g. after exhausting retry attempts) and an admin must assign a slot.
+export const placementStatusEnum = pgEnum("placement_status", ['placed', 'pending']);
 
 // === 2026 COMPENSATION MODEL ENUMS ===
 // Additive, going-forward attributes for the LeaderShield Compensation
@@ -97,6 +101,17 @@ export const agents = pgTable("agents", {
   // Password Reset
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
+
+  // === ONBOARDING (Task #509) ===
+  // Email verification: set when the agent confirms their address. The token is
+  // stored hashed (sha256); the raw token only ever lives in the email link.
+  emailVerifiedAt: timestamp("email_verified_at"),
+  emailVerificationToken: text("email_verification_token"),
+  // Binary-tree placement state. New agents are 'placed'; if placement can't be
+  // resolved at signup the agent is created 'pending' for an admin to resolve.
+  placementStatus: placementStatusEnum("placement_status").default("placed").notNull(),
+  // When the agent dismissed the "Getting Started" onboarding checklist card.
+  onboardingDismissedAt: timestamp("onboarding_dismissed_at"),
 
   // === 2026 COMPENSATION MODEL (additive; recalculated by later tasks) ===
   // Distributor performance tier (qualification recalculated monthly).

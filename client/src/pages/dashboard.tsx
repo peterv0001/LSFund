@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useCommissionStats } from "@/hooks/use-commissions";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { Sidebar } from "@/components/Sidebar";
 import { StatsCard } from "@/components/StatsCard";
@@ -21,7 +21,12 @@ import {
   AlertTriangle,
   X,
   Award,
-  Layers
+  Layers,
+  Mail,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  Rocket
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -79,6 +84,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data: stats, isLoading } = useCommissionStats();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: referralData } = useQuery({
     queryKey: ['referral-link'],
@@ -111,6 +117,63 @@ export default function Dashboard() {
   const { data: subscriptions = [] } = useQuery<{ id: number; status: string; endDate: string | null }[]>({
     queryKey: ["/api/subscriptions"],
   });
+
+  type OnboardingState = {
+    profileComplete: boolean;
+    emailVerified: boolean;
+    module1Complete: boolean;
+    firstDealLogged: boolean;
+    firstInviteSent: boolean;
+    completedCount: number;
+    totalCount: number;
+    dismissed: boolean;
+    allComplete: boolean;
+  };
+  const { data: onboarding } = useQuery<OnboardingState>({
+    queryKey: [api.agents.onboarding.path],
+  });
+
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+
+  const resendVerification = async () => {
+    setResendingVerification(true);
+    try {
+      const res = await fetch(api.auth.resendVerification.path, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || "Could not resend the verification email.");
+      }
+      setVerificationSent(true);
+      toast({
+        title: "Verification email sent",
+        description: "Check your inbox for the confirmation link.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Couldn't resend email",
+        description: err?.message || "Please try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
+  const dismissOnboarding = async () => {
+    try {
+      await fetch(api.agents.dismissOnboarding.path, {
+        method: "POST",
+        credentials: "include",
+      });
+      queryClient.invalidateQueries({ queryKey: [api.agents.onboarding.path] });
+    } catch {
+      // non-critical
+    }
+  };
 
   const expiredSubscriptionCount = subscriptions.filter((s) => s.status === "expired").length;
 
@@ -239,6 +302,120 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {onboarding && !onboarding.emailVerified && (
+          <div
+            className="flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-4 mb-4"
+            data-testid="banner-email-verification"
+          >
+            <div className="flex items-start gap-3 flex-1">
+              <Mail className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Verify your email address
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                  Confirm your email to unlock logging deals and adding subscriptions. Check your inbox for the link
+                  {user?.email ? <> we sent to <span className="font-medium">{user.email}</span></> : null}.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-300 dark:border-amber-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/30 shrink-0"
+              onClick={resendVerification}
+              disabled={resendingVerification || verificationSent}
+              data-testid="button-resend-verification"
+            >
+              {resendingVerification ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {verificationSent ? "Email sent" : "Resend email"}
+            </Button>
+          </div>
+        )}
+
+        {onboarding && !onboarding.allComplete && !onboarding.dismissed && (
+          <div
+            className="bg-white rounded-2xl border border-border shadow-sm p-6 mb-6"
+            data-testid="card-getting-started"
+          >
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Rocket className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-primary">Getting Started</h3>
+                  <p className="text-sm text-muted-foreground" data-testid="text-onboarding-progress">
+                    {onboarding.completedCount} of {onboarding.totalCount} steps complete
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={dismissOnboarding}
+                className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                aria-label="Dismiss getting started checklist"
+                data-testid="button-dismiss-onboarding"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-5">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all"
+                style={{ width: `${onboarding.totalCount ? (onboarding.completedCount / onboarding.totalCount) * 100 : 0}%` }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { key: "profileComplete", done: onboarding.profileComplete, label: "Complete your profile", href: "/settings", cta: "Update profile" },
+                { key: "emailVerified", done: onboarding.emailVerified, label: "Verify your email address", action: "resend" as const },
+                { key: "module1Complete", done: onboarding.module1Complete, label: "Finish Academy Module 1", href: "/training", cta: "Start training" },
+                { key: "firstDealLogged", done: onboarding.firstDealLogged, label: "Log your first deal", href: "/deals", cta: "Log a deal" },
+                { key: "firstInviteSent", done: onboarding.firstInviteSent, label: "Invite your first teammate", href: "/team", cta: "Invite someone" },
+              ].map((step) => (
+                <div
+                  key={step.key}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
+                  data-testid={`onboarding-step-${step.key}`}
+                >
+                  {step.done ? (
+                    <CheckCircle2 className="w-5 h-5 text-[#1C8A5B] flex-shrink-0" data-testid={`icon-done-${step.key}`} />
+                  ) : (
+                    <Circle className="w-5 h-5 text-gray-300 flex-shrink-0" />
+                  )}
+                  <span className={`text-sm flex-1 ${step.done ? "text-muted-foreground line-through" : "text-foreground font-medium"}`}>
+                    {step.label}
+                  </span>
+                  {!step.done && step.action === "resend" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-primary"
+                      onClick={resendVerification}
+                      disabled={resendingVerification || verificationSent}
+                      data-testid={`button-step-${step.key}`}
+                    >
+                      {resendingVerification ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                      {verificationSent ? "Sent" : "Resend"}
+                    </Button>
+                  )}
+                  {!step.done && step.href && (
+                    <Link href={step.href}>
+                      <Button variant="ghost" size="sm" className="h-8 text-primary gap-1" data-testid={`button-step-${step.key}`}>
+                        {step.cta}
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {expiringSoonSubscriptions.length > 0 && hasNewExpiringSoon && (
           <div

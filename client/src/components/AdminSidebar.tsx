@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@shared/routes";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { BrandLockup } from "@/components/BrandMark";
@@ -46,6 +48,12 @@ export function AdminSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { data: unverified } = useQuery<{ count: number }>({
+    queryKey: [api.admin.agents.unverifiedCount.path],
+    refetchInterval: 60000,
+  });
+  const unverifiedCount = unverified?.count ?? 0;
 
   useEffect(() => {
     setMobileOpen(false);
@@ -115,6 +123,15 @@ export function AdminSidebar() {
               >
                 <item.icon className={cn("w-4 h-4 shrink-0", isActive ? "text-white" : "text-white/40")} />
                 <span>{item.label}</span>
+                {item.href === "/admin/agents" && unverifiedCount > 0 && (
+                  <span
+                    className="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-400 text-[#0A1628] text-[10px] font-bold"
+                    data-testid="badge-nav-unverified"
+                    title={`${unverifiedCount} unverified account${unverifiedCount === 1 ? '' : 's'}`}
+                  >
+                    {unverifiedCount}
+                  </span>
+                )}
               </div>
             </Link>
           );

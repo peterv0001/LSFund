@@ -13,3 +13,6 @@
 - [Going-forward model flag breaks fixtures](going-forward-model-flag-tests.md) — a per-record flag defaulting to a NEW model silently routes existing legacy-locking test fixtures through the new engine; pin them with commissionModel:"legacy".
 - [Governance qualification metric](governance-qualification-metric.md) — distributor-tier "subscription revenue" must use COLLECTED MRR (getCollectedSubscriptionRevenue), not raw active MRR, or unpaid Stripe subs over-qualify/over-pay.
 - [Public content mirrored 4x](ssr-meta-duplication.md) — public price/brand/copy lives in client pages, server/static.ts SSR meta, index.html JSON-LD, AND client/public/llms.txt (not root); change all four.
+- [New blocking gate breaks fixtures](verification-gate-breaks-fixtures.md) — adding a "must be verified" 403 gate on deal/sub POST routes 403s every stale fixture; seed emailVerifiedAt on the agent inserts, don't weaken the gate.
+- [Lazy-expiry filtering](lazy-status-filtering.md) — when a status is computed lazily (pending-past-due => expired), filter AFTER computing effective status in memory; DB-level status filter misses lazily-expired rows.
+- [Drizzle wraps pg errors](drizzle-error-unwrapping.md) — DrizzleQueryError puts code/constraint on err.cause not top-level; err.code==="23505" silently fails, breaking unique-violation retries (flaky placement race). Walk .cause.

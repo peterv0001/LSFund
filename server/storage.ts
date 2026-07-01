@@ -17,11 +17,20 @@ import { alias } from "drizzle-orm/pg-core";
 // name or detail, so callers can distinguish (e.g.) a referral-code collision
 // from a placement-slot collision.
 function isUniqueViolation(err: unknown, hint?: string): boolean {
-  const e = err as { code?: string; constraint?: string; detail?: string } | null;
-  if (!e || e.code !== "23505") return false;
-  if (!hint) return true;
-  const haystack = `${e.constraint ?? ""} ${e.detail ?? ""}`.toLowerCase();
-  return haystack.includes(hint.toLowerCase());
+  // Newer drizzle wraps the underlying pg error in a DrizzleQueryError, so the
+  // pg fields (code/constraint/detail) live on `.cause`, not the top-level
+  // error. Walk the cause chain so we detect the 23505 regardless of nesting.
+  type PgErr = { code?: string; constraint?: string; detail?: string; cause?: unknown };
+  let e = err as PgErr | null | undefined;
+  for (let depth = 0; e && depth < 5; depth++) {
+    if (e.code === "23505") {
+      if (!hint) return true;
+      const haystack = `${e.constraint ?? ""} ${e.detail ?? ""}`.toLowerCase();
+      return haystack.includes(hint.toLowerCase());
+    }
+    e = e.cause as PgErr | null | undefined;
+  }
+  return false;
 }
 
 // Helper to get start of current week (Monday)
@@ -139,7 +148,6 @@ export class DatabaseStorage {
     strategy: 'left' | 'right' | 'auto',
   ): Promise<Agent> {
     const MAX_ATTEMPTS = 8;
-    let lastError: unknown;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const placement = await this.findPlacement(sponsorId, strategy);
       try {
@@ -148,16 +156,91 @@ export class DatabaseStorage {
           sponsorId,
           placementId: placement.placementId,
           leg: placement.leg,
+          placementStatus: 'placed',
         });
       } catch (err) {
         if (isUniqueViolation(err, "placement")) {
-          lastError = err;
           continue;
         }
         throw err;
       }
     }
-    throw lastError ?? new Error("Failed to place agent in the binary tree after multiple attempts");
+    // All retries exhausted (persistent slot contention). Rather than failing the
+    // whole signup with a 500, create the agent under the sponsor but WITHOUT a
+    // resolved binary-tree slot. It is flagged 'pending' so an admin can assign a
+    // placement manually from the admin Agents panel. The partial unique index
+    // only constrains rows where placement_id/leg are NOT NULL, so an unplaced
+    // agent never collides.
+    return await this.createAgent({
+      ...agent,
+      sponsorId,
+      placementId: null,
+      leg: null,
+      placementStatus: 'pending',
+    });
+  }
+
+  // Look up an agent by the (hashed) email-verification token. Callers pass the
+  // sha256 hash of the raw token that arrived in the verification link.
+  async getAgentByEmailVerificationToken(hashedToken: string): Promise<Agent | undefined> {
+    const [agent] = await db.select().from(agents)
+      .where(eq(agents.emailVerificationToken, hashedToken));
+    return agent;
+  }
+
+  // Agents that could not be auto-placed in the binary tree at signup and need
+  // an admin to assign a slot. Oldest first so the longest-waiting are resolved.
+  async getPendingPlacementAgents(): Promise<Agent[]> {
+    return await db.select().from(agents)
+      .where(eq(agents.placementStatus, 'pending'))
+      .orderBy(asc(agents.createdAt));
+  }
+
+  // The agent occupying a specific binary-tree slot, if any. Used by the admin
+  // placement-resolution route to reject an already-filled slot.
+  async getAgentByPlacement(placementId: number, leg: 'left' | 'right'): Promise<Agent | undefined> {
+    const [agent] = await db.select().from(agents).where(and(
+      eq(agents.placementId, placementId),
+      eq(agents.leg, leg),
+    ));
+    return agent;
+  }
+
+  // Count of agents who have not yet verified their email (for the admin badge).
+  async countUnverifiedAgents(): Promise<number> {
+    const [row] = await db.select({ count: count() }).from(agents)
+      .where(sql`${agents.emailVerifiedAt} IS NULL`);
+    return Number(row?.count ?? 0);
+  }
+
+  // Whether the agent has completed Academy Module 1 (moduleNumber === 1).
+  async isModule1Complete(agentId: number): Promise<boolean> {
+    const [module1] = await db.select().from(courseModules)
+      .where(eq(courseModules.moduleNumber, 1));
+    if (!module1) return false;
+    const progress = await this.getModuleProgress(agentId, module1.id);
+    return progress?.status === 'completed';
+  }
+
+  // Agents who signed up within the last `days` days, used for the admin
+  // onboarding cohort view. Newest first.
+  async getRecentSignupAgents(days: number = 30): Promise<Agent[]> {
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    return await db.select().from(agents)
+      .where(sql`${agents.createdAt} >= ${cutoff}`)
+      .orderBy(desc(agents.createdAt));
+  }
+
+  // All invitations across the network (admin view), optionally filtered by
+  // status. Newest first. Status is reflected lazily for expired-but-pending.
+  async getAllAgentInvitations(status?: string): Promise<AgentInvitation[]> {
+    const rows = status
+      ? await db.select().from(agentInvitations)
+          .where(eq(agentInvitations.status, status as any))
+          .orderBy(desc(agentInvitations.createdAt))
+      : await db.select().from(agentInvitations)
+          .orderBy(desc(agentInvitations.createdAt));
+    return rows;
   }
 
   private generateReferralCode(firstName: string, lastName: string): string {

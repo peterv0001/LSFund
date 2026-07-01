@@ -34,6 +34,7 @@ const AuthPage = lazy(() => import("@/pages/auth"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
 const AcceptInvitePage = lazy(() => import("@/pages/accept-invite"));
+const VerifyEmailPage = lazy(() => import("@/pages/verify-email"));
 const InvitePage = lazy(() => import("@/pages/invite"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const TeamPage = lazy(() => import("@/pages/team"));
@@ -148,6 +149,9 @@ function Router() {
       </Route>
       <Route path="/invite/accept">
         <AcceptInvitePage />
+      </Route>
+      <Route path="/verify-email">
+        <VerifyEmailPage />
       </Route>
 
       {/* Public Ad Landing Pages (no auth guard, always public) */}

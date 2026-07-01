@@ -173,6 +173,7 @@ beforeAll(async () => {
     .values({
       email: `${BILLING_AGENT_EMAIL_PREFIX}@example.com`,
       password: await hashPasswordForTest(BILLING_AGENT_PASSWORD),
+      emailVerifiedAt: new Date(),
       firstName: "Billing",
       lastName: "Tester",
       currentRank: "agent",
@@ -535,6 +536,7 @@ describe("POST /api/subscriptions – gracefully skips billing when the tier pri
       .values({
         email: MISSING_AGENT_EMAIL,
         password: await hashPasswordForTest(MISSING_AGENT_PASSWORD),
+        emailVerifiedAt: new Date(),
         firstName: "Missing",
         lastName: "Price",
         currentRank: "agent",

@@ -19,6 +19,13 @@ import {
   ArrowDown,
   AlertTriangle,
   ShieldCheck,
+  Mail,
+  MailCheck,
+  RefreshCw,
+  Send,
+  XCircle,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,8 +129,15 @@ export default function AdminAgents() {
   const [governanceAgent, setGovernanceAgent] = useState<Agent | null>(null);
   const [governanceDialogOpen, setGovernanceDialogOpen] = useState(false);
   
+  const [activeTab, setActiveTab] = useState<'agents' | 'onboarding' | 'invitations'>('agents');
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { data: unverified } = useQuery<{ count: number }>({
+    queryKey: [api.admin.agents.unverifiedCount.path],
+  });
+  const unverifiedCount = unverified?.count ?? 0;
 
   const updateStatusInUrl = useCallback((status: string) => {
     try {
@@ -347,6 +361,52 @@ export default function AdminAgents() {
           </div>
         </header>
 
+        {/* Tabs */}
+        <div className="flex items-center gap-1 mb-6 border-b" data-testid="tabs-agents">
+          <button
+            type="button"
+            onClick={() => setActiveTab('agents')}
+            data-testid="tab-agents"
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'agents' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            All Agents
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('onboarding')}
+            data-testid="tab-onboarding"
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors inline-flex items-center gap-2 ${
+              activeTab === 'onboarding' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Onboarding
+            {unverifiedCount > 0 && (
+              <span
+                className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold"
+                data-testid="badge-unverified-count"
+              >
+                {unverifiedCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('invitations')}
+            data-testid="tab-invitations"
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'invitations' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Invitations
+          </button>
+        </div>
+
+        {activeTab === 'onboarding' && <OnboardingPanel />}
+        {activeTab === 'invitations' && <InvitationsPanel />}
+
+        {activeTab === 'agents' && (<>
         {/* Filters */}
         <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-xl border shadow-sm">
           <div className="relative flex-1">
@@ -637,6 +697,7 @@ export default function AdminAgents() {
             </div>
           )}
         </div>
+        </>)}
 
         {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -901,6 +962,524 @@ function EditAgentForm({ agent, onSave, isLoading }: { agent: Agent; onSave: (da
           Save Changes
         </Button>
       </DialogFooter>
+    </div>
+  );
+}
+
+type OnboardingCohortRow = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  createdAt: string;
+  daysSinceSignup: number;
+  emailVerified: boolean;
+  module1Complete: boolean;
+  checklistPercent: number;
+  placementStatus: string;
+};
+
+function OnboardingPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: cohort = [], isLoading } = useQuery<OnboardingCohortRow[]>({
+    queryKey: [api.admin.agents.onboarding.path],
+  });
+
+  const { data: pending = [] } = useQuery<Agent[]>({
+    queryKey: [api.admin.agents.pendingPlacement.path],
+  });
+
+  const [resolveAgent, setResolveAgent] = useState<Agent | null>(null);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: [api.admin.agents.onboarding.path] });
+    queryClient.invalidateQueries({ queryKey: [api.admin.agents.unverifiedCount.path] });
+    queryClient.invalidateQueries({ queryKey: [api.admin.agents.pendingPlacement.path] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'agents'] });
+  };
+
+  const verifyMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(buildUrl(api.admin.agents.verifyEmail.path, { id }), {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to verify email');
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "Email verified", description: "The agent's email is now confirmed." });
+    },
+    onError: () => toast({ title: "Error", description: "Could not verify email", variant: "destructive" }),
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(buildUrl(api.admin.agents.resendVerification.path, { id }), {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to resend');
+      }
+      return res.json();
+    },
+    onSuccess: (body: { message?: string }) => {
+      toast({ title: "Verification sent", description: body?.message || "A new verification email is on its way." });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err?.message || "Could not resend email", variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-8" data-testid="panel-onboarding">
+      {/* Pending placement queue */}
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b bg-amber-50/50">
+          <MapPin className="w-4 h-4 text-amber-600" />
+          <h2 className="font-semibold text-slate-900">Pending Placement Queue</h2>
+          <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200" data-testid="badge-pending-placement-count">
+            {pending.length}
+          </Badge>
+        </div>
+        {pending.length === 0 ? (
+          <p className="px-6 py-8 text-center text-sm text-muted-foreground" data-testid="text-no-pending-placement">
+            No agents are waiting for a binary-tree slot. Automatic placement is keeping up.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50/50">
+                <TableHead>Agent</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pending.map((agent) => (
+                <TableRow key={agent.id} data-testid={`row-pending-${agent.id}`}>
+                  <TableCell className="font-medium">{agent.firstName} {agent.lastName}</TableCell>
+                  <TableCell className="text-muted-foreground">{agent.email}</TableCell>
+                  <TableCell className="text-muted-foreground">{format(new Date(agent.createdAt), "MMM d, yyyy")}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setResolveAgent(agent)}
+                      data-testid={`button-resolve-placement-${agent.id}`}
+                    >
+                      <MapPin className="w-3.5 h-3.5 mr-1.5" />
+                      Place
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* Recent signups cohort */}
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b">
+          <Clock className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-slate-900">Recent Signups (last 30 days)</h2>
+        </div>
+        {isLoading ? (
+          <div className="py-12 text-center text-muted-foreground">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+            Loading onboarding cohort…
+          </div>
+        ) : cohort.length === 0 ? (
+          <p className="px-6 py-8 text-center text-sm text-muted-foreground" data-testid="text-no-cohort">
+            No agents have signed up in the last 30 days.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50/50">
+                <TableHead>Agent</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Module 1</TableHead>
+                <TableHead>Checklist</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cohort.map((row) => (
+                <TableRow key={row.id} data-testid={`row-cohort-${row.id}`}>
+                  <TableCell>
+                    <p className="font-medium">{row.firstName} {row.lastName}</p>
+                    <p className="text-xs text-muted-foreground">{row.email}</p>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    {row.daysSinceSignup === 0 ? "Today" : `${row.daysSinceSignup}d ago`}
+                  </TableCell>
+                  <TableCell>
+                    {row.emailVerified ? (
+                      <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200" data-testid={`badge-verified-${row.id}`}>
+                        <MailCheck className="w-3 h-3 mr-1" /> Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200" data-testid={`badge-unverified-${row.id}`}>
+                        <Mail className="w-3 h-3 mr-1" /> Unverified
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {row.module1Complete ? (
+                      <CheckCircle className="w-4 h-4 text-emerald-600" data-testid={`icon-module1-${row.id}`} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-20 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${row.checklistPercent}%` }} />
+                      </div>
+                      <span className="text-xs text-muted-foreground" data-testid={`text-checklist-${row.id}`}>{row.checklistPercent}%</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {!row.emailVerified && (
+                      <div className="inline-flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => resendMutation.mutate(row.id)}
+                          disabled={resendMutation.isPending}
+                          data-testid={`button-resend-${row.id}`}
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Resend
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => verifyMutation.mutate(row.id)}
+                          disabled={verifyMutation.isPending}
+                          data-testid={`button-verify-${row.id}`}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Mark verified
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      <ResolvePlacementDialog
+        agent={resolveAgent}
+        onClose={() => setResolveAgent(null)}
+        onResolved={() => { setResolveAgent(null); invalidate(); }}
+      />
+    </div>
+  );
+}
+
+function ResolvePlacementDialog({ agent, onClose, onResolved }: {
+  agent: Agent | null;
+  onClose: () => void;
+  onResolved: () => void;
+}) {
+  const { toast } = useToast();
+  const [placementId, setPlacementId] = useState("");
+  const [leg, setLeg] = useState<'left' | 'right'>('left');
+
+  useEffect(() => {
+    if (agent) {
+      setPlacementId("");
+      setLeg('left');
+    }
+  }, [agent?.id]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!agent) return;
+      const res = await fetch(buildUrl(api.admin.agents.resolvePlacement.path, { id: agent.id }), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placementId: Number(placementId), leg }),
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to place agent');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Agent placed", description: "The agent now has a position in the binary tree." });
+      onResolved();
+    },
+    onError: (err: any) => toast({ title: "Error", description: err?.message || "Could not place agent", variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={!!agent} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Resolve Placement</DialogTitle>
+          <DialogDescription>
+            {agent ? `Assign ${agent.firstName} ${agent.lastName} to a sponsor's leg in the binary tree.` : ''}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Place under agent ID</Label>
+            <Input
+              type="number"
+              value={placementId}
+              onChange={(e) => setPlacementId(e.target.value)}
+              placeholder="e.g. 42"
+              data-testid="input-placement-id"
+            />
+            <p className="text-xs text-muted-foreground">The ID of the agent whose leg this person should join.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Leg</Label>
+            <Select value={leg} onValueChange={(v) => setLeg(v as 'left' | 'right')}>
+              <SelectTrigger data-testid="select-placement-leg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="left">Left</SelectItem>
+                <SelectItem value="right">Right</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || !placementId}
+            data-testid="button-confirm-placement"
+          >
+            {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Place Agent
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type AdminInvitationRow = {
+  id: number;
+  inviterId: number;
+  inviterName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  placementLeg: string;
+  status: string;
+  expiresAt: string;
+  acceptedAgentId: number | null;
+  createdAt: string;
+};
+
+function InvitationsPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+
+  const { data: invitations = [], isLoading } = useQuery<AdminInvitationRow[]>({
+    queryKey: [api.admin.invitations.list.path, statusFilter, dateFrom, dateTo],
+    queryFn: async () => {
+      const url = buildUrlWithQuery(api.admin.invitations.list.path, {}, {
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch invitations');
+      return res.json();
+    },
+  });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: [api.admin.invitations.list.path] });
+
+  const resendMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(buildUrl(api.admin.invitations.resend.path, { id }), {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to resend');
+      }
+      return res.json();
+    },
+    onSuccess: (body: { message?: string }) => { invalidate(); toast({ title: "Invitation resent", description: body?.message }); },
+    onError: (err: any) => toast({ title: "Error", description: err?.message || "Could not resend", variant: "destructive" }),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(buildUrl(api.admin.invitations.cancel.path, { id }), {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to cancel');
+      }
+      return res.json();
+    },
+    onSuccess: (body: { message?: string }) => { invalidate(); toast({ title: "Invitation cancelled", description: body?.message }); },
+    onError: (err: any) => toast({ title: "Error", description: err?.message || "Could not cancel", variant: "destructive" }),
+  });
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case 'accepted': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'pending': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'expired': return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'cancelled': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  return (
+    <div className="space-y-4" data-testid="panel-invitations">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Send className="w-4 h-4" />
+          {invitations.length} invitation{invitations.length === 1 ? '' : 's'}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">From</Label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-[9.5rem] h-9"
+              data-testid="input-invitation-date-from"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">To</Label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-[9.5rem] h-9"
+              data-testid="input-invitation-date-to"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              data-testid="button-clear-invitation-dates"
+            >
+              Clear dates
+            </Button>
+          )}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40" data-testid="select-invitation-status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="accepted">Accepted</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-gray-50/50">
+              <TableHead>Prospect</TableHead>
+              <TableHead>Invited By</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Expires</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                  Loading invitations…
+                </TableCell>
+              </TableRow>
+            ) : invitations.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground" data-testid="text-no-invitations">
+                  No invitations found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              invitations.map((inv) => (
+                <TableRow key={inv.id} data-testid={`row-invitation-${inv.id}`}>
+                  <TableCell>
+                    <p className="font-medium">{inv.firstName} {inv.lastName}</p>
+                    <p className="text-xs text-muted-foreground">{inv.email}</p>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{inv.inviterName}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={statusBadge(inv.status)} data-testid={`badge-invitation-status-${inv.id}`}>
+                      {inv.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    {format(new Date(inv.expiresAt), "MMM d, yyyy")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {inv.status !== 'accepted' && (
+                      <div className="inline-flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => resendMutation.mutate(inv.id)}
+                          disabled={resendMutation.isPending}
+                          data-testid={`button-resend-invitation-${inv.id}`}
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Resend
+                        </Button>
+                        {inv.status !== 'cancelled' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-600"
+                            onClick={() => cancelMutation.mutate(inv.id)}
+                            disabled={cancelMutation.isPending}
+                            data-testid={`button-cancel-invitation-${inv.id}`}
+                          >
+                            <XCircle className="w-3.5 h-3.5 mr-1.5" /> Cancel
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

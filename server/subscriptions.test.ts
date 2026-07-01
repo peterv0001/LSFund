@@ -56,6 +56,7 @@ async function createTestAgent(suffix: string) {
     .values({
       email: `${TEST_EMAIL_PREFIX}-${suffix}@example.com`,
       password: "not-a-real-hash",
+      emailVerifiedAt: new Date(),
       firstName: "Sub",
       lastName: "Test",
       currentRank: "agent",
@@ -204,6 +205,7 @@ describe("getSubscriptionsByAgent – reactivatedByName attribution", () => {
       .values({
         email: `${TEST_EMAIL_PREFIX}-react-admin@example.com`,
         password: "not-a-real-hash",
+        emailVerifiedAt: new Date(),
         firstName: "Ada",
         lastName: "Adminson",
         currentRank: "agent",
@@ -219,6 +221,7 @@ describe("getSubscriptionsByAgent – reactivatedByName attribution", () => {
       .values({
         email: `${TEST_EMAIL_PREFIX}-react-agent@example.com`,
         password: "not-a-real-hash",
+        emailVerifiedAt: new Date(),
         firstName: "Gary",
         lastName: "Agentsmith",
         currentRank: "agent",
@@ -441,6 +444,7 @@ beforeAll(async () => {
     .values({
       email: `${ADMIN_EMAIL_PREFIX}@example.com`,
       password: await hashPasswordForTest(ADMIN_PASSWORD),
+      emailVerifiedAt: new Date(),
       firstName: "Admin",
       lastName: "Tester",
       currentRank: "agent",
@@ -556,6 +560,7 @@ beforeAll(async () => {
     .values({
       email: `${COMM_ROUTE_EMAIL_PREFIX}@example.com`,
       password: "not-a-real-hash",
+      emailVerifiedAt: new Date(),
       firstName: "CommRoute",
       lastName: "Agent",
       currentRank: "agent",
@@ -744,6 +749,7 @@ beforeAll(async () => {
     .values({
       email: `${HISTORY_AGENT_EMAIL_PREFIX}@example.com`,
       password: await hashPasswordForTest(HISTORY_AGENT_PASSWORD),
+      emailVerifiedAt: new Date(),
       firstName: "History",
       lastName: "Agent",
       currentRank: "agent",
@@ -1143,6 +1149,7 @@ describe("GET /api/subscriptions/history – merchant name label", () => {
       .values({
         email: `other-history-${Date.now()}@example.com`,
         password: "not-a-real-hash",
+        emailVerifiedAt: new Date(),
         firstName: "Other",
         lastName: "Agent",
         currentRank: "agent",
@@ -1297,6 +1304,7 @@ beforeAll(async () => {
     .values({
       email: `${AGENT_ROUTE_EMAIL_PREFIX}@example.com`,
       password: await hashPasswordForTest(AGENT_ROUTE_PASSWORD),
+      emailVerifiedAt: new Date(),
       firstName: "AgentRoute",
       lastName: "Tester",
       currentRank: "agent",
@@ -1410,6 +1418,7 @@ beforeAll(async () => {
     .values({
       email: `${AGENT_B_EMAIL_PREFIX}@example.com`,
       password: await hashPasswordForTest(AGENT_B_PASSWORD),
+      emailVerifiedAt: new Date(),
       firstName: "AgentB",
       lastName: "CrossTest",
       currentRank: "agent",
@@ -1802,6 +1811,7 @@ beforeAll(async () => {
     .values({
       email: `${MEMBER_AGENT_EMAIL_PREFIX}@example.com`,
       password: await hashPasswordForTest(MEMBER_AGENT_PASSWORD),
+      emailVerifiedAt: new Date(),
       firstName: "Member",
       lastName: "Agent",
       currentRank: "agent",

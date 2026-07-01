@@ -105,6 +105,20 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
+// Email verification (Task #509): generate a fresh raw token, persist only its
+// sha256 hash on the agent, and send the verification email with a link to the
+// frontend verify page. The raw token never touches the database.
+async function issueEmailVerification(req: Request, agent: Agent): Promise<void> {
+  const rawToken = randomBytes(32).toString("hex");
+  const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+  await storage.updateAgent(agent.id, { emailVerificationToken: hashedToken });
+  const base = process.env.APP_URL || `https://${req.get("host")}`;
+  const verifyUrl = `${base}/verify-email?token=${rawToken}`;
+  emailService
+    .sendVerificationEmail(agent.email, { firstName: agent.firstName, verifyUrl })
+    .catch(console.error);
+}
+
 async function comparePasswords(supplied: string, stored: string) {
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
@@ -274,13 +288,13 @@ export async function registerRoutes(
       if (input.sponsorId !== undefined) {
         const sponsor = await storage.getAgent(input.sponsorId);
         if (!sponsor || sponsor.status !== 'active') {
-          return res.status(400).json({ message: REFERRAL_UNAVAILABLE_MESSAGE });
+          return res.status(400).json({ message: REFERRAL_UNAVAILABLE_MESSAGE, code: 'REFERRAL_UNAVAILABLE' });
         }
         sponsorId = sponsor.id;
       } else if (hasReferralCode) {
         const sponsor = await storage.getAgentByReferralCode(input.referralCode!.trim());
         if (!sponsor || sponsor.status !== 'active') {
-          return res.status(400).json({ message: REFERRAL_UNAVAILABLE_MESSAGE });
+          return res.status(400).json({ message: REFERRAL_UNAVAILABLE_MESSAGE, code: 'REFERRAL_UNAVAILABLE' });
         }
         sponsorId = sponsor.id;
       }
@@ -319,12 +333,26 @@ export async function registerRoutes(
         agentId: agent.id,
         type: 'system',
         title: 'Welcome to LeaderShield Funding!',
-        message: 'Your account has been created. Start by completing your profile and exploring the platform.',
+        message: 'Your account has been created. Please verify your email, then complete your profile to get started.',
         isRead: false,
         emailSent: false,
       });
-      
-      // Send welcome email (async, don't wait)
+
+      // If placement couldn't be auto-resolved, let the agent know an admin will
+      // place them shortly instead of silently leaving them unplaced.
+      if (agent.placementStatus === 'pending') {
+        await storage.createNotification({
+          agentId: agent.id,
+          type: 'system',
+          title: 'Placement in progress',
+          message: "We're finalizing your position in the team structure. You'll be placed within 24 hours — you can start using the platform in the meantime.",
+          isRead: false,
+          emailSent: false,
+        });
+      }
+
+      // Send verification + welcome emails (async, don't wait)
+      await issueEmailVerification(req, agent);
       emailService.sendWelcomeEmail(agent.email, agent.firstName).catch(console.error);
       
       // Notify sponsor of new team member
@@ -463,6 +491,51 @@ export async function registerRoutes(
     }
   });
 
+  // Verify email (Task #509): confirm the address from the emailed link. The
+  // link carries the raw token; we match its sha256 hash, then clear the token.
+  app.get(api.auth.verifyEmail.path, passwordLimiter, async (req, res) => {
+    try {
+      const rawToken = String(req.params.token || "");
+      if (!rawToken) {
+        return res.status(400).json({ message: "This verification link is invalid." });
+      }
+      const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+      const agent = await storage.getAgentByEmailVerificationToken(hashedToken);
+      if (!agent) {
+        return res.status(400).json({ message: "This verification link is invalid or has already been used." });
+      }
+      if (agent.emailVerifiedAt) {
+        return res.json({ message: "Your email is already verified. You're all set!" });
+      }
+      await storage.updateAgent(agent.id, {
+        emailVerifiedAt: new Date(),
+        emailVerificationToken: null,
+      });
+      res.json({ message: "Your email has been verified. Welcome aboard!" });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Resend the verification email to the signed-in agent (Task #509).
+  app.post(api.auth.resendVerification.path, requireAuth, passwordLimiter, async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.user!.id);
+      if (!agent) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      if (agent.emailVerifiedAt) {
+        return res.status(400).json({ message: "Your email is already verified." });
+      }
+      await issueEmailVerification(req, agent);
+      res.json({ message: "We've sent a fresh verification link to your email." });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // ==================== TEAM INVITATIONS ====================
   // An authenticated agent invites a prospect by email. The placement slot is
   // NOT reserved here — it is resolved at acceptance via createAgentWithPlacement
@@ -486,24 +559,29 @@ export async function registerRoutes(
   // Returns either an error message (with HTTP status) or the live invitation.
   async function resolveInvitationByRawToken(
     rawToken: string,
-  ): Promise<{ error: string } | { invitation: AgentInvitation }> {
+  ): Promise<{ error: string; inviterName?: string } | { invitation: AgentInvitation }> {
     const hashedToken = createHash("sha256").update(rawToken).digest("hex");
     const invitation = await storage.getAgentInvitationByToken(hashedToken);
 
     if (!invitation) {
       return { error: "This invitation link is invalid." };
     }
+    // Surface the sponsor's name on terminal states so an expired/used invite
+    // still tells the prospect exactly who to ask for a fresh link.
+    const inviter = await storage.getAgent(invitation.inviterId);
+    const inviterName = inviter ? `${inviter.firstName} ${inviter.lastName}` : undefined;
     if (invitation.status === "cancelled") {
-      return { error: "This invitation has been cancelled." };
+      return { error: "This invitation has been cancelled.", inviterName };
     }
     if (invitation.status === "accepted") {
-      return { error: "This invitation has already been used." };
+      return { error: "This invitation has already been used.", inviterName };
     }
     if (invitation.status === "expired" || new Date() > invitation.expiresAt) {
       if (invitation.status !== "expired") {
         await storage.updateAgentInvitation(invitation.id, { status: "expired" });
       }
-      return { error: "This invitation has expired. Ask your sponsor to send a new one." };
+      const ask = inviterName ? `Ask ${inviterName} to send a new one.` : "Ask your sponsor to send a new one.";
+      return { error: `This invitation has expired. ${ask}`, inviterName };
     }
     return { invitation };
   }
@@ -660,7 +738,7 @@ export async function registerRoutes(
       const rawToken = String(req.params.token || "");
       const resolved = await resolveInvitationByRawToken(rawToken);
       if ("error" in resolved) {
-        return res.status(400).json({ message: resolved.error });
+        return res.status(400).json({ message: resolved.error, inviterName: resolved.inviterName });
       }
 
       const { invitation } = resolved;
@@ -733,11 +811,23 @@ export async function registerRoutes(
         agentId: agent.id,
         type: 'system',
         title: 'Welcome to LeaderShield Funding!',
-        message: 'Your account has been created. Start by completing your profile and exploring the platform.',
+        message: 'Your account has been created. Please verify your email, then complete your profile to get started.',
         isRead: false,
         emailSent: false,
       });
 
+      if (agent.placementStatus === 'pending') {
+        await storage.createNotification({
+          agentId: agent.id,
+          type: 'system',
+          title: 'Placement in progress',
+          message: "We're finalizing your position in the team structure. You'll be placed within 24 hours — you can start using the platform in the meantime.",
+          isRead: false,
+          emailSent: false,
+        });
+      }
+
+      await issueEmailVerification(req, agent);
       emailService.sendWelcomeEmail(agent.email, agent.firstName).catch(console.error);
 
       await storage.createNotification({
@@ -1095,6 +1185,59 @@ export async function registerRoutes(
     }
   });
 
+  // Onboarding checklist state for the signed-in agent (Task #509). Drives the
+  // "Getting Started" card and the email-verification banner on the dashboard.
+  app.get(api.agents.onboarding.path, requireAuth, async (req, res) => {
+    try {
+      const agentId = req.user!.id;
+      const agent = await storage.getAgent(agentId);
+      if (!agent) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const [module1Complete, deals, invites] = await Promise.all([
+        storage.isModule1Complete(agentId),
+        storage.getDealsByAgent(agentId),
+        storage.getAgentInvitationsByInviter(agentId),
+      ]);
+
+      const profileComplete = Boolean(agent.firstName && agent.lastName && agent.phone);
+      const emailVerified = Boolean(agent.emailVerifiedAt);
+      const firstDealLogged = deals.length > 0;
+      const firstInviteSent = invites.length > 0;
+
+      const steps = [profileComplete, emailVerified, module1Complete, firstDealLogged, firstInviteSent];
+      const completedCount = steps.filter(Boolean).length;
+      const totalCount = steps.length;
+
+      res.json({
+        profileComplete,
+        emailVerified,
+        module1Complete,
+        firstDealLogged,
+        firstInviteSent,
+        completedCount,
+        totalCount,
+        dismissed: Boolean(agent.onboardingDismissedAt),
+        allComplete: completedCount === totalCount,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to load onboarding status" });
+    }
+  });
+
+  // Persist the agent's dismissal of the Getting Started card (Task #509).
+  app.post(api.agents.dismissOnboarding.path, requireAuth, async (req, res) => {
+    try {
+      await storage.updateAgent(req.user!.id, { onboardingDismissedAt: new Date() });
+      res.json({ message: "Onboarding checklist dismissed." });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to dismiss onboarding checklist" });
+    }
+  });
+
   // ==================== DEAL ROUTES ====================
 
   app.post(api.deals.create.path, requireAuth, async (req, res) => {
@@ -1102,7 +1245,16 @@ export async function registerRoutes(
       const input = api.deals.create.input.parse(req.body);
       // @ts-ignore
       const agentId = req.user!.id;
-      
+
+      // Gate revenue-generating actions behind email verification (Task #509).
+      const actingAgent = await storage.getAgent(agentId);
+      if (!actingAgent?.emailVerifiedAt) {
+        return res.status(403).json({
+          message: "Please verify your email before logging a deal. Check your inbox for the verification link or resend it from your dashboard.",
+          code: "EMAIL_NOT_VERIFIED",
+        });
+      }
+
       const companyRevenue = Number(input.loanAmount) * 0.10;
       const gbrAmount = input.gbrAmount ? Number(input.gbrAmount) : companyRevenue;
       
@@ -1714,10 +1866,166 @@ export async function registerRoutes(
     res.json({ ...result, page, pageSize });
   });
 
+  // Admin onboarding cohort (Task #509): agents from the last 30 days with their
+  // per-agent onboarding signals. Static path — must precede the :id route.
+  app.get(api.admin.agents.onboarding.path, requireAdmin, async (req, res) => {
+    try {
+      const recent = await storage.getRecentSignupAgents(30);
+      const now = Date.now();
+      const rows = await Promise.all(recent.map(async (agent) => {
+        const [module1Complete, deals, invites] = await Promise.all([
+          storage.isModule1Complete(agent.id),
+          storage.getDealsByAgent(agent.id),
+          storage.getAgentInvitationsByInviter(agent.id),
+        ]);
+        const profileComplete = Boolean(agent.firstName && agent.lastName && agent.phone);
+        const emailVerified = Boolean(agent.emailVerifiedAt);
+        const steps = [profileComplete, emailVerified, module1Complete, deals.length > 0, invites.length > 0];
+        const completed = steps.filter(Boolean).length;
+        const createdAt = agent.createdAt ?? new Date();
+        return {
+          id: agent.id,
+          firstName: agent.firstName,
+          lastName: agent.lastName,
+          email: agent.email,
+          createdAt: new Date(createdAt).toISOString(),
+          daysSinceSignup: Math.floor((now - new Date(createdAt).getTime()) / (24 * 60 * 60 * 1000)),
+          emailVerified,
+          module1Complete,
+          checklistPercent: Math.round((completed / steps.length) * 100),
+          placementStatus: agent.placementStatus ?? 'placed',
+        };
+      }));
+      res.json(rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to load onboarding cohort" });
+    }
+  });
+
+  // Unverified-account count for the admin nav badge (Task #509). Static path.
+  app.get(api.admin.agents.unverifiedCount.path, requireAdmin, async (_req, res) => {
+    try {
+      const cnt = await storage.countUnverifiedAgents();
+      res.json({ count: cnt });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to count unverified agents" });
+    }
+  });
+
+  // Pending-placement queue (Task #509). Static path — must precede :id route.
+  app.get(api.admin.agents.pendingPlacement.path, requireAdmin, async (_req, res) => {
+    try {
+      const pending = await storage.getPendingPlacementAgents();
+      res.json(pending);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to load pending-placement agents" });
+    }
+  });
+
   app.get(api.admin.agents.get.path, requireAdmin, async (req, res) => {
     const agent = await storage.getAgent(Number(req.params.id));
     if (!agent) return res.status(404).json({ message: "Agent not found" });
     res.json(agent);
+  });
+
+  // Admin manually marks an agent's email verified (Task #509).
+  app.post(api.admin.agents.verifyEmail.path, requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const agent = await storage.getAgent(id);
+      if (!agent) return res.status(404).json({ message: "Agent not found" });
+      const updated = await storage.updateAgent(id, {
+        emailVerifiedAt: new Date(),
+        emailVerificationToken: null,
+      });
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'agent',
+        entityId: id,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} manually verified agent #${id}'s email`,
+        details: {},
+      });
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to verify agent email" });
+    }
+  });
+
+  // Admin resends the verification email to an unverified agent (Task #509).
+  app.post(api.admin.agents.resendVerification.path, requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const agent = await storage.getAgent(id);
+      if (!agent) return res.status(404).json({ message: "Agent not found" });
+      if (agent.emailVerifiedAt) {
+        return res.status(400).json({ message: "This agent's email is already verified." });
+      }
+      await issueEmailVerification(req, agent);
+      res.json({ message: `Verification email resent to ${agent.email}.` });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to resend verification email" });
+    }
+  });
+
+  // Admin assigns a binary-tree slot to a pending-placement agent (Task #509).
+  app.post(api.admin.agents.resolvePlacement.path, requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const input = api.admin.agents.resolvePlacement.input.parse(req.body);
+      const agent = await storage.getAgent(id);
+      if (!agent) return res.status(404).json({ message: "Agent not found" });
+      if (agent.placementStatus !== 'pending') {
+        return res.status(400).json({ message: "This agent is already placed in the tree." });
+      }
+
+      const placementParent = await storage.getAgent(input.placementId);
+      if (!placementParent) {
+        return res.status(400).json({ message: "The chosen placement agent does not exist." });
+      }
+
+      // Reject a slot that is already taken to preserve binary-tree integrity.
+      const taken = await storage.getAgentByPlacement(input.placementId, input.leg);
+      if (taken) {
+        return res.status(400).json({ message: `The ${input.leg} leg under that agent is already filled.` });
+      }
+
+      const updated = await storage.updateAgent(id, {
+        placementId: input.placementId,
+        leg: input.leg,
+        placementStatus: 'placed',
+      });
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'agent',
+        entityId: id,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} placed agent #${id} on the ${input.leg} leg under agent #${input.placementId}`,
+        details: { placementId: input.placementId, leg: input.leg },
+      });
+      await storage.createNotification({
+        agentId: id,
+        type: 'system',
+        title: 'You\'ve been placed!',
+        message: "Your position in the team structure has been finalized. Welcome to the team!",
+        isRead: false,
+        emailSent: false,
+      });
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error(err);
+      res.status(500).json({ message: "Failed to resolve placement" });
+    }
   });
 
   app.patch(api.admin.agents.update.path, requireAdmin, async (req, res) => {
@@ -2217,6 +2525,15 @@ export async function registerRoutes(
     try {
       // @ts-ignore
       const agentId = req.user!.id;
+
+      // Gate revenue-generating actions behind email verification (Task #509).
+      const actingAgent = await storage.getAgent(agentId);
+      if (!actingAgent?.emailVerifiedAt) {
+        return res.status(403).json({
+          message: "Please verify your email before creating a subscription. Check your inbox for the verification link or resend it from your dashboard.",
+          code: "EMAIL_NOT_VERIFIED",
+        });
+      }
 
       const createSubSchema = z.object({
         merchantName: z.string().min(2),
@@ -3963,6 +4280,127 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ message: "Failed to respond to request" });
+    }
+  });
+
+  // ============ ADMIN INVITATION MANAGEMENT (Task #509) ============
+
+  // Network-wide invitation list, optionally filtered by status. Reflects
+  // expiry lazily so a pending-but-past-due invite shows as expired.
+  app.get(api.admin.invitations.list.path, requireAdmin, async (req, res) => {
+    try {
+      const statusFilter = req.query.status as string | undefined;
+      const dateFromRaw = req.query.dateFrom as string | undefined;
+      const dateToRaw = req.query.dateTo as string | undefined;
+      const dateFrom = dateFromRaw ? new Date(dateFromRaw) : null;
+      // Make dateTo inclusive of the whole calendar day.
+      const dateTo = dateToRaw ? new Date(`${dateToRaw}T23:59:59.999Z`) : null;
+
+      // Fetch ALL invitations and compute effective status in memory. Filtering
+      // by status in the DB would miss pending-but-past-due rows (they are still
+      // stored as 'pending' but should surface as 'expired'), so the status and
+      // date-range filters are both applied after the effective status is known.
+      const invitations = await storage.getAllAgentInvitations();
+      const now = new Date();
+      const inviterIds = Array.from(new Set(invitations.map((i) => i.inviterId)));
+      const inviterMap: Record<number, string> = {};
+      await Promise.all(inviterIds.map(async (id) => {
+        const inviter = await storage.getAgent(id);
+        if (inviter) inviterMap[id] = `${inviter.firstName} ${inviter.lastName}`;
+      }));
+      const rows = invitations
+        .map((inv) => {
+          const effectiveStatus = inv.status === 'pending' && now > inv.expiresAt ? 'expired' : inv.status;
+          const createdAt = new Date(inv.createdAt ?? now);
+          return {
+            id: inv.id,
+            inviterId: inv.inviterId,
+            inviterName: inviterMap[inv.inviterId] ?? `#${inv.inviterId}`,
+            firstName: inv.firstName,
+            lastName: inv.lastName,
+            email: inv.email,
+            placementLeg: inv.placementLeg,
+            status: effectiveStatus,
+            expiresAt: new Date(inv.expiresAt).toISOString(),
+            acceptedAgentId: inv.acceptedAgentId ?? null,
+            createdAt: createdAt.toISOString(),
+            _createdAt: createdAt,
+          };
+        })
+        .filter((row) => {
+          if (statusFilter && statusFilter !== 'all' && row.status !== statusFilter) return false;
+          if (dateFrom && row._createdAt < dateFrom) return false;
+          if (dateTo && row._createdAt > dateTo) return false;
+          return true;
+        })
+        .map(({ _createdAt, ...row }) => row);
+      res.json(rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to load invitations" });
+    }
+  });
+
+  // Admin resends any pending/expired invitation (rotates token + expiry).
+  app.post(api.admin.invitations.resend.path, requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) {
+        return res.status(400).json({ message: "Invalid invitation id" });
+      }
+      const invitation = await storage.getAgentInvitation(id);
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+      if (invitation.status === 'accepted') {
+        return res.status(400).json({ message: "This invitation has already been accepted." });
+      }
+      const inviter = await storage.getAgent(invitation.inviterId);
+      if (!inviter) {
+        return res.status(400).json({ message: "The original inviter no longer exists." });
+      }
+
+      const rawToken = randomBytes(32).toString("hex");
+      const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+      const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
+      await storage.updateAgentInvitation(id, {
+        token: hashedToken,
+        expiresAt,
+        status: "pending",
+      });
+
+      emailService.sendTeamInvitationEmail(invitation.email, {
+        inviterName: `${inviter.firstName} ${inviter.lastName}`,
+        prospectName: invitation.firstName,
+        acceptUrl: invitationAcceptUrl(req, rawToken),
+      }).catch(console.error);
+
+      res.json({ message: `Invitation resent to ${invitation.email}.` });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to resend invitation" });
+    }
+  });
+
+  // Admin cancels any pending invitation.
+  app.post(api.admin.invitations.cancel.path, requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) {
+        return res.status(400).json({ message: "Invalid invitation id" });
+      }
+      const invitation = await storage.getAgentInvitation(id);
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+      if (invitation.status === 'accepted') {
+        return res.status(400).json({ message: "This invitation has already been accepted and can't be cancelled." });
+      }
+      await storage.updateAgentInvitation(id, { status: "cancelled" });
+      res.json({ message: "Invitation cancelled." });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to cancel invitation" });
     }
   });
 
