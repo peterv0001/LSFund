@@ -90,33 +90,7 @@ export default function CommissionsPage() {
           </div>
 
           <AnimatedSection delay={0.4}>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-emerald-400" />
-                  </div>
-                  How MCA Commission Splits
-                </h3>
-                <p className="text-sm text-white/50 mb-6">Every funded deal's gross brokerage commission is allocated four ways.</p>
-                <div className="space-y-3">
-                  {[
-                    { label: "Opening Agent Pool", note: "Producer + agency override", value: mcaAllocation.openingAgentPool, highlight: true },
-                    { label: "Premium Merchant Funding (PMF)", note: "Closing & underwriting partner", value: mcaAllocation.pmf },
-                    { label: "Performance Accelerator Pool", note: "Funds monthly MCA accelerators", value: mcaAllocation.performanceAcceleratorPool },
-                    { label: "LeaderShield EBITDA", note: "Platform operations", value: mcaAllocation.leadershieldEbitda },
-                  ].map((item, i) => (
-                    <div key={i} className={`flex items-center justify-between p-3 rounded-xl ${item.highlight ? 'bg-emerald-500/15 border border-emerald-400/30' : 'bg-white/5'}`}>
-                      <div>
-                        <p className={`font-semibold ${item.highlight ? 'text-emerald-300' : 'text-white/80'}`}>{item.label}</p>
-                        <p className="text-xs text-white/40">{item.note}</p>
-                      </div>
-                      <span className={`text-lg font-bold ${item.highlight ? 'text-emerald-300' : 'text-white/70'}`}>{pct(item.value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
+            <div className="max-w-3xl mx-auto">
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
                 <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
