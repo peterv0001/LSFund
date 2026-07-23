@@ -423,6 +423,76 @@ describe('WebhookHandlers.handleInvoicePaymentFailed – emails the agent', () =
     expect(emailService.sendSubscriptionPaymentFailedEmail).not.toHaveBeenCalled();
   });
 
+  it('emails only once when the same failure webhook arrives twice (sub already past_due)', async () => {
+    const stripeSubId = 'sub_email_duplicate_test';
+    const freshSub = {
+      id: 130,
+      stripeSubscriptionId: stripeSubId,
+      ...fakeSubscriptionBase,
+      billingStatus: 'active',
+    };
+    const alreadyPastDueSub = { ...freshSub, billingStatus: 'past_due' };
+
+    // First delivery: subscription transitions active → past_due.
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([freshSub]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(fakeAgent as never);
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(emailService.sendSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(1);
+
+    // Second delivery (Stripe retry / dunning): already past_due → no email.
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([alreadyPastDueSub]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(fakeAgent as never);
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(emailService.sendSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('still updates billingStatus on a duplicate delivery even though the email is suppressed', async () => {
+    const stripeSubId = 'sub_email_duplicate_update_test';
+    const alreadyPastDueSub = {
+      id: 131,
+      stripeSubscriptionId: stripeSubId,
+      ...fakeSubscriptionBase,
+      billingStatus: 'past_due',
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([alreadyPastDueSub]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(fakeAgent as never);
+
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(db.update).toHaveBeenCalledTimes(1);
+    expect(getSetCallArg()).toMatchObject({ billingStatus: 'past_due' });
+    expect(emailService.sendSubscriptionPaymentFailedEmail).not.toHaveBeenCalled();
+  });
+
+  it('emails again after the subscription recovered and then fails anew', async () => {
+    const stripeSubId = 'sub_email_refail_test';
+    const activeSub = {
+      id: 132,
+      stripeSubscriptionId: stripeSubId,
+      ...fakeSubscriptionBase,
+      billingStatus: 'active',
+    };
+
+    // First failure.
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([activeSub]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(fakeAgent as never);
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // Subscription recovered (invoice.paid set it back to active), then fails again.
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([activeSub]));
+    vi.mocked(storage.getAgent).mockResolvedValueOnce(fakeAgent as never);
+    await WebhookHandlers.handleInvoicePaymentFailed(stripeSubId);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(emailService.sendSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(2);
+  });
+
   it('does not throw when the email send rejects', async () => {
     const stripeSubId = 'sub_email_reject_test';
     const fakeSubscription = { id: 123, stripeSubscriptionId: stripeSubId, ...fakeSubscriptionBase };

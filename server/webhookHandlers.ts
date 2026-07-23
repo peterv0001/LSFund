@@ -114,6 +114,12 @@ export class WebhookHandlers {
 
     if (!sub) return;
 
+    // Stripe delivers webhooks at-least-once and dunning can fire several
+    // payment_failed events for the same past-due subscription. Only alert the
+    // agent on the transition INTO past_due so repeated failures for the same
+    // outstanding issue don't spam their inbox.
+    const alreadyPastDue = sub.billingStatus === 'past_due';
+
     await db.update(subscriptions)
       .set({ billingStatus: 'past_due', updatedAt: new Date() })
       .where(eq(subscriptions.id, sub.id));
@@ -141,7 +147,12 @@ export class WebhookHandlers {
 
     // Fire-and-forget transactional email alerting the agent, respecting their
     // email preferences. Failures are logged, never thrown, so the webhook still
-    // returns 200 to Stripe.
+    // returns 200 to Stripe. Suppressed when the subscription was already
+    // past_due (duplicate webhook delivery / repeated dunning failure).
+    if (alreadyPastDue) {
+      console.log(`[Webhook] Subscription ${sub.id} already past_due; skipping duplicate payment-failed email`);
+      return;
+    }
     storage.getAgent(sub.agentId).then((agent) => {
       if (!agent?.email) return;
       const prefs = (agent.emailPreferences as { emailOnPaymentRetryFailed?: boolean } | null) ?? {};
