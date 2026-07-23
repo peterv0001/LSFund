@@ -207,6 +207,57 @@ test.describe("Notification confirmation dialog", () => {
     await expect(page.getByTestId("toggle-email-on-team-signup")).toHaveAttribute("aria-checked", "false");
   });
 
+  const remainingToggles = [
+    { name: "Commission Earned", testId: "toggle-email-on-commission-earned" },
+    { name: "Payment Retry Successful", testId: "toggle-email-on-payment-retry-success" },
+    { name: "Payment Retry Pending", testId: "toggle-email-on-payment-retry-pending" },
+    { name: "Payment Retry Failed", testId: "toggle-email-on-payment-retry-failed" },
+  ];
+
+  for (const { name, testId } of remainingToggles) {
+    test(`${name} toggle OFF opens the confirmation dialog`, async ({ page }) => {
+      await navigateToNotifications(page);
+
+      const toggle = page.getByTestId(testId);
+      await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+      await toggle.click();
+
+      await expect(page.getByTestId("dialog-cancel-disable")).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId("dialog-confirm-disable")).toBeVisible();
+    });
+
+    test(`${name} 'Keep Enabled' leaves the toggle ON`, async ({ page }) => {
+      await navigateToNotifications(page);
+
+      const toggle = page.getByTestId(testId);
+      await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+      await toggle.click();
+      await expect(page.getByTestId("dialog-cancel-disable")).toBeVisible({ timeout: 5000 });
+
+      await page.getByTestId("dialog-cancel-disable").click();
+
+      await expect(page.getByTestId("dialog-cancel-disable")).not.toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId(testId)).toHaveAttribute("aria-checked", "true");
+    });
+
+    test(`${name} 'Turn Off' sets the toggle to OFF`, async ({ page }) => {
+      await navigateToNotifications(page);
+
+      const toggle = page.getByTestId(testId);
+      await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+      await toggle.click();
+      await expect(page.getByTestId("dialog-confirm-disable")).toBeVisible({ timeout: 5000 });
+
+      await page.getByTestId("dialog-confirm-disable").click();
+
+      await expect(page.getByTestId("dialog-confirm-disable")).not.toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId(testId)).toHaveAttribute("aria-checked", "false");
+    });
+  }
+
   test("error toast appears when saving preferences fails", async ({ page }) => {
     await navigateToNotifications(page);
 

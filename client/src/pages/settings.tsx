@@ -138,7 +138,7 @@ export default function SettingsPage() {
     if (target) setLocation(target);
   };
 
-  type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated' | 'emailOnDealFunded' | 'emailOnTeamSignup';
+  type NotifPrefKey = 'emailOnPaused' | 'emailOnCancelled' | 'emailOnReactivated' | 'emailOnDealFunded' | 'emailOnTeamSignup' | 'emailOnCommissionEarned' | 'emailOnPaymentRetrySuccess' | 'emailOnPaymentRetryPending' | 'emailOnPaymentRetryFailed';
   const [pendingDisable, setPendingDisable] = useState<NotifPrefKey | null>(null);
 
   const notifLabels: Record<NotifPrefKey, { title: string; missMessage: string }> = {
@@ -161,6 +161,22 @@ export default function SettingsPage() {
     emailOnTeamSignup: {
       title: 'New Team Signup',
       missMessage: "You won't receive emails when a new agent joins your team.",
+    },
+    emailOnCommissionEarned: {
+      title: 'Commission Earned',
+      missMessage: "You won't receive emails when you earn a commission.",
+    },
+    emailOnPaymentRetrySuccess: {
+      title: 'Payment Retry Successful',
+      missMessage: "You won't receive emails when an outstanding payment for one of your subscriptions is successfully processed.",
+    },
+    emailOnPaymentRetryPending: {
+      title: 'Payment Retry Pending',
+      missMessage: "You won't receive emails when a payment retry for one of your subscriptions is still processing.",
+    },
+    emailOnPaymentRetryFailed: {
+      title: 'Payment Retry Failed',
+      missMessage: "You won't receive emails when a payment retry for one of your subscriptions fails.",
     },
   };
 
@@ -607,7 +623,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-commission-earned"
                       checked={notifPrefs.emailOnCommissionEarned}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnCommissionEarned: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnCommissionEarned', checked)}
                     />
                   </div>
 
@@ -636,7 +652,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-payment-retry-success"
                       checked={notifPrefs.emailOnPaymentRetrySuccess}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetrySuccess: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnPaymentRetrySuccess', checked)}
                     />
                   </div>
 
@@ -650,7 +666,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-payment-retry-pending"
                       checked={notifPrefs.emailOnPaymentRetryPending}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetryPending: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnPaymentRetryPending', checked)}
                     />
                   </div>
 
@@ -664,7 +680,7 @@ export default function SettingsPage() {
                     <Switch
                       data-testid="toggle-email-on-payment-retry-failed"
                       checked={notifPrefs.emailOnPaymentRetryFailed}
-                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetryFailed: checked }))}
+                      onCheckedChange={(checked) => handleToggleChange('emailOnPaymentRetryFailed', checked)}
                     />
                   </div>
 

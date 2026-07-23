@@ -15,4 +15,5 @@
 - [Public content mirrored 4x](ssr-meta-duplication.md) — public price/brand/copy lives in client pages, server/static.ts SSR meta, index.html JSON-LD, AND client/public/llms.txt (not root); change all four.
 - [New blocking gate breaks fixtures](verification-gate-breaks-fixtures.md) — adding a "must be verified" 403 gate on deal/sub POST routes 403s every stale fixture; seed emailVerifiedAt on the agent inserts, don't weaken the gate.
 - [Lazy-expiry filtering](lazy-status-filtering.md) — when a status is computed lazily (pending-past-due => expired), filter AFTER computing effective status in memory; DB-level status filter misses lazily-expired rows.
+- [E2E auth rate limiter](e2e-auth-rate-limit.md) — dev-server e2e login "flakes" are the 20-req auth limiter; restart workflow to reset, run self-registering specs in batches ≤10.
 - [Drizzle wraps pg errors](drizzle-error-unwrapping.md) — DrizzleQueryError puts code/constraint on err.cause not top-level; err.code==="23505" silently fails, breaking unique-violation retries (flaky placement race). Walk .cause.

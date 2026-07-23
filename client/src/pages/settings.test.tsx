@@ -151,6 +151,7 @@ describe("Settings notifications: unsaved changes indicator", () => {
     await openNotificationsTab();
 
     await user.click(screen.getByTestId("toggle-email-on-commission-earned"));
+    await user.click(screen.getByTestId("dialog-confirm-disable"));
 
     expect(screen.queryByTestId("text-unsaved-changes")).not.toBeNull();
     expect(
@@ -165,6 +166,7 @@ describe("Settings notifications: unsaved changes indicator", () => {
     await openNotificationsTab();
 
     await user.click(screen.getByTestId("toggle-email-on-commission-earned"));
+    await user.click(screen.getByTestId("dialog-confirm-disable"));
 
     const link = document.createElement("a");
     link.setAttribute("href", "/dashboard");
