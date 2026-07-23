@@ -44,6 +44,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   shouldShowAllNotificationsOffWarning,
   isSaveNotificationPrefsDisabled,
+  requestToggleChange,
+  confirmPendingDisable,
+  cancelPendingDisable,
 } from "@/lib/notification-prefs";
 
 export default function SettingsPage() {
@@ -162,22 +165,23 @@ export default function SettingsPage() {
   };
 
   const handleToggleChange = (key: NotifPrefKey, checked: boolean) => {
-    if (!checked) {
-      setPendingDisable(key);
-    } else {
-      setNotifPrefs(p => ({ ...p, [key]: true }));
-    }
+    const next = requestToggleChange<NotifPrefKey>(
+      { prefs: notifPrefs, pendingDisable },
+      key,
+      checked,
+    );
+    setNotifPrefs(p => ({ ...p, ...next.prefs }));
+    setPendingDisable(next.pendingDisable);
   };
 
   const confirmDisable = () => {
-    if (pendingDisable) {
-      setNotifPrefs(p => ({ ...p, [pendingDisable]: false }));
-      setPendingDisable(null);
-    }
+    const next = confirmPendingDisable<NotifPrefKey>({ prefs: notifPrefs, pendingDisable });
+    setNotifPrefs(p => ({ ...p, ...next.prefs }));
+    setPendingDisable(next.pendingDisable);
   };
 
   const cancelDisable = () => {
-    setPendingDisable(null);
+    setPendingDisable(cancelPendingDisable<NotifPrefKey>({ prefs: notifPrefs, pendingDisable }).pendingDisable);
   };
 
   // Mutations
