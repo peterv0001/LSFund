@@ -70,6 +70,7 @@ let adminCookie: string[];
 
 type CommissionEmailPrefs = {
   emailOnCommissionEarned?: boolean;
+  emailOnDealFunded?: boolean;
 };
 
 let agentSeq = 0;
@@ -282,6 +283,125 @@ describe("deal approval waterfall – TFC fulfillment email", () => {
     expect(callsForEmail(fulfillment.email).length).toBe(0);
 
     await cleanup([fulfillment.id, primary.id], [deal.id]);
+  });
+});
+
+// ── 2a. Deal funded email to the primary (owning) agent ──────────────────────
+//
+// The deal's owning agent gets a separate "Deal Funded" email gated by the
+// emailOnDealFunded preference (not emailOnCommissionEarned). Both the legacy
+// and v2026 waterfalls have this gate.
+
+function dealFundedCallsForEmail(email: string): unknown[][] {
+  const calls = (emailService.sendDealFundedEmail as ReturnType<typeof vi.fn>).mock.calls;
+  return calls.filter((args: unknown[]) => args[0] === email);
+}
+
+describe("deal approval waterfall – deal funded email (legacy)", () => {
+  it("sends a deal funded email to the owning agent when emailOnDealFunded is true", async () => {
+    const primary = await createAgent({ prefs: { emailOnDealFunded: true } });
+    const deal = await createDeal(primary.id);
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    const calls = dealFundedCallsForEmail(primary.email);
+    expect(calls.length).toBe(1);
+    expect(calls[0][1]).toEqual(
+      expect.objectContaining({
+        firstName: primary.firstName,
+        merchantName: deal.merchantName,
+        amount: Number(deal.loanAmount),
+      })
+    );
+
+    await cleanup([primary.id], [deal.id]);
+  });
+
+  it("sends a deal funded email when the preference is absent (default on)", async () => {
+    const primary = await createAgent(); // prefs: {}
+    const deal = await createDeal(primary.id);
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    expect(dealFundedCallsForEmail(primary.email).length).toBe(1);
+
+    await cleanup([primary.id], [deal.id]);
+  });
+
+  it("does NOT send a deal funded email when emailOnDealFunded is false", async () => {
+    const primary = await createAgent({ prefs: { emailOnDealFunded: false } });
+    const deal = await createDeal(primary.id);
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    expect(dealFundedCallsForEmail(primary.email).length).toBe(0);
+
+    await cleanup([primary.id], [deal.id]);
+  });
+});
+
+describe("deal approval waterfall – deal funded email (v2026)", () => {
+  async function createV2026Deal(agentId: number) {
+    const [deal] = await db
+      .insert(schema.deals)
+      .values({
+        agentId,
+        merchantName: "Waterfall V2026 Merchant",
+        loanAmount: "50000.00",
+        companyRevenue: "10000.00",
+        gbrAmount: "10000.00",
+        status: "pending",
+        commissionModel: "v2026",
+      })
+      .returning();
+    return deal;
+  }
+
+  it("sends a deal funded email to the owning agent when emailOnDealFunded is true", async () => {
+    const primary = await createAgent({ prefs: { emailOnDealFunded: true } });
+    const deal = await createV2026Deal(primary.id);
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    expect(dealFundedCallsForEmail(primary.email).length).toBe(1);
+
+    await cleanup([primary.id], [deal.id]);
+  });
+
+  it("does NOT send a deal funded email when emailOnDealFunded is false", async () => {
+    const primary = await createAgent({ prefs: { emailOnDealFunded: false } });
+    const deal = await createV2026Deal(primary.id);
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    expect(dealFundedCallsForEmail(primary.email).length).toBe(0);
+
+    await cleanup([primary.id], [deal.id]);
   });
 });
 
