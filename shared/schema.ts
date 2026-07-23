@@ -92,7 +92,7 @@ export const agents = pgTable("agents", {
   // Notification preferences
   emailNotifications: boolean("email_notifications").default(true),
   smsNotifications: boolean("sms_notifications").default(false),
-  emailPreferences: jsonb("email_preferences").default({ emailOnPaused: true, emailOnCancelled: true, emailOnReactivated: true, emailOnDealFunded: true, emailOnTeamSignup: true, emailOnCommissionEarned: true }),
+  emailPreferences: jsonb("email_preferences").default({ emailOnPaused: true, emailOnCancelled: true, emailOnReactivated: true, emailOnDealFunded: true, emailOnTeamSignup: true, emailOnCommissionEarned: true, emailOnPaymentFailed: true }),
   
   // Admin
   isAdmin: boolean("is_admin").default(false).notNull(),
@@ -868,6 +868,7 @@ export const emailPreferencesSchema = z.object({
   emailOnPaymentRetrySuccess: z.boolean().default(true),
   emailOnPaymentRetryPending: z.boolean().default(true),
   emailOnPaymentRetryFailed: z.boolean().default(true),
+  emailOnPaymentFailed: z.boolean().default(true),
 });
 
 export type EmailPreferences = z.infer<typeof emailPreferencesSchema>;

@@ -498,15 +498,17 @@ describe("marketing page SPA routes are known routes in production", () => {
       expect(res.body.toString()).toContain('<div id="root">');
     });
 
-    it(`serves ${route} the precompressed shell to Brotli clients with a 200`, async () => {
+    it(`serves ${route} with injected SEO meta (not the precompressed shell) to Brotli clients with a 200`, async () => {
       const res = await request(testApp)
         .get(route)
         .set("Accept-Encoding", "br");
       // The distinguishing assertion is the 200: unknown routes get the same
       // shell but with a 404 status (see the unknown-route test below).
       expect(res.status).toBe(200);
-      expect(res.headers["content-encoding"]).toBe("br");
-      expect(res.text).toBe(INDEX_BR_MARKER);
+      // These routes are meta routes: per-request SEO meta is injected into
+      // the source shell, so the precompressed sibling must NOT be served.
+      expect(res.text).toContain("| LeaderShield Funding</title>");
+      expect(res.text).not.toContain(INDEX_BR_MARKER);
     });
   }
 

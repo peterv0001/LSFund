@@ -155,8 +155,8 @@ export class WebhookHandlers {
     }
     storage.getAgent(sub.agentId).then((agent) => {
       if (!agent?.email) return;
-      const prefs = (agent.emailPreferences as { emailOnPaymentRetryFailed?: boolean } | null) ?? {};
-      if (prefs.emailOnPaymentRetryFailed === false) return;
+      const prefs = (agent.emailPreferences as { emailOnPaymentFailed?: boolean } | null) ?? {};
+      if (prefs.emailOnPaymentFailed === false) return;
       return emailService.sendSubscriptionPaymentFailedEmail(agent.email, {
         firstName: agent.firstName,
         merchantName: sub.merchantName,

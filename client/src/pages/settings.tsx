@@ -78,7 +78,7 @@ export default function SettingsPage() {
   });
 
   // Notification preferences state
-  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryPending?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+  const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryPending?: boolean; emailOnPaymentRetryFailed?: boolean; emailOnPaymentFailed?: boolean } | null) ?? {};
   const initialNotifPrefs = {
     emailOnPaused: defaultPrefs.emailOnPaused !== false,
     emailOnCancelled: defaultPrefs.emailOnCancelled !== false,
@@ -89,6 +89,7 @@ export default function SettingsPage() {
     emailOnPaymentRetrySuccess: defaultPrefs.emailOnPaymentRetrySuccess !== false,
     emailOnPaymentRetryPending: defaultPrefs.emailOnPaymentRetryPending !== false,
     emailOnPaymentRetryFailed: defaultPrefs.emailOnPaymentRetryFailed !== false,
+    emailOnPaymentFailed: defaultPrefs.emailOnPaymentFailed !== false,
   };
   const [notifPrefs, setNotifPrefs] = useState(initialNotifPrefs);
   // Baseline of the last-saved preferences, used to detect unsaved changes.
@@ -660,6 +661,20 @@ export default function SettingsPage() {
                       data-testid="toggle-email-on-payment-retry-failed"
                       checked={notifPrefs.emailOnPaymentRetryFailed}
                       onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentRetryFailed: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-b">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Payment Failed</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive an email when an automatic payment for one of your subscriptions fails.
+                      </p>
+                    </div>
+                    <Switch
+                      data-testid="toggle-email-on-payment-failed"
+                      checked={notifPrefs.emailOnPaymentFailed}
+                      onCheckedChange={(checked) => setNotifPrefs(p => ({ ...p, emailOnPaymentFailed: checked }))}
                     />
                   </div>
                 </div>
