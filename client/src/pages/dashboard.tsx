@@ -32,12 +32,45 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { COMP_V2026 } from "@shared/compensation";
-import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts";
+
+// The server returns dailyViews as a trailing window of per-day counts ending
+// today (UTC day buckets). Reconstruct each bucket's date so the tooltip can
+// label points, and flag the peak day.
+function buildSparklineData(series: number[]) {
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const max = Math.max(...series);
+  return series.map((value, index) => {
+    const date = new Date(todayUTC - (series.length - 1 - index) * 24 * 60 * 60 * 1000);
+    return {
+      index,
+      value,
+      isPeak: value === max && value > 0,
+      label: date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }),
+    };
+  });
+}
+
+function SparklineTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const point = payload[0].payload as { value: number; isPeak: boolean; label: string };
+  return (
+    <div
+      className="rounded-md border border-gray-200 bg-white px-2 py-1 shadow-sm text-[11px] leading-tight whitespace-nowrap"
+      data-testid="tooltip-sparkline"
+    >
+      <span className="font-medium text-gray-900">{point.label}</span>
+      <span className="text-gray-500"> · {point.value} {point.value === 1 ? "view" : "views"}</span>
+      {point.isPeak && <span className="ml-1 font-medium text-[#C9A24B]">Peak</span>}
+    </div>
+  );
+}
 
 function ViewsSparkline({ data, testId }: { data: number[]; testId: string }) {
   const series = data && data.length > 0 ? data : [];
   const hasViews = series.some((v) => v > 0);
-  const chartData = series.map((value, index) => ({ index, value }));
+  const chartData = buildSparklineData(series);
 
   if (!hasViews) {
     return (
@@ -50,17 +83,33 @@ function ViewsSparkline({ data, testId }: { data: number[]; testId: string }) {
     );
   }
 
+  const peak = chartData.reduce((a, b) => (b.value > a.value ? b : a), chartData[0]);
   return (
-    <div className="h-9 w-full" data-testid={testId}>
+    <div
+      className="h-9 w-full focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A24B] rounded-sm"
+      data-testid={testId}
+      tabIndex={0}
+      role="img"
+      aria-label={`Daily views trend. Busiest day: ${peak.label} with ${peak.value} ${peak.value === 1 ? "view" : "views"}.`}
+      title={`Busiest day: ${peak.label} · ${peak.value} ${peak.value === 1 ? "view" : "views"}`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 4, bottom: 4, left: 0, right: 0 }}>
           <YAxis hide domain={[0, "dataMax"]} />
+          <Tooltip
+            content={<SparklineTooltip />}
+            cursor={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1, strokeDasharray: "2 2" }}
+            allowEscapeViewBox={{ x: false, y: true }}
+            wrapperStyle={{ zIndex: 20 }}
+            isAnimationActive={false}
+          />
           <Line
             type="monotone"
             dataKey="value"
             stroke="hsl(var(--primary))"
             strokeWidth={2}
             dot={false}
+            activeDot={{ r: 3, fill: "hsl(var(--primary))", stroke: "white", strokeWidth: 1 }}
             isAnimationActive={false}
           />
         </LineChart>
