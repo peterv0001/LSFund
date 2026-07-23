@@ -522,6 +522,10 @@ describe("public route SEO meta isolation", () => {
   // these, so adding a new public route without a sample here fails the suite.
   const ROUTE_SAMPLES: string[] = [
     "/",
+    "/funding",
+    "/platform",
+    "/opportunity",
+    "/commissions",
     "/login",
     "/signup",
     "/join/ABC123",

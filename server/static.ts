@@ -56,6 +56,38 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     },
   },
   {
+    pattern: /^\/funding$/,
+    meta: {
+      title: `Merchant Cash Advance Funding | ${SITE}`,
+      description:
+        "Fast, flexible merchant cash advance funding from $2K to $2M. See eligibility, factor rates, repayment terms, and how our streamlined intake gets businesses funded in as little as one day.",
+    },
+  },
+  {
+    pattern: /^\/platform$/,
+    meta: {
+      title: `Merchant Growth Platform Subscription Tiers | ${SITE}`,
+      description:
+        "Four AI-powered Merchant Growth Platform subscription tiers — Starter, Growth Foundation, Revenue Growth System, and Revenue Scale AI — powered by Marketing Titan + Lead Titan AI.",
+    },
+  },
+  {
+    pattern: /^\/opportunity$/,
+    meta: {
+      title: `The Agent Opportunity | ${SITE}`,
+      description:
+        "Build a full agent business with two revenue streams — immediate MCA commissions plus compounding subscription residuals. See how it works, income scenarios, your toolkit, and a 30-day roadmap.",
+    },
+  },
+  {
+    pattern: /^\/commissions$/,
+    meta: {
+      title: `The Compensation Plan | ${SITE}`,
+      description:
+        "Transparent LeaderShield compensation: MCA Opening Agent Pool, subscription pools by distributor tier, performance accelerators, lifetime residuals, agency overrides, and downline income up to three levels.",
+    },
+  },
+  {
     pattern: /^\/login$/,
     meta: {
       title: `Agent Sign In | ${SITE}`,
@@ -184,10 +216,17 @@ function escapeHtml(str: string): string {
     .replace(/>/g, "&gt;");
 }
 
+// `String.replace` treats `$` sequences in the replacement string specially
+// (`$1`, `$&`, etc.), so literal dollar signs in meta text (e.g. "$2K to $2M")
+// would corrupt the output. Double them so they survive as literals.
+function escapeReplacement(str: string): string {
+  return str.replace(/\$/g, "$$$$");
+}
+
 function injectMeta(html: string, meta: RouteMeta, requestPath: string): string {
-  const title = escapeHtml(meta.title);
-  const description = escapeHtml(meta.description);
-  const url = escapeHtml(`${DOMAIN}${requestPath}`);
+  const title = escapeReplacement(escapeHtml(meta.title));
+  const description = escapeReplacement(escapeHtml(meta.description));
+  const url = escapeReplacement(escapeHtml(`${DOMAIN}${requestPath}`));
 
   let result = html;
 

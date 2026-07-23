@@ -17,6 +17,11 @@ catch it:
 (wrong path grepped), the index.html JSON-LD FAQ, and an email footer brand
 still carried old prices/wording even though the page copy was fixed.
 
+**Gotcha:** the SSR meta injection uses `String.replace`, whose replacement
+string treats `$` sequences (`$1`, `$&`) specially — meta text containing
+literal dollars ("$2K to $2M") must be escaped (`$` → `$$`); `server/static.ts`
+has an `escapeReplacement` helper for this.
+
 **How to apply:** When changing any public price, compensation %, brand string,
 or program description, grep ALL of: `client/src`, `server/static.ts`,
 `client/index.html`, `client/public/llms.txt`, and `server/email.ts` (email

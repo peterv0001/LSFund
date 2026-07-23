@@ -7,7 +7,11 @@
 
 ## Key Pages
 
-- [Homepage](https://leadershieldfunding.com/): Main marketing and recruitment landing page with full compensation plan details, income lifestyle scenarios, and agent sign-up CTA.
+- [Homepage](https://leadershieldfunding.com/): Main marketing and recruitment landing page introducing both revenue streams with agent sign-up CTA.
+- [Merchant Cash Advance Funding](https://leadershieldfunding.com/funding): MCA product details — funding from $2K to $2M, eligibility, factor rates, repayment terms, and the streamlined intake process.
+- [Merchant Growth Platform](https://leadershieldfunding.com/platform): The four subscription tiers (Starter, Growth Foundation, Revenue Growth System, Revenue Scale AI) powered by Marketing Titan + Lead Titan AI.
+- [The Agent Opportunity](https://leadershieldfunding.com/opportunity): How the agent business works — two revenue streams, income scenarios, agent toolkit, and the 30-day roadmap.
+- [The Compensation Plan](https://leadershieldfunding.com/commissions): Full compensation details — MCA Opening Agent Pool, subscription pools by distributor tier, accelerators, lifetime residuals, agency overrides, and downline income.
 - [Income Disclosure](https://leadershieldfunding.com/income-disclosure): FTC-compliant earnings disclosure for prospective agents.
 - [Terms of Service](https://leadershieldfunding.com/terms): Platform terms and conditions.
 - [Privacy Policy](https://leadershieldfunding.com/privacy): Data collection and privacy practices.
