@@ -475,6 +475,47 @@ describe("SPA fallback precompression", () => {
   });
 });
 
+describe("marketing page SPA routes are known routes in production", () => {
+  // These deep-linkable marketing pages were added to KNOWN_ROUTES in
+  // server/static.ts. If a future routing change drops one, production would
+  // serve the shell with a 404 status and break deep links / SEO.
+  const MARKETING_ROUTES = [
+    "/funding",
+    "/platform",
+    "/opportunity",
+    "/commissions",
+  ];
+
+  for (const route of MARKETING_ROUTES) {
+    it(`serves ${route} as a known SPA route (200, HTML shell, no-cache)`, async () => {
+      // Identity encoding so we see the raw source shell, not a precompressed
+      // sibling (supertest sends Accept-Encoding: gzip by default).
+      const res = await rawGet(route, { "Accept-Encoding": "identity" });
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toMatch(/text\/html/);
+      expect(res.headers["cache-control"]).toBe("no-cache");
+      // The SPA shell must be served so the client router can render the page.
+      expect(res.body.toString()).toContain('<div id="root">');
+    });
+
+    it(`serves ${route} the precompressed shell to Brotli clients with a 200`, async () => {
+      const res = await request(testApp)
+        .get(route)
+        .set("Accept-Encoding", "br");
+      // The distinguishing assertion is the 200: unknown routes get the same
+      // shell but with a 404 status (see the unknown-route test below).
+      expect(res.status).toBe(200);
+      expect(res.headers["content-encoding"]).toBe("br");
+      expect(res.text).toBe(INDEX_BR_MARKER);
+    });
+  }
+
+  it("still 404s a route that is NOT in KNOWN_ROUTES, proving the 200s above are meaningful", async () => {
+    const res = await request(testApp).get("/fundingg");
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("public route SEO meta isolation", () => {
   // A representative concrete path for every entry in PUBLIC_ROUTE_META. The
   // assertions below require every meta entry to be matched by exactly one of
