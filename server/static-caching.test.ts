@@ -508,6 +508,7 @@ describe("marketing page SPA routes are known routes in production", () => {
       // These routes are meta routes: per-request SEO meta is injected into
       // the source shell, so the precompressed sibling must NOT be served.
       expect(res.text).toContain("| LeaderShield Funding</title>");
+      expect(res.text).toContain('<div id="root">');
       expect(res.text).not.toContain(INDEX_BR_MARKER);
     });
   }
