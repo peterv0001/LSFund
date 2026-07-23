@@ -7,6 +7,7 @@ import express from "express";
 import { createServer } from "http";
 import request from "supertest";
 import { registerRoutes } from "./routes.js";
+import { storage } from "./storage.js";
 import { scrypt as scryptCallback, randomBytes } from "crypto";
 import { promisify } from "util";
 
@@ -161,6 +162,54 @@ describe("System actor display for automated subscription changes", () => {
     );
     expect(agentSystemEntries.length).toBeGreaterThan(0);
     for (const entry of agentSystemEntries) {
+      expect(entry.actorName).toBe("System");
+    }
+  });
+
+  it("storage.getActivityLogs returns actorName 'System' for system actors (actorId 0)", async () => {
+    const { logs } = await storage.getActivityLogs(1, 100, {
+      entityType: "subscription",
+      entityId: subscriptionId,
+    });
+    const systemEntries = logs.filter((l) => l.actorType === "system");
+    expect(systemEntries.length).toBeGreaterThan(0);
+    for (const entry of systemEntries) {
+      expect(entry.actorName).toBe("System");
+      expect(entry.actorName).not.toContain("#");
+    }
+  });
+
+  it("GET /api/admin/activity-log (global activity log) returns actorName 'System' for system actors", async () => {
+    const cookie = await login(`${TEST_PREFIX}-admin@example.com`);
+    const res = await request(testApp)
+      .get(`/api/admin/activity-log?entityType=subscription&actorType=system&search=${encodeURIComponent(`Subscription #${subscriptionId} automatically expired`)}`)
+      .set("Cookie", cookie)
+      .expect(200);
+
+    expect(Array.isArray(res.body.logs)).toBe(true);
+    const entries = res.body.logs.filter(
+      (l: { entityId: number | null }) => l.entityId === subscriptionId,
+    );
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
+      expect(entry.actorType).toBe("system");
+      expect(entry.actorName).toBe("System");
+      expect(entry.actorName).not.toContain("#");
+    }
+  });
+
+  it("GET /api/admin/activity (alias route) also returns actorName 'System' for system actors", async () => {
+    const cookie = await login(`${TEST_PREFIX}-admin@example.com`);
+    const res = await request(testApp)
+      .get(`/api/admin/activity?entityType=subscription&actorType=system&search=${encodeURIComponent(`Subscription #${subscriptionId} automatically expired`)}`)
+      .set("Cookie", cookie)
+      .expect(200);
+
+    const entries = res.body.logs.filter(
+      (l: { entityId: number | null }) => l.entityId === subscriptionId,
+    );
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
       expect(entry.actorName).toBe("System");
     }
   });

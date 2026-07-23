@@ -568,7 +568,7 @@ export default function AdminActivityLog() {
                               className="text-sm font-medium"
                               data-testid={`text-actor-name-${log.id}`}
                             >
-                              {log.actorName ?? `#${log.actorId}`}
+                              {log.actorName ?? (log.actorType === "system" ? "System" : `#${log.actorId}`)}
                             </span>
                             <Badge
                               variant="outline"
