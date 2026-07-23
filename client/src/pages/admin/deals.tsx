@@ -61,7 +61,7 @@ const COMMISSION_TYPE_LABELS: Record<string, string> = {
   subscription_residual: "Sub. Residual",
 };
 
-function WaterfallBreakdown({ deal }: { deal: any }) {
+export function WaterfallBreakdown({ deal }: { deal: any }) {
   const gbrAmount = Number(deal.gbrAmount || 0);
   const isV2026 = deal.commissionModel === "v2026";
 
