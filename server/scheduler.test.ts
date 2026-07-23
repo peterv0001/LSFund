@@ -632,6 +632,52 @@ describe("warnUpcomingExpirations – subscription expiring soon", () => {
     expect(typeof emailData.daysUntilExpiry).toBe("number");
   });
 
+  it("shows the correct plural countdown and date for a subscription expiring in 7 days", async () => {
+    const endDate = futureDate(7);
+    const sub = makeWarningSubscription({ endDate });
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub]);
+
+    await warnUpcomingExpirations();
+
+    const expectedDate = endDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const [notifArg] = mockStorage.createNotification.mock.calls[0];
+    expect(notifArg.message).toContain(`expires in 7 days on ${expectedDate}`);
+    expect(notifArg.message).not.toContain("7 day on");
+
+    const [, emailData] =
+      mockEmailService.sendSubscriptionExpiringWarningEmail.mock.calls[0];
+    expect(emailData.daysUntilExpiry).toBe(7);
+    expect(emailData.expiryDate).toBe(expectedDate);
+  });
+
+  it("uses the singular 'day' countdown for a subscription expiring in 1 day", async () => {
+    const endDate = futureDate(1);
+    const sub = makeWarningSubscription({ endDate });
+    mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub]);
+
+    await warnUpcomingExpirations();
+
+    const expectedDate = endDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const [notifArg] = mockStorage.createNotification.mock.calls[0];
+    expect(notifArg.message).toContain(`expires in 1 day on ${expectedDate}`);
+    expect(notifArg.message).not.toContain("1 days");
+
+    const [, emailData] =
+      mockEmailService.sendSubscriptionExpiringWarningEmail.mock.calls[0];
+    expect(emailData.daysUntilExpiry).toBe(1);
+    expect(emailData.expiryDate).toBe(expectedDate);
+  });
+
   it("marks the warning as sent so it is not repeated", async () => {
     const sub = makeWarningSubscription();
     mockStorage.getSubscriptionsDueForWarning.mockResolvedValue([sub]);
