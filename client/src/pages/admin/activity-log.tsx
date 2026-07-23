@@ -1,5 +1,4 @@
-import { AdminSidebar } from "@/components/AdminSidebar";
-import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
+import { AdminLayout } from "@/components/AdminLayout";
 import { useQuery } from "@tanstack/react-query";
 import { buildUrlWithQuery } from "@shared/routes";
 import {
@@ -19,10 +18,7 @@ import {
   Database,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -151,7 +147,10 @@ function formatAction(action: string): string {
 
 const ACTIVITY_LOG_PATH = "/api/admin/activity-log";
 
-function parseFiltersFromSearch(search: string): { filters: Filters; page: number } {
+function parseFiltersFromSearch(search: string): {
+  filters: Filters;
+  page: number;
+} {
   const params = new URLSearchParams(search);
   return {
     filters: {
@@ -187,7 +186,9 @@ export default function AdminActivityLog() {
   // searchInput is what the user types — updates immediately for responsive input
   const [searchInput, setSearchInput] = useState(initial.filters.search);
   // dateInputs hold what the user types for From/To — applied after 300ms debounce
-  const [startDateInput, setStartDateInput] = useState(initial.filters.startDate);
+  const [startDateInput, setStartDateInput] = useState(
+    initial.filters.startDate,
+  );
   const [endDateInput, setEndDateInput] = useState(initial.filters.endDate);
   // filters holds applied values used by the query; debounced fields update after 300ms
   const [filters, setFilters] = useState<Filters>(initial.filters);
@@ -307,16 +308,26 @@ export default function AdminActivityLog() {
     return q;
   }
 
-  const queryKey = [ACTIVITY_LOG_PATH, page, filters.search, filters.startDate, filters.endDate, filters.entityType, filters.action, filters.actorType];
+  const queryKey = [
+    ACTIVITY_LOG_PATH,
+    page,
+    filters.search,
+    filters.startDate,
+    filters.endDate,
+    filters.entityType,
+    filters.action,
+    filters.actorType,
+  ];
 
   const { data, isLoading } = useQuery<ActivityLogResponse>({
     queryKey,
     queryFn: () =>
-      fetch(buildUrlWithQuery(ACTIVITY_LOG_PATH, undefined, buildQuery()), { credentials: "include" })
-        .then((r) => {
-          if (!r.ok) throw new Error(`${r.status}: ${r.statusText}`);
-          return r.json() as Promise<ActivityLogResponse>;
-        }),
+      fetch(buildUrlWithQuery(ACTIVITY_LOG_PATH, undefined, buildQuery()), {
+        credentials: "include",
+      }).then((r) => {
+        if (!r.ok) throw new Error(`${r.status}: ${r.statusText}`);
+        return r.json() as Promise<ActivityLogResponse>;
+      }),
   });
 
   const logs = data?.logs ?? [];
@@ -324,7 +335,14 @@ export default function AdminActivityLog() {
   const totalPages = Math.ceil(total / pageSize);
 
   function clearFilters() {
-    const blank: Filters = { search: "", startDate: "", endDate: "", entityType: "", action: "", actorType: "" };
+    const blank: Filters = {
+      search: "",
+      startDate: "",
+      endDate: "",
+      entityType: "",
+      action: "",
+      actorType: "",
+    };
     if (searchInput !== "") {
       skipNextSearchDebounce.current = true;
     }
@@ -346,255 +364,305 @@ export default function AdminActivityLog() {
   }
 
   // Show Clear button if user has typed anything OR if any applied filter is active
-  const hasActiveFilters = searchInput || startDateInput || endDateInput || filters.entityType || filters.action || filters.actorType;
+  const hasActiveFilters =
+    searchInput ||
+    startDateInput ||
+    endDateInput ||
+    filters.entityType ||
+    filters.action ||
+    filters.actorType;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <AdminSidebar />
-      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
-        <SchemaDriftBanner />
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Activity className="w-6 h-6 text-primary" />
-              Activity Log
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Audit trail of all admin and system actions
-              {total > 0 && ` — ${total.toLocaleString()} entries`}
-            </p>
-          </div>
+    <AdminLayout>
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Activity className="w-6 h-6 text-primary" />
+            Activity Log
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Audit trail of all admin and system actions
+            {total > 0 && ` — ${total.toLocaleString()} entries`}
+          </p>
+        </div>
 
-          {/* Filters */}
-          <Card className="mb-4">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap gap-3 items-end">
-                <div className="flex-1 min-w-48 space-y-1">
-                  <Label htmlFor="log-search">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" />
-                    <Input
-                      id="log-search"
-                      data-testid="input-log-search"
-                      placeholder="Search action, entity, description, or actor name..."
-                      className="pl-8"
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="log-entity-type">Entity Type</Label>
-                  <Select
-                    value={filters.entityType}
-                    onValueChange={(val) => applyImmediate({ ...filters, entityType: val === "all" ? "" : val })}
-                  >
-                    <SelectTrigger id="log-entity-type" data-testid="select-entity-type" className="w-44">
-                      <Filter className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All types</SelectItem>
-                      {ENTITY_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="log-action">Action</Label>
-                  <Select
-                    value={filters.action}
-                    onValueChange={(val) => applyImmediate({ ...filters, action: val === "all" ? "" : val })}
-                  >
-                    <SelectTrigger id="log-action" data-testid="select-action" className="w-40">
-                      <SelectValue placeholder="All actions" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All actions</SelectItem>
-                      {ACTION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="log-actor-type">Actor</Label>
-                  <Select
-                    value={filters.actorType}
-                    onValueChange={(val) => applyImmediate({ ...filters, actorType: val === "all" ? "" : val })}
-                  >
-                    <SelectTrigger id="log-actor-type" data-testid="select-actor-type" className="w-36">
-                      <SelectValue placeholder="All actors" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All actors</SelectItem>
-                      {ACTOR_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="log-start-date">From</Label>
+        {/* Filters */}
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-48 space-y-1">
+                <Label htmlFor="log-search">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" />
                   <Input
-                    id="log-start-date"
-                    data-testid="input-log-start-date"
-                    type="date"
-                    value={startDateInput}
-                    onChange={(e) => setStartDateInput(e.target.value)}
+                    id="log-search"
+                    data-testid="input-log-search"
+                    placeholder="Search action, entity, description, or actor name..."
+                    className="pl-8"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="log-end-date">To</Label>
-                  <Input
-                    id="log-end-date"
-                    data-testid="input-log-end-date"
-                    type="date"
-                    value={endDateInput}
-                    onChange={(e) => setEndDateInput(e.target.value)}
-                  />
-                </div>
-                {hasActiveFilters && (
-                  <div className="flex gap-2">
-                    <Button variant="outline" data-testid="button-clear-filters" onClick={clearFilters}>
-                      <X className="w-4 h-4 mr-1" />
-                      Clear
-                    </Button>
-                  </div>
-                )}
               </div>
-            </CardContent>
-          </Card>
-
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : logs.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-gray-500">
-                {hasActiveFilters ? "No activity matches your filters." : "No activity logged yet."}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Actor</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Entity</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>IP</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {logs.map((log) => {
-                      const Icon = ENTITY_ICONS[log.entityType] ?? Activity;
-                      return (
-                        <TableRow key={log.id} data-testid={`row-activity-${log.id}`}>
-                          <TableCell className="text-sm text-gray-500 whitespace-nowrap">
-                            {format(new Date(log.createdAt), "MMM d, HH:mm:ss")}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium" data-testid={`text-actor-name-${log.id}`}>
-                                {log.actorName ?? `#${log.actorId}`}
-                              </span>
-                              <Badge
-                                variant="outline"
-                                className={`text-xs w-fit ${log.actorType === "admin" ? "border-primary/30 text-primary" : log.actorType === "system" ? "border-gray-300 text-gray-600" : "border-blue-300 text-blue-700"}`}
-                              >
-                                {log.actorType}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={`${ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-700"}`}>
-                              {formatAction(log.action)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1.5 text-sm">
-                              <Icon className="w-4 h-4 text-gray-400" />
-                              <span className="capitalize">{log.entityType}</span>
-                              <span className="text-gray-400">#{log.entityId}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-xs">
-                            {(log.action === "run_migration" || log.action === "revert_migration") &&
-                            typeof log.details?.migration === "string" ? (
-                              <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                                <span>
-                                  {log.action === "revert_migration" ? "Reverted" : "Applied"}
-                                </span>
-                                <code
-                                  className="font-mono text-xs bg-gray-100 text-gray-800 rounded px-1.5 py-0.5 break-all"
-                                  data-testid={`text-migration-name-${log.id}`}
-                                >
-                                  {log.details.migration as string}
-                                </code>
-                              </div>
-                            ) : log.description ? (
-                              <span className="text-sm text-gray-600">{log.description}</span>
-                            ) : log.details ? (
-                              <pre className="text-xs text-gray-500 bg-gray-50 rounded p-1 overflow-hidden text-ellipsis max-h-16">
-                                {JSON.stringify(log.details, null, 2)}
-                              </pre>
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs text-gray-400 font-mono">
-                            {log.ipAddress ?? "—"}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+              <div className="space-y-1">
+                <Label htmlFor="log-entity-type">Entity Type</Label>
+                <Select
+                  value={filters.entityType}
+                  onValueChange={(val) =>
+                    applyImmediate({
+                      ...filters,
+                      entityType: val === "all" ? "" : val,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    id="log-entity-type"
+                    data-testid="select-entity-type"
+                    className="w-44"
+                  >
+                    <Filter className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    {ENTITY_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                  <p className="text-sm text-gray-500">
-                    Page {page} of {totalPages} ({total.toLocaleString()} entries)
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      data-testid="button-prev-page"
-                      disabled={page <= 1}
-                      onClick={() => goToPage(page - 1)}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      data-testid="button-next-page"
-                      disabled={page >= totalPages}
-                      onClick={() => goToPage(page + 1)}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
+              <div className="space-y-1">
+                <Label htmlFor="log-action">Action</Label>
+                <Select
+                  value={filters.action}
+                  onValueChange={(val) =>
+                    applyImmediate({
+                      ...filters,
+                      action: val === "all" ? "" : val,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    id="log-action"
+                    data-testid="select-action"
+                    className="w-40"
+                  >
+                    <SelectValue placeholder="All actions" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All actions</SelectItem>
+                    {ACTION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="log-actor-type">Actor</Label>
+                <Select
+                  value={filters.actorType}
+                  onValueChange={(val) =>
+                    applyImmediate({
+                      ...filters,
+                      actorType: val === "all" ? "" : val,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    id="log-actor-type"
+                    data-testid="select-actor-type"
+                    className="w-36"
+                  >
+                    <SelectValue placeholder="All actors" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All actors</SelectItem>
+                    {ACTOR_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="log-start-date">From</Label>
+                <Input
+                  id="log-start-date"
+                  data-testid="input-log-start-date"
+                  type="date"
+                  value={startDateInput}
+                  onChange={(e) => setStartDateInput(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="log-end-date">To</Label>
+                <Input
+                  id="log-end-date"
+                  data-testid="input-log-end-date"
+                  type="date"
+                  value={endDateInput}
+                  onChange={(e) => setEndDateInput(e.target.value)}
+                />
+              </div>
+              {hasActiveFilters && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    data-testid="button-clear-filters"
+                    onClick={clearFilters}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Clear
+                  </Button>
                 </div>
               )}
-            </Card>
-          )}
-        </div>
-      </main>
-    </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : logs.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-gray-500">
+              {hasActiveFilters
+                ? "No activity matches your filters."
+                : "No activity logged yet."}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Actor</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Entity</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead>IP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.map((log) => {
+                    const Icon = ENTITY_ICONS[log.entityType] ?? Activity;
+                    return (
+                      <TableRow
+                        key={log.id}
+                        data-testid={`row-activity-${log.id}`}
+                      >
+                        <TableCell className="text-sm text-gray-500 whitespace-nowrap">
+                          {format(new Date(log.createdAt), "MMM d, HH:mm:ss")}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span
+                              className="text-sm font-medium"
+                              data-testid={`text-actor-name-${log.id}`}
+                            >
+                              {log.actorName ?? `#${log.actorId}`}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={`text-xs w-fit ${log.actorType === "admin" ? "border-primary/30 text-primary" : log.actorType === "system" ? "border-gray-300 text-gray-600" : "border-blue-300 text-blue-700"}`}
+                            >
+                              {log.actorType}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`${ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-700"}`}
+                          >
+                            {formatAction(log.action)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <Icon className="w-4 h-4 text-gray-400" />
+                            <span className="capitalize">{log.entityType}</span>
+                            <span className="text-gray-400">
+                              #{log.entityId}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          {(log.action === "run_migration" ||
+                            log.action === "revert_migration") &&
+                          typeof log.details?.migration === "string" ? (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <span>
+                                {log.action === "revert_migration"
+                                  ? "Reverted"
+                                  : "Applied"}
+                              </span>
+                              <code
+                                className="font-mono text-xs bg-gray-100 text-gray-800 rounded px-1.5 py-0.5 break-all"
+                                data-testid={`text-migration-name-${log.id}`}
+                              >
+                                {log.details.migration as string}
+                              </code>
+                            </div>
+                          ) : log.description ? (
+                            <span className="text-sm text-gray-600">
+                              {log.description}
+                            </span>
+                          ) : log.details ? (
+                            <pre className="text-xs text-gray-500 bg-gray-50 rounded p-1 overflow-hidden text-ellipsis max-h-16">
+                              {JSON.stringify(log.details, null, 2)}
+                            </pre>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-400 font-mono">
+                          {log.ipAddress ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                <p className="text-sm text-gray-500">
+                  Page {page} of {totalPages} ({total.toLocaleString()} entries)
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-testid="button-prev-page"
+                    disabled={page <= 1}
+                    onClick={() => goToPage(page - 1)}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-testid="button-next-page"
+                    disabled={page >= totalPages}
+                    onClick={() => goToPage(page + 1)}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+      </div>
+    </AdminLayout>
   );
 }

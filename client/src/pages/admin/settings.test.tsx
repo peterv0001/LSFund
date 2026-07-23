@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/components/AdminSidebar", () => ({
@@ -132,9 +138,7 @@ describe("Admin settings – System Info card", () => {
 
     // Wait for the card to render before asserting the alert is absent.
     await screen.findByTestId("badge-expiry-check-interval");
-    expect(
-      screen.queryByTestId("alert-invalid-scheduler-interval"),
-    ).toBeNull();
+    expect(screen.queryByTestId("alert-invalid-scheduler-interval")).toBeNull();
   });
 
   it("alerts admins when the configured interval was rejected and the default is in use", async () => {

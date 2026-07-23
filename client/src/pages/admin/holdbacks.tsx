@@ -1,21 +1,11 @@
-import { AdminSidebar } from "@/components/AdminSidebar";
-import { SchemaDriftBanner } from "@/components/SchemaDriftBanner";
+import { AdminLayout } from "@/components/AdminLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  Lock,
-  Loader2,
-  Unlock,
-  AlertTriangle,
-  RefreshCw,
-} from "lucide-react";
+import { Lock, Loader2, Unlock, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -108,23 +98,29 @@ export default function AdminHoldbacks() {
     return "all";
   });
 
-  const updateStatusInUrl = useCallback((status: string) => {
-    try {
+  const updateStatusInUrl = useCallback(
+    (status: string) => {
+      try {
+        if (status === "all") {
+          localStorage.removeItem(STATUS_LS_KEY);
+        } else {
+          localStorage.setItem(STATUS_LS_KEY, status);
+        }
+      } catch {}
+      const params = new URLSearchParams(window.location.search);
       if (status === "all") {
-        localStorage.removeItem(STATUS_LS_KEY);
+        params.delete("status");
       } else {
-        localStorage.setItem(STATUS_LS_KEY, status);
+        params.set("status", status);
       }
-    } catch {}
-    const params = new URLSearchParams(window.location.search);
-    if (status === "all") {
-      params.delete("status");
-    } else {
-      params.set("status", status);
-    }
-    const qs = params.toString();
-    setLocation(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { replace: true });
-  }, [setLocation]);
+      const qs = params.toString();
+      setLocation(
+        qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+        { replace: true },
+      );
+    },
+    [setLocation],
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -133,7 +129,9 @@ export default function AdminHoldbacks() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [clawbackDialog, setClawbackDialog] = useState<HoldbackEntry | null>(null);
+  const [clawbackDialog, setClawbackDialog] = useState<HoldbackEntry | null>(
+    null,
+  );
   const [clawbackReason, setClawbackReason] = useState("");
   const [clawbackPct, setClawbackPct] = useState("100");
 
@@ -145,51 +143,81 @@ export default function AdminHoldbacks() {
     mutationFn: (id: number) =>
       apiRequest("POST", buildUrl(api.admin.holdbacks.release.path, { id })),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.admin.holdbacks.list.path] });
+      queryClient.invalidateQueries({
+        queryKey: [api.admin.holdbacks.list.path],
+      });
       toast({ title: "Holdback released successfully" });
     },
-    onError: () => toast({ title: "Failed to release holdback", variant: "destructive" }),
+    onError: () =>
+      toast({ title: "Failed to release holdback", variant: "destructive" }),
   });
 
   const releaseEligibleMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", api.admin.holdbacks.releaseEligible.path).then(
-        (res): Promise<ReleaseEligibleResponse> => res.json()
+        (res): Promise<ReleaseEligibleResponse> => res.json(),
       ),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [api.admin.holdbacks.list.path] });
+      queryClient.invalidateQueries({
+        queryKey: [api.admin.holdbacks.list.path],
+      });
       toast({ title: `Released ${data.released} eligible holdbacks` });
     },
-    onError: () => toast({ title: "Failed to release eligible holdbacks", variant: "destructive" }),
+    onError: () =>
+      toast({
+        title: "Failed to release eligible holdbacks",
+        variant: "destructive",
+      }),
   });
 
   const clawbackMutation = useMutation({
-    mutationFn: ({ id, reason, percentage }: { id: number; reason: string; percentage: number }) =>
-      apiRequest("POST", buildUrl(api.admin.holdbacks.clawback.path, { id }), { reason, percentage }),
+    mutationFn: ({
+      id,
+      reason,
+      percentage,
+    }: {
+      id: number;
+      reason: string;
+      percentage: number;
+    }) =>
+      apiRequest("POST", buildUrl(api.admin.holdbacks.clawback.path, { id }), {
+        reason,
+        percentage,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.admin.holdbacks.list.path] });
+      queryClient.invalidateQueries({
+        queryKey: [api.admin.holdbacks.list.path],
+      });
       toast({ title: "Clawback applied" });
       setClawbackDialog(null);
       setClawbackReason("");
       setClawbackPct("100");
     },
-    onError: () => toast({ title: "Failed to apply clawback", variant: "destructive" }),
+    onError: () =>
+      toast({ title: "Failed to apply clawback", variant: "destructive" }),
   });
 
-  const filtered = statusFilter === "all"
-    ? holdbacks
-    : holdbacks.filter((h) => h.status === statusFilter);
+  const filtered =
+    statusFilter === "all"
+      ? holdbacks
+      : holdbacks.filter((h) => h.status === statusFilter);
 
   const totalHeld = holdbacks
     .filter((h) => h.status === "held" || h.status === "partially_released")
-    .reduce((sum, h) => sum + (Number(h.totalAmount) - Number(h.releasedAmount)), 0);
+    .reduce(
+      (sum, h) => sum + (Number(h.totalAmount) - Number(h.releasedAmount)),
+      0,
+    );
 
   const totalClawbacks = holdbacks
     .filter((h) => h.status === "clawed_back")
     .reduce((sum, h) => sum + Number(h.clawbackAmount), 0);
 
   const eligibleCount = holdbacks.filter(
-    (h) => (h.status === "held" || h.status === "partially_released") && h.releaseDate && new Date(h.releaseDate) <= new Date()
+    (h) =>
+      (h.status === "held" || h.status === "partially_released") &&
+      h.releaseDate &&
+      new Date(h.releaseDate) <= new Date(),
   ).length;
 
   function releasePercent(h: HoldbackEntry): string {
@@ -204,127 +232,166 @@ export default function AdminHoldbacks() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <AdminSidebar />
-      <main className="flex-1 lg:ml-64 p-4 pt-20 lg:pt-8 lg:p-8">
-        <SchemaDriftBanner />
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Lock className="w-6 h-6 text-primary" />
-                Holdbacks & Clawbacks
-              </h1>
-              <p className="text-gray-500 mt-1">Manage deferred commissions and clawback enforcement</p>
-            </div>
-            <Button
-              data-testid="button-release-eligible"
-              onClick={() => releaseEligibleMutation.mutate()}
-              disabled={releaseEligibleMutation.isPending || eligibleCount === 0}
-            >
-              {releaseEligibleMutation.isPending
-                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                : <RefreshCw className="w-4 h-4 mr-2" />
-              }
-              Release Eligible ({eligibleCount})
-            </Button>
+    <AdminLayout>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Lock className="w-6 h-6 text-primary" />
+              Holdbacks & Clawbacks
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Manage deferred commissions and clawback enforcement
+            </p>
           </div>
+          <Button
+            data-testid="button-release-eligible"
+            onClick={() => releaseEligibleMutation.mutate()}
+            disabled={releaseEligibleMutation.isPending || eligibleCount === 0}
+          >
+            {releaseEligibleMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Release Eligible ({eligibleCount})
+          </Button>
+        </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-gray-500 mb-1">Total Held</p>
-                <p className="text-2xl font-bold text-gray-900" data-testid="text-total-held">
-                  ${totalHeld.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-gray-500 mb-1">Total Clawbacks</p>
-                <p className="text-2xl font-bold text-red-600" data-testid="text-total-clawbacks">
-                  ${totalClawbacks.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-gray-500 mb-1">Eligible for Release</p>
-                <p className="text-2xl font-bold text-green-600" data-testid="text-eligible-count">
-                  {eligibleCount}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-sm text-gray-500 mb-1">Total Held</p>
+              <p
+                className="text-2xl font-bold text-gray-900"
+                data-testid="text-total-held"
+              >
+                $
+                {totalHeld.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-sm text-gray-500 mb-1">Total Clawbacks</p>
+              <p
+                className="text-2xl font-bold text-red-600"
+                data-testid="text-total-clawbacks"
+              >
+                $
+                {totalClawbacks.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-sm text-gray-500 mb-1">Eligible for Release</p>
+              <p
+                className="text-2xl font-bold text-green-600"
+                data-testid="text-eligible-count"
+              >
+                {eligibleCount}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
-          <div className="flex gap-2 mb-4">
-            {["all", "held", "partially_released", "released", "clawed_back"].map((s) => (
+        <div className="flex gap-2 mb-4">
+          {["all", "held", "partially_released", "released", "clawed_back"].map(
+            (s) => (
               <Button
                 key={s}
                 size="sm"
                 variant={statusFilter === s ? "default" : "outline"}
                 data-testid={`button-filter-${s}`}
-                onClick={() => { setStatusFilter(s); updateStatusInUrl(s); }}
+                onClick={() => {
+                  setStatusFilter(s);
+                  updateStatusInUrl(s);
+                }}
                 className="capitalize"
               >
-                {s === "all" ? "All" : STATUS_LABELS[s] ?? s}
+                {s === "all" ? "All" : (STATUS_LABELS[s] ?? s)}
               </Button>
-            ))}
-          </div>
+            ),
+          )}
+        </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <Card>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <Card>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Agent</TableHead>
+                    <TableHead>Deal / Merchant</TableHead>
+                    <TableHead>Total Held</TableHead>
+                    <TableHead>Released</TableHead>
+                    <TableHead>Release %</TableHead>
+                    <TableHead>Clawback</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Release Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 ? (
                     <TableRow>
-                      <TableHead>Agent</TableHead>
-                      <TableHead>Deal / Merchant</TableHead>
-                      <TableHead>Total Held</TableHead>
-                      <TableHead>Released</TableHead>
-                      <TableHead>Release %</TableHead>
-                      <TableHead>Clawback</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Release Date</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableCell
+                        colSpan={9}
+                        className="py-12 text-center text-gray-500"
+                      >
+                        No holdbacks found matching the selected filter.
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="py-12 text-center text-gray-500">
-                          No holdbacks found matching the selected filter.
-                        </TableCell>
-                      </TableRow>
-                    ) : filtered.map((h) => (
+                  ) : (
+                    filtered.map((h) => (
                       <TableRow key={h.id} data-testid={`row-holdback-${h.id}`}>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-medium text-sm">{agentName(h)}</span>
-                            <span className="text-xs text-gray-400">{h.agent?.email ?? ""}</span>
+                            <span className="font-medium text-sm">
+                              {agentName(h)}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {h.agent?.email ?? ""}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="text-sm">{h.dealName ?? "—"}</span>
-                            <span className="text-xs text-gray-400">Deal #{h.dealId}</span>
+                            <span className="text-xs text-gray-400">
+                              Deal #{h.dealId}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          ${Number(h.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          $
+                          {Number(h.totalAmount).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
                         </TableCell>
                         <TableCell className="text-green-600">
-                          ${Number(h.releasedAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          $
+                          {Number(h.releasedAmount).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {releasePercent(h)}
                         </TableCell>
                         <TableCell className="text-red-600">
-                          ${Number(h.clawbackAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          $
+                          {Number(h.clawbackAmount).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
                         </TableCell>
                         <TableCell>
                           <Badge className={STATUS_COLORS[h.status] ?? ""}>
@@ -332,11 +399,14 @@ export default function AdminHoldbacks() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {h.releaseDate ? format(new Date(h.releaseDate), "MMM d, yyyy") : "—"}
+                          {h.releaseDate
+                            ? format(new Date(h.releaseDate), "MMM d, yyyy")
+                            : "—"}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            {(h.status === "held" || h.status === "partially_released") && (
+                            {(h.status === "held" ||
+                              h.status === "partially_released") && (
                               <>
                                 <Button
                                   size="sm"
@@ -362,21 +432,26 @@ export default function AdminHoldbacks() {
                               </>
                             )}
                             {h.clawbackReason && (
-                              <span className="text-xs text-red-500 italic">{h.clawbackReason}</span>
+                              <span className="text-xs text-red-500 italic">
+                                {h.clawbackReason}
+                              </span>
                             )}
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
-          )}
-        </div>
-      </main>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        )}
+      </div>
 
-      <Dialog open={clawbackDialog !== null} onOpenChange={() => setClawbackDialog(null)}>
+      <Dialog
+        open={clawbackDialog !== null}
+        onOpenChange={() => setClawbackDialog(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Apply Clawback</DialogTitle>
@@ -384,9 +459,13 @@ export default function AdminHoldbacks() {
           {clawbackDialog && (
             <div className="space-y-4 py-2">
               <p className="text-sm text-gray-600">
-                {agentName(clawbackDialog)} — {clawbackDialog.dealName ?? `Deal #${clawbackDialog.dealId}`}
+                {agentName(clawbackDialog)} —{" "}
+                {clawbackDialog.dealName ?? `Deal #${clawbackDialog.dealId}`}
                 <br />
-                Total: ${Number(clawbackDialog.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                Total: $
+                {Number(clawbackDialog.totalAmount).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
               </p>
               <div className="space-y-1">
                 <Label>Clawback Percentage</Label>
@@ -414,7 +493,9 @@ export default function AdminHoldbacks() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setClawbackDialog(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setClawbackDialog(null)}>
+              Cancel
+            </Button>
             <Button
               variant="destructive"
               data-testid="button-confirm-clawback"
@@ -429,12 +510,14 @@ export default function AdminHoldbacks() {
                 }
               }}
             >
-              {clawbackMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {clawbackMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
               Apply Clawback
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminLayout>
   );
 }

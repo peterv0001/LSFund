@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/components/AdminSidebar", () => ({
@@ -22,8 +28,7 @@ function emptyResponse() {
     ok: true,
     status: 200,
     statusText: "OK",
-    json: () =>
-      Promise.resolve({ logs: [], total: 0, page: 1, pageSize: 50 }),
+    json: () => Promise.resolve({ logs: [], total: 0, page: 1, pageSize: 50 }),
   };
 }
 

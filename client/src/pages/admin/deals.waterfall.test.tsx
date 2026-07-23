@@ -10,7 +10,9 @@ afterEach(() => {
 describe("WaterfallBreakdown commission model branching", () => {
   it("renders the v2026 layout when commissionModel === 'v2026'", () => {
     render(
-      <WaterfallBreakdown deal={{ gbrAmount: "10000", commissionModel: "v2026" }} />,
+      <WaterfallBreakdown
+        deal={{ gbrAmount: "10000", commissionModel: "v2026" }}
+      />,
     );
 
     expect(screen.getByText("Gross Funding Commission")).toBeTruthy();
@@ -55,14 +57,18 @@ describe("WaterfallBreakdown commission model branching", () => {
 
   it("renders the legacy GBR waterfall when commissionModel === 'legacy'", () => {
     render(
-      <WaterfallBreakdown deal={{ gbrAmount: "10000", commissionModel: "legacy" }} />,
+      <WaterfallBreakdown
+        deal={{ gbrAmount: "10000", commissionModel: "legacy" }}
+      />,
     );
     expectLegacyWaterfall();
   });
 
   it("renders the legacy GBR waterfall when commissionModel is null", () => {
     render(
-      <WaterfallBreakdown deal={{ gbrAmount: "10000", commissionModel: null }} />,
+      <WaterfallBreakdown
+        deal={{ gbrAmount: "10000", commissionModel: null }}
+      />,
     );
     expectLegacyWaterfall();
   });
