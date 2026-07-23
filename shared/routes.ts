@@ -491,6 +491,7 @@ export const api = {
           pending: z.number(),
           thisWeek: z.number(),
           thisMonth: z.number(),
+          lastMonth: z.number(),
           byType: z.record(z.number()),
         }),
       },

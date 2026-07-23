@@ -844,12 +844,14 @@ export class DatabaseStorage {
     pending: number;
     thisWeek: number;
     thisMonth: number;
+    lastMonth: number;
     byType: Record<string, number>;
   }> {
     const agentCommissions = await this.getCommissionsByAgent(agentId);
     
     const weekStart = getWeekStart();
     const monthStart = getMonthStart();
+    const lastMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1);
     
     const totalEarned = agentCommissions
       .filter(c => c.status === 'paid' || c.status === 'approved')
@@ -867,12 +869,19 @@ export class DatabaseStorage {
       .filter(c => new Date(c.createdAt) >= monthStart)
       .reduce((sum, c) => sum + Number(c.amount), 0);
     
+    const lastMonth = agentCommissions
+      .filter(c => {
+        const created = new Date(c.createdAt);
+        return created >= lastMonthStart && created < monthStart;
+      })
+      .reduce((sum, c) => sum + Number(c.amount), 0);
+    
     const byType: Record<string, number> = {};
     for (const c of agentCommissions) {
       byType[c.type] = (byType[c.type] || 0) + Number(c.amount);
     }
     
-    return { totalEarned, pending, thisWeek, thisMonth, byType };
+    return { totalEarned, pending, thisWeek, thisMonth, lastMonth, byType };
   }
 
   // ==================== PAYOUTS ====================

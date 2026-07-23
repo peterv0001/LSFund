@@ -167,6 +167,24 @@ export default function Dashboard() {
     queryKey: ["/api/subscriptions"],
   });
 
+  type DashboardData = {
+    leftLegVolume: number;
+    rightLegVolume: number;
+    currentRank: string;
+    nextRank: string | null;
+    rankProgress: number;
+    recentDeals: {
+      id: number;
+      merchantName: string;
+      loanAmount: string;
+      status: string;
+      createdAt: string;
+    }[];
+  };
+  const { data: dashboard, isLoading: dashboardLoading } = useQuery<DashboardData>({
+    queryKey: [api.agents.dashboard.path],
+  });
+
   type OnboardingState = {
     profileComplete: boolean;
     emailVerified: boolean;
@@ -322,6 +340,26 @@ export default function Dashboard() {
 
   const subscriptionEarnings = (stats?.byType?.['subscription_commission'] || 0) +
     (stats?.byType?.['subscription_residual'] || 0);
+
+  let earningsTrend: string | undefined;
+  let earningsTrendUp = false;
+  if (stats && stats.lastMonth > 0) {
+    const pctChange = Math.round(((stats.thisMonth - stats.lastMonth) / stats.lastMonth) * 100);
+    earningsTrend = `${Math.abs(pctChange)}% vs last month`;
+    earningsTrendUp = pctChange >= 0;
+  } else if (stats && stats.lastMonth === 0 && stats.thisMonth > 0) {
+    earningsTrend = "New earnings this month";
+    earningsTrendUp = true;
+  }
+
+  const rankProgress = dashboard?.nextRank ? Math.min(Math.max(dashboard.rankProgress ?? 0, 0), 100) : 100;
+  const recentDeals = dashboard?.recentDeals ?? [];
+
+  const DEAL_STATUS_STYLES: Record<string, string> = {
+    funded: "text-[#1C8A5B] bg-emerald-50 border-emerald-100",
+    pending: "text-amber-600 bg-amber-50 border-amber-100",
+    rejected: "text-destructive bg-destructive/5 border-destructive/20",
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50/50">
@@ -530,8 +568,8 @@ export default function Dashboard() {
             title="Total Earnings" 
             value={isLoading ? "..." : `$${stats?.totalEarned.toLocaleString()}`} 
             icon={<DollarSign className="w-6 h-6" />}
-            trend="12% vs last month"
-            trendUp={true}
+            trend={earningsTrend}
+            trendUp={earningsTrendUp}
           />
           <StatsCard 
             title="This Week" 
@@ -624,15 +662,51 @@ export default function Dashboard() {
             </div>
             
             <div className="bg-white rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-              <div className="p-8 text-center text-muted-foreground">
-                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-8 h-8 text-gray-300" />
+              {dashboardLoading ? (
+                <div className="p-8 flex items-center justify-center text-muted-foreground" data-testid="loading-recent-deals">
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 </div>
-                <p>No recent deals found.</p>
-                <Link href="/deals">
-                  <Button variant="ghost" className="mt-2" data-testid="button-log-first-deal">Log your first deal</Button>
-                </Link>
-              </div>
+              ) : recentDeals.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock className="w-8 h-8 text-gray-300" />
+                  </div>
+                  <p>No recent deals found.</p>
+                  <Link href="/deals">
+                    <Button variant="ghost" className="mt-2" data-testid="button-log-first-deal">Log your first deal</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {recentDeals.map((deal) => (
+                    <div
+                      key={deal.id}
+                      className="flex items-center justify-between gap-4 p-4"
+                      data-testid={`row-recent-deal-${deal.id}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate" data-testid={`text-deal-merchant-${deal.id}`}>
+                          {deal.merchantName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(deal.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="font-mono font-bold text-primary text-sm" data-testid={`text-deal-amount-${deal.id}`}>
+                          ${Number(deal.loanAmount).toLocaleString()}
+                        </span>
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${DEAL_STATUS_STYLES[deal.status] ?? "text-muted-foreground bg-gray-50 border-gray-100"}`}
+                          data-testid={`status-deal-${deal.id}`}
+                        >
+                          {deal.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -642,19 +716,26 @@ export default function Dashboard() {
               
               <h3 className="font-bold text-lg mb-1 relative z-10">Current Rank</h3>
               <div className="text-4xl font-display font-bold text-white mb-2 relative z-10 capitalize" data-testid="text-current-rank">
-                {user?.currentRank}
+                {dashboard?.currentRank ?? user?.currentRank}
               </div>
-              <p className="text-white/60 text-sm relative z-10">
-                Next Rank: <span className="text-white font-medium">Builder</span>
+              <p className="text-white/60 text-sm relative z-10" data-testid="text-next-rank">
+                {dashboard?.nextRank ? (
+                  <>Next Rank: <span className="text-white font-medium capitalize">{dashboard.nextRank}</span></>
+                ) : (
+                  <span className="text-white font-medium">Highest rank achieved</span>
+                )}
               </p>
               
               <div className="mt-6 relative z-10">
                 <div className="flex justify-between text-xs mb-2">
                   <span>Progress</span>
-                  <span>65%</span>
+                  <span data-testid="text-rank-progress">{dashboard ? `${rankProgress}%` : "..."}</span>
                 </div>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full w-[65%] bg-white/80 rounded-full" />
+                  <div
+                    className="h-full bg-white/80 rounded-full transition-all"
+                    style={{ width: `${dashboard ? rankProgress : 0}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -664,11 +745,15 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium">Left Leg Volume</span>
-                  <span className="font-mono font-bold text-primary">$0</span>
+                  <span className="font-mono font-bold text-primary" data-testid="text-left-leg-volume">
+                    ${(dashboard?.leftLegVolume ?? 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium">Right Leg Volume</span>
-                  <span className="font-mono font-bold text-primary">$0</span>
+                  <span className="font-mono font-bold text-primary" data-testid="text-right-leg-volume">
+                    ${(dashboard?.rightLegVolume ?? 0).toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
