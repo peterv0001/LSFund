@@ -3430,18 +3430,6 @@ export async function registerRoutes(
         })
       );
 
-      type ActivityEntryResponse = {
-        id: number;
-        actorId: number | null;
-        actorType: string;
-        actorName: string;
-        action: string;
-        entityType: string;
-        entityId: number | null;
-        description: string | null;
-        createdAt: string;
-      };
-
       const enriched: ActivityEntryResponse[] = logs.map((l) => {
         const name = l.actorType === 'system'
           ? 'System'
