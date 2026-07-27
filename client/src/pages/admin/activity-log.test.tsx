@@ -167,3 +167,112 @@ describe("Activity log date filter debouncing", () => {
     expect(calls[calls.length - 1]).toContain("startDate=2026-04-01");
   });
 });
+
+describe("Activity log browser back/forward restoration", () => {
+  // Simulate the browser navigating through history: update the URL, then
+  // dispatch a popstate event like the browser would on back/forward.
+  async function popStateTo(url: string) {
+    await act(async () => {
+      window.history.replaceState(null, "", url);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+  }
+
+  it("restores search and date inputs from the URL on popstate", async () => {
+    renderActivityLog();
+    await advance(0);
+
+    await popStateTo(
+      "/admin/activity?search=stripe&startDate=2026-05-01&endDate=2026-05-31",
+    );
+
+    expect(
+      (screen.getByTestId("input-log-search") as HTMLInputElement).value,
+    ).toBe("stripe");
+    expect(
+      (screen.getByTestId("input-log-start-date") as HTMLInputElement).value,
+    ).toBe("2026-05-01");
+    expect(
+      (screen.getByTestId("input-log-end-date") as HTMLInputElement).value,
+    ).toBe("2026-05-31");
+  });
+
+  it("refetches once with the restored filters but does not fire an extra debounced request", async () => {
+    renderActivityLog();
+    await advance(0);
+    const baseline = activityCalls().length;
+
+    await popStateTo(
+      "/admin/activity?search=payout&startDate=2026-06-01&endDate=2026-06-30",
+    );
+    // Flush the react-query refetch triggered by the filters state change.
+    await advance(0);
+
+    const afterPop = activityCalls();
+    expect(afterPop.length).toBe(baseline + 1);
+    const restored = afterPop[afterPop.length - 1];
+    expect(restored).toContain("search=payout");
+    expect(restored).toContain("startDate=2026-06-01");
+    expect(restored).toContain("endDate=2026-06-30");
+
+    // The skip-debounce flags must prevent the debounced effects from firing
+    // an additional request after the 300ms window.
+    await advance(500);
+    expect(activityCalls().length).toBe(baseline + 1);
+  });
+
+  it("restores empty filters when navigating back to an unfiltered URL without extra debounced requests", async () => {
+    // Start with filters in the URL so the initial state is populated.
+    window.history.replaceState(
+      null,
+      "",
+      "/admin/activity?search=deal&startDate=2026-07-01",
+    );
+    renderActivityLog();
+    await advance(0);
+    const baseline = activityCalls().length;
+    expect(
+      (screen.getByTestId("input-log-search") as HTMLInputElement).value,
+    ).toBe("deal");
+
+    await popStateTo("/admin/activity");
+    await advance(0);
+
+    expect(
+      (screen.getByTestId("input-log-search") as HTMLInputElement).value,
+    ).toBe("");
+    expect(
+      (screen.getByTestId("input-log-start-date") as HTMLInputElement).value,
+    ).toBe("");
+
+    const afterPop = activityCalls();
+    expect(afterPop.length).toBe(baseline + 1);
+    const restored = afterPop[afterPop.length - 1];
+    expect(restored).not.toContain("search=");
+    expect(restored).not.toContain("startDate=");
+
+    await advance(500);
+    expect(activityCalls().length).toBe(baseline + 1);
+  });
+
+  it("only skips the debounce for inputs the popstate actually changed", async () => {
+    renderActivityLog();
+    await advance(0);
+
+    await popStateTo("/admin/activity?startDate=2026-08-01");
+    await advance(500);
+    const baseline = activityCalls().length;
+
+    // A subsequent user edit must still debounce and fire normally,
+    // proving the skip flags were consumed and not left set.
+    fireEvent.change(screen.getByTestId("input-log-start-date"), {
+      target: { value: "2026-08-15" },
+    });
+    await advance(299);
+    expect(activityCalls().length).toBe(baseline);
+    await advance(1);
+    const calls = activityCalls();
+    expect(calls.length).toBe(baseline + 1);
+    expect(calls[calls.length - 1]).toContain("startDate=2026-08-15");
+  });
+});
