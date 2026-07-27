@@ -719,6 +719,28 @@ export const migrations: Migration[] = [
       console.log("[migrations] Reverted agent onboarding fields");
     },
   },
+  {
+    name: "024_strip_email_on_expiry_warning_preference",
+    async run(client) {
+      // Expiry warning emails are now always sent and can no longer be turned
+      // off; the emailOnExpiryWarning flag was removed from the schema and
+      // settings UI. Strip the stale key from any stored emailPreferences JSON
+      // so persisted records match the current schema.
+      const result = await client.query(`
+        UPDATE agents
+        SET email_preferences = email_preferences - 'emailOnExpiryWarning'
+        WHERE email_preferences ? 'emailOnExpiryWarning'
+      `);
+      console.log(
+        `[migrations] Removed emailOnExpiryWarning from ${result.rowCount ?? 0} agent email preference record(s)`
+      );
+    },
+    async down() {
+      // The removed key carried no behavior (the code ignores it), so there is
+      // nothing meaningful to restore.
+      console.log("[migrations] 024 down is a no-op (stale preference key not restored)");
+    },
+  },
 ];
 
 export async function runMigrations(options?: {
