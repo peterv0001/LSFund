@@ -363,6 +363,11 @@ export default function AdminActivityLog() {
     pushUrl(filters, newPage);
   }
 
+  const isDateRangeInvalid =
+    startDateInput !== "" &&
+    endDateInput !== "" &&
+    startDateInput > endDateInput;
+
   // Show Clear button if user has typed anything OR if any applied filter is active
   const hasActiveFilters =
     searchInput ||
@@ -522,6 +527,15 @@ export default function AdminActivityLog() {
                 </div>
               )}
             </div>
+            {isDateRangeInvalid && (
+              <p
+                className="mt-3 text-sm text-red-600"
+                data-testid="text-invalid-date-range"
+              >
+                Invalid date range: the "From" date is after the "To" date.
+                Adjust the dates to see results.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -532,9 +546,11 @@ export default function AdminActivityLog() {
         ) : logs.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-gray-500">
-              {hasActiveFilters
-                ? "No activity matches your filters."
-                : "No activity logged yet."}
+              {isDateRangeInvalid
+                ? 'No results because the date range is invalid — the "From" date is after the "To" date.'
+                : hasActiveFilters
+                  ? "No activity matches your filters."
+                  : "No activity logged yet."}
             </CardContent>
           </Card>
         ) : (

@@ -447,3 +447,61 @@ test.describe("Activity log filters — filtered results match filter criteria",
     await expect(page.getByTestId("input-log-end-date")).toHaveValue("2026-08-31");
   });
 });
+
+// ─── Suite 4: Invalid (backwards) date range warning ──────────────────────────
+
+test.describe("Activity log filters — backwards date range warning", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test("entering a From date after the To date shows an inline warning", async ({ page }) => {
+    await page.goto("/admin/activity");
+    await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
+
+    await page.getByTestId("input-log-end-date").fill("2026-01-01");
+    await page.getByTestId("input-log-start-date").fill("2026-06-30");
+
+    await expect(page.getByTestId("text-invalid-date-range")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("text-invalid-date-range")).toContainText(
+      /"From" date is after the "To" date/,
+    );
+  });
+
+  test("a backwards range from the URL shows the warning and explains the empty state", async ({ page }) => {
+    await page.goto("/admin/activity?startDate=2026-12-31&endDate=2026-01-01");
+
+    await expect(page.getByTestId("text-invalid-date-range")).toBeVisible({ timeout: 8000 });
+    await waitForResults(page);
+    // Results are empty and the empty state explains why
+    expect(await rowCount(page)).toBe(0);
+    await expect(
+      page.getByText(/No results because the date range is invalid/),
+    ).toBeVisible({ timeout: 8000 });
+  });
+
+  test("no warning appears for a valid date range", async ({ page }) => {
+    await page.goto("/admin/activity?startDate=2026-01-01&endDate=2026-12-31");
+    await expect(page.getByTestId("input-log-start-date")).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId("text-invalid-date-range")).not.toBeVisible();
+  });
+
+  test("fixing the dates removes the warning", async ({ page }) => {
+    await page.goto("/admin/activity?startDate=2026-12-31&endDate=2026-01-01");
+    await expect(page.getByTestId("text-invalid-date-range")).toBeVisible({ timeout: 8000 });
+
+    await page.getByTestId("input-log-start-date").fill("2026-01-01");
+    await page.getByTestId("input-log-end-date").fill("2026-12-31");
+
+    await expect(page.getByTestId("text-invalid-date-range")).not.toBeVisible({ timeout: 5000 });
+  });
+
+  test("clearing filters removes the warning", async ({ page }) => {
+    await page.goto("/admin/activity?startDate=2026-12-31&endDate=2026-01-01");
+    await expect(page.getByTestId("text-invalid-date-range")).toBeVisible({ timeout: 8000 });
+
+    await page.getByTestId("button-clear-filters").click();
+
+    await expect(page.getByTestId("text-invalid-date-range")).not.toBeVisible({ timeout: 5000 });
+  });
+});
