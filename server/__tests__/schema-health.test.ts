@@ -144,3 +144,27 @@ describe("logSchemaHealth() – drift case", () => {
     }
   });
 });
+
+describe("logSchemaHealth() – check failure case", () => {
+  it("does not re-throw and logs the failure error line when the DB connection throws", async () => {
+    const dbError = new Error("connection refused");
+    vi.spyOn(pool, "connect").mockRejectedValueOnce(dbError);
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(logSchemaHealth()).resolves.toBeUndefined();
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(String(errorSpy.mock.calls[0][0])).toContain(
+      "[schema-health] Failed to run schema health check:"
+    );
+    expect(errorSpy.mock.calls[0][1]).toBe(dbError);
+
+    const passOrFailLogged = logSpy.mock.calls.some(
+      (call) =>
+        String(call[0]).includes("Schema health check passed") ||
+        String(call[0]).includes("Schema health check FAILED")
+    );
+    expect(passOrFailLogged).toBe(false);
+  });
+});
