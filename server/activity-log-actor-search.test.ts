@@ -84,6 +84,22 @@ describe("getActivityLogs actor name search", () => {
     expect(logs.length).toBe(3);
   });
 
+  it("matches the actor's name regardless of capitalization", async () => {
+    for (const search of [
+      TEST_FIRST_NAME.toLowerCase(),
+      TEST_FIRST_NAME.toUpperCase(),
+      TEST_LAST_NAME.toLowerCase(),
+      TEST_LAST_NAME.toUpperCase(),
+    ]) {
+      const { logs, total } = await storage.getActivityLogs(1, 100, {
+        actorId: TEST_ACTOR_ID,
+        search,
+      });
+      expect(logs.length).toBe(3);
+      expect(total).toBe(3);
+    }
+  });
+
   it("returns no entries when searching for an unrelated name", async () => {
     const { logs, total } = await storage.getActivityLogs(1, 100, {
       actorId: TEST_ACTOR_ID,

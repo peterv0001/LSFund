@@ -9,7 +9,7 @@ import {
   type Subscription, type Holdback, type FulfillmentTier, type AdminExportTemplate,
   type AgentInvitation, type InsertAgentInvitation
 } from "@shared/schema";
-import { eq, ne, sql, and, desc, asc, gte, lte, like, or, inArray, isNull, count, sum, SQL } from "drizzle-orm";
+import { eq, ne, sql, and, desc, asc, gte, lte, like, ilike, or, inArray, isNull, count, sum, SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 // Detects a PostgreSQL unique-constraint violation (SQLSTATE 23505). When a
@@ -1372,11 +1372,11 @@ export class DatabaseStorage {
     if (filters?.search) {
       const term = `%${filters.search}%`;
       const searchCond = or(
-        like(activityLog.action, term),
-        like(activityLog.entityType, term),
-        like(activityLog.description, term),
-        like(actorAgent.firstName, term),
-        like(actorAgent.lastName, term),
+        ilike(activityLog.action, term),
+        ilike(activityLog.entityType, term),
+        ilike(activityLog.description, term),
+        ilike(actorAgent.firstName, term),
+        ilike(actorAgent.lastName, term),
       );
       if (searchCond) conditions.push(searchCond);
     }
