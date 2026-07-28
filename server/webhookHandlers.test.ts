@@ -879,7 +879,6 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     };
 
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
-    vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any]);
 
     await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
 
@@ -901,8 +900,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     };
 
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
-    vi.mocked(storage.getUpline).mockReset();
-    vi.mocked(storage.getUpline).mockResolvedValue([]);
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
 
     await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
 
@@ -937,8 +935,7 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     };
 
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
-    vi.mocked(storage.getUpline).mockReset();
-    vi.mocked(storage.getUpline).mockResolvedValue([]);
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([]);
 
     await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
 
@@ -972,7 +969,6 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
     };
 
     vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
-    vi.mocked(storage.getUpline).mockReset();
     vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any]);
 
     await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
@@ -1018,15 +1014,6 @@ describe('WebhookHandlers.handleInvoicePaid – decay schedule by subscription a
   const invoiceData = {
     lines: { data: [{ period: { end: INVOICE_PERIOD_END } }] },
   };
-
-  // vi.clearAllMocks() (global beforeEach) clears call history but NOT the
-  // queued mockResolvedValueOnce implementations. The earlier "zero amount"
-  // test queues a getUpline once-value that never gets consumed (createCommission
-  // is skipped), so without a reset it would leak into the first test here and
-  // fire an unexpected upline override. mockReset drains that queue.
-  beforeEach(() => {
-    vi.mocked(storage.getUpline).mockReset();
-  });
 
   // Returns a startDate that yields the given monthsSinceStart. Adding 0.5 of a
   // month lands mid-band so Math.floor reliably produces the target value.
