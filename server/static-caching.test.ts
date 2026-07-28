@@ -91,10 +91,22 @@ beforeAll(async () => {
 
   // Padded past compression's default 1KB threshold so the HTML shell is a
   // meaningful compression test, while keeping the tags injectMeta rewrites.
+  // Mirrors client/index.html: includes og/twitter tags so the full rewrite
+  // path (og:title, og:description, og:url, twitter:title, twitter:description)
+  // is exercised by the SEO isolation tests.
+  const homeTitle = escapeHtml(HOME_META.title);
+  const homeDesc = escapeHtml(HOME_META.description);
+  const homeUrl = "https://leadershieldfunding.com/";
   fs.writeFileSync(
     path.join(distDir, "index.html"),
-    `<!doctype html><html><head><title>${escapeHtml(HOME_META.title)}</title>` +
-      `<meta name="description" content="${escapeHtml(HOME_META.description)}" /></head>` +
+    `<!doctype html><html><head><title>${homeTitle}</title>` +
+      `<meta name="description" content="${homeDesc}" />` +
+      `<meta property="og:title" content="${homeTitle}" />` +
+      `<meta property="og:description" content="${homeDesc}" />` +
+      `<meta property="og:url" content="${homeUrl}" />` +
+      `<meta name="twitter:title" content="${homeTitle}" />` +
+      `<meta name="twitter:description" content="${homeDesc}" />` +
+      `</head>` +
       `<body><div id="root"></div>` +
       `<!-- ${"filler ".repeat(300)} -->` +
       `</body></html>`,
@@ -547,8 +559,17 @@ describe("public route SEO meta isolation", () => {
     "/lp/referral",
   ];
 
-  const homeTitleTag = `<title>${escapeHtml(HOME_META.title)}</title>`;
-  const homeDescriptionTag = `content="${escapeHtml(HOME_META.description)}"`;
+  const homeTitleEscaped = escapeHtml(HOME_META.title);
+  const homeDescEscaped = escapeHtml(HOME_META.description);
+
+  // Homepage tag strings used in the "not the homepage's" assertions below.
+  const homeTitleTag = `<title>${homeTitleEscaped}</title>`;
+  const homeDescriptionTag = `content="${homeDescEscaped}"`;
+  const homeOgTitleTag = `property="og:title" content="${homeTitleEscaped}"`;
+  const homeOgDescTag = `property="og:description" content="${homeDescEscaped}"`;
+  const homeOgUrlTag = `property="og:url" content="https://leadershieldfunding.com/"`;
+  const homeTwitterTitleTag = `name="twitter:title" content="${homeTitleEscaped}"`;
+  const homeTwitterDescTag = `name="twitter:description" content="${homeDescEscaped}"`;
 
   it("has a representative sample path for every PUBLIC_ROUTE_META entry", () => {
     // Every meta entry must be exercised by at least one sample so this guard
@@ -563,7 +584,7 @@ describe("public route SEO meta isolation", () => {
   });
 
   for (const samplePath of ROUTE_SAMPLES) {
-    it(`serves ${samplePath} with its own title/description, not the homepage's`, async () => {
+    it(`serves ${samplePath} with its own title/description/og/twitter, not the homepage's`, async () => {
       const match = PUBLIC_ROUTE_META.find(({ pattern }) =>
         pattern.test(samplePath),
       );
@@ -576,16 +597,43 @@ describe("public route SEO meta isolation", () => {
       const res = await request(testApp).get(samplePath);
       expect(res.status).toBe(200);
 
+      const titleEscaped = escapeHtml(meta.title);
+      const descEscaped = escapeHtml(meta.description);
+      const DOMAIN = "https://leadershieldfunding.com";
+      const urlEscaped = `${DOMAIN}${samplePath}`;
+
       // The route's own title and description must be injected verbatim.
-      expect(res.text).toContain(`<title>${escapeHtml(meta.title)}</title>`);
-      expect(res.text).toContain(`content="${escapeHtml(meta.description)}"`);
+      expect(res.text).toContain(`<title>${titleEscaped}</title>`);
+      expect(res.text).toContain(`content="${descEscaped}"`);
+
+      // og/twitter tags must carry the route's own values.
+      expect(res.text).toContain(
+        `property="og:title" content="${titleEscaped}"`,
+      );
+      expect(res.text).toContain(
+        `property="og:description" content="${descEscaped}"`,
+      );
+      expect(res.text).toContain(
+        `property="og:url" content="${urlEscaped}"`,
+      );
+      expect(res.text).toContain(
+        `name="twitter:title" content="${titleEscaped}"`,
+      );
+      expect(res.text).toContain(
+        `name="twitter:description" content="${descEscaped}"`,
+      );
 
       if (samplePath !== "/") {
         // The core bug: when the catch-all read req.path (always "/" under the
         // wildcard mount) every page got the homepage's meta. Any non-home page
-        // must NOT carry the homepage's title or description.
+        // must NOT carry the homepage's title, description, or og/twitter tags.
         expect(res.text).not.toContain(homeTitleTag);
         expect(res.text).not.toContain(homeDescriptionTag);
+        expect(res.text).not.toContain(homeOgTitleTag);
+        expect(res.text).not.toContain(homeOgDescTag);
+        expect(res.text).not.toContain(homeOgUrlTag);
+        expect(res.text).not.toContain(homeTwitterTitleTag);
+        expect(res.text).not.toContain(homeTwitterDescTag);
       }
     });
   }
