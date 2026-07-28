@@ -218,4 +218,47 @@ describe("Admin settings – System Info card", () => {
     expect(badge.textContent).not.toBe("—");
     expect(badge.textContent!.trim().length).toBeGreaterThan(0);
   });
+
+  it("shows the loading state while the system-info query is pending", async () => {
+    // Make the system-info fetch hang indefinitely so the query stays in loading state.
+    fetchMock = vi.fn((input: any) => {
+      const url = String(input);
+      if (url.startsWith(SYSTEM_INFO_PATH)) {
+        return new Promise(() => {}); // never resolves
+      }
+      return Promise.resolve(routeFetch(url) as any);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderSettings();
+
+    // findByText throws if the element is absent, so finding it is sufficient.
+    await screen.findByText("Loading system info…");
+    // The success content should not be present yet.
+    expect(screen.queryByTestId("badge-expiry-check-interval")).toBeNull();
+  });
+
+  it("shows the fallback message when the system-info query fails", async () => {
+    // Make the system-info fetch return a non-ok response so the query errors.
+    fetchMock = vi.fn((input: any) => {
+      const url = String(input);
+      if (url.startsWith(SYSTEM_INFO_PATH)) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+          json: () => Promise.resolve({ message: "server error" }),
+        } as any);
+      }
+      return Promise.resolve(routeFetch(url) as any);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderSettings();
+
+    // findByText throws if the element is absent, so finding it is sufficient.
+    await screen.findByText("Unable to load system info.");
+    // The success content should not be present.
+    expect(screen.queryByTestId("badge-expiry-check-interval")).toBeNull();
+  });
 });
