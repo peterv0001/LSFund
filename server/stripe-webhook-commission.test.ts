@@ -223,3 +223,147 @@ describe("POST /api/webhooks/stripe – invoice.paid fires subscription commissi
     expect(commissions.length).toBe(0);
   });
 });
+
+// ── Upline override commissions ────────────────────────────────────────────
+// Tests that both L1 and L2 sponsors earn subscription_residual overrides when
+// invoice.paid fires for their downline agent's subscription.
+//
+// Formula (legacy model, months1to3 decay = 1.00):
+//   L1 = monthlyAmount × poolRate × l1Rate × decayRate
+//   L2 = monthlyAmount × poolRate × l2Rate × decayRate
+// For tier_1 ($149, poolRate 0.25):
+//   L1 = 149 × 0.25 × 0.10 × 1.00 = 3.725
+//   L2 = 149 × 0.25 × 0.05 × 1.00 = 1.8625
+
+describe("POST /api/webhooks/stripe – invoice.paid fires upline override commissions", () => {
+  // Three-level chain: l2Sponsor → l1Sponsor → sellingAgent
+  const UPLINE_EMAIL_PREFIX = `stripe-webhook-upline-${Date.now()}`;
+  const UPLINE_STRIPE_SUB_ID = `sub_upline_test_${Date.now()}`;
+  let l2SponsorId: number;
+  let l1SponsorId: number;
+  let sellingAgentId: number;
+  let uplineSubId: number;
+  let uplineApp: ReturnType<typeof express>;
+
+  beforeAll(async () => {
+    // L2 sponsor — top of chain (no sponsor)
+    const [l2] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${UPLINE_EMAIL_PREFIX}-l2@example.com`,
+        password: "x",
+        firstName: "L2",
+        lastName: "Sponsor",
+        currentRank: "agent",
+        highestRank: "agent",
+      })
+      .returning();
+    l2SponsorId = l2.id;
+
+    // L1 sponsor — sponsored by L2
+    const [l1] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${UPLINE_EMAIL_PREFIX}-l1@example.com`,
+        password: "x",
+        firstName: "L1",
+        lastName: "Sponsor",
+        currentRank: "agent",
+        highestRank: "agent",
+        sponsorId: l2SponsorId,
+      })
+      .returning();
+    l1SponsorId = l1.id;
+
+    // Selling agent — sponsored by L1
+    const [seller] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${UPLINE_EMAIL_PREFIX}-seller@example.com`,
+        password: "x",
+        firstName: "Selling",
+        lastName: "Agent",
+        currentRank: "agent",
+        highestRank: "agent",
+        sponsorId: l1SponsorId,
+      })
+      .returning();
+    sellingAgentId = seller.id;
+
+    // Stripe-billed tier_1 subscription for the selling agent
+    const [sub] = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId: sellingAgentId,
+        merchantName: "Upline Merchant",
+        tier: "tier_1",
+        monthlyAmount: "149",
+        startDate: new Date(),
+        stripeSubscriptionId: UPLINE_STRIPE_SUB_ID,
+        stripeCustomerId: "cus_upline_test",
+        billingStatus: "active",
+        // Lock to legacy model so pool×decay math applies
+        commissionModel: "legacy",
+      })
+      .returning();
+    uplineSubId = sub.id;
+
+    uplineApp = buildWebhookApp();
+  }, 30000);
+
+  afterAll(async () => {
+    // Clean commissions for all three agents, then subscriptions, then agents
+    // (selling agent first so the sponsorId FK chain unwinds cleanly)
+    for (const agentId of [sellingAgentId, l1SponsorId, l2SponsorId]) {
+      await db
+        .delete(schema.commissions)
+        .where(eq(schema.commissions.agentId, agentId));
+    }
+    await db
+      .delete(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, uplineSubId));
+    await db
+      .delete(schema.agents)
+      .where(eq(schema.agents.id, sellingAgentId));
+    await db
+      .delete(schema.agents)
+      .where(eq(schema.agents.id, l1SponsorId));
+    await db
+      .delete(schema.agents)
+      .where(eq(schema.agents.id, l2SponsorId));
+  });
+
+  it("creates subscription_residual commissions for L1 and L2 sponsors with correct amounts and sourceAgentId", async () => {
+    useMockStripeWithEvent(buildInvoicePaidEvent(UPLINE_STRIPE_SUB_ID));
+
+    await request(uplineApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_test_upline_paid" })))
+      .expect(200);
+
+    // Fetch all commissions linked to this subscription
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, uplineSubId));
+
+    // ── L1 sponsor ────────────────────────────────────────────────────────
+    // 149 × 0.25 (poolRate) × 0.10 (l1Rate) × 1.00 (decay months1to3) = 3.725
+    const l1Commission = commissions.find((c) => c.agentId === l1SponsorId);
+    expect(l1Commission).toBeDefined();
+    expect(l1Commission!.type).toBe("subscription_residual");
+    expect(l1Commission!.sourceAgentId).toBe(sellingAgentId);
+    expect(Number(l1Commission!.amount)).toBeCloseTo(3.725, 2);
+
+    // ── L2 sponsor ────────────────────────────────────────────────────────
+    // 149 × 0.25 (poolRate) × 0.05 (l2Rate) × 1.00 (decay months1to3) = 1.8625
+    const l2Commission = commissions.find((c) => c.agentId === l2SponsorId);
+    expect(l2Commission).toBeDefined();
+    expect(l2Commission!.type).toBe("subscription_residual");
+    expect(l2Commission!.sourceAgentId).toBe(sellingAgentId);
+    // Handler stores toFixed(2) → 1.86; match to 2 decimal places
+    expect(Number(l2Commission!.amount)).toBeCloseTo(1.86, 2);
+  });
+});
