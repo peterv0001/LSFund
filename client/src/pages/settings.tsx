@@ -56,7 +56,7 @@ export default function SettingsPage() {
   const [, setLocation] = useLocation();
 
   // Profile form state
-  const [profile, setProfile] = useState({
+  const initialProfile = {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     phone: user?.phone || '',
@@ -65,7 +65,11 @@ export default function SettingsPage() {
     state: user?.state || '',
     zip: user?.zip || '',
     bio: user?.bio || '',
-  });
+  };
+  const [profile, setProfile] = useState(initialProfile);
+  // Baseline of last-saved profile, used to detect unsaved changes.
+  const [savedProfile, setSavedProfile] = useState(initialProfile);
+  const hasUnsavedProfile = JSON.stringify(profile) !== JSON.stringify(savedProfile);
 
   // Password form state
   const [passwords, setPasswords] = useState({
@@ -75,10 +79,14 @@ export default function SettingsPage() {
   });
 
   // Payout form state
-  const [payout, setPayout] = useState({
+  const initialPayout = {
     payoutMethod: user?.payoutMethod || 'pending',
     payoutEmail: user?.payoutEmail || '',
-  });
+  };
+  const [payout, setPayout] = useState(initialPayout);
+  // Baseline of last-saved payout, used to detect unsaved changes.
+  const [savedPayout, setSavedPayout] = useState(initialPayout);
+  const hasUnsavedPayout = JSON.stringify(payout) !== JSON.stringify(savedPayout);
 
   // Notification preferences state
   const defaultPrefs = (user?.emailPreferences as { emailOnPaused?: boolean; emailOnCancelled?: boolean; emailOnReactivated?: boolean; emailOnDealFunded?: boolean; emailOnTeamSignup?: boolean; emailOnCommissionEarned?: boolean; emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryPending?: boolean; emailOnPaymentRetryFailed?: boolean; emailOnPaymentFailed?: boolean } | null) ?? {};
@@ -99,23 +107,27 @@ export default function SettingsPage() {
   const [savedNotifPrefs, setSavedNotifPrefs] = useState(initialNotifPrefs);
   const hasUnsavedNotifPrefs =
     JSON.stringify(notifPrefs) !== JSON.stringify(savedNotifPrefs);
+
+  // Combined unsaved flag for any settings tab.
+  const hasAnyUnsaved = hasUnsavedProfile || hasUnsavedPayout || hasUnsavedNotifPrefs;
+
   // Pending in-app navigation target awaiting user confirmation.
   const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   // Warn on full-page navigation (refresh / tab close) when there are unsaved changes.
   useEffect(() => {
-    if (!hasUnsavedNotifPrefs) return;
+    if (!hasAnyUnsaved) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [hasUnsavedNotifPrefs]);
+  }, [hasAnyUnsaved]);
 
   // Intercept in-app link navigation to confirm discarding unsaved changes.
   useEffect(() => {
-    if (!hasUnsavedNotifPrefs) return;
+    if (!hasAnyUnsaved) return;
     const handler = (e: MouseEvent) => {
       if (e.defaultPrevented) return;
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -130,7 +142,7 @@ export default function SettingsPage() {
     };
     document.addEventListener('click', handler, true);
     return () => document.removeEventListener('click', handler, true);
-  }, [hasUnsavedNotifPrefs]);
+  }, [hasAnyUnsaved]);
 
   const confirmNavigation = () => {
     const target = pendingNav;
@@ -212,8 +224,9 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error('Failed to update profile');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       refetch();
+      setSavedProfile(variables);
       toast({ title: "Success", description: "Profile updated successfully" });
     },
     onError: () => {
@@ -256,8 +269,9 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error('Failed to update payout method');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       refetch();
+      setSavedPayout(variables);
       toast({ title: "Success", description: "Payout method updated" });
     },
     onError: () => {
@@ -419,14 +433,36 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <Button 
-                  onClick={() => updateProfileMutation.mutate(profile)}
-                  disabled={updateProfileMutation.isPending}
-                >
-                  {updateProfileMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
-                </Button>
+                {hasUnsavedProfile && (
+                  <div
+                    data-testid="warning-unsaved-profile"
+                    className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                    <span>You have unsaved changes. Click "Save Changes" to keep them.</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    data-testid="button-save-profile"
+                    onClick={() => updateProfileMutation.mutate(profile)}
+                    disabled={updateProfileMutation.isPending}
+                    className={hasUnsavedProfile ? "ring-2 ring-offset-2 ring-primary" : ""}
+                  >
+                    {updateProfileMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </Button>
+                  {hasUnsavedProfile && (
+                    <span
+                      data-testid="text-unsaved-profile"
+                      className="text-sm font-medium text-blue-700"
+                    >
+                      Unsaved changes
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -521,13 +557,35 @@ export default function SettingsPage() {
                   </div>
                 )}
 
-                <Button 
-                  onClick={() => updatePayoutMutation.mutate(payout)}
-                  disabled={updatePayoutMutation.isPending}
-                >
-                  {updatePayoutMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Save Payout Settings
-                </Button>
+                {hasUnsavedPayout && (
+                  <div
+                    data-testid="warning-unsaved-payout"
+                    className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                    <span>You have unsaved changes. Click "Save Payout Settings" to keep them.</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    data-testid="button-save-payout"
+                    onClick={() => updatePayoutMutation.mutate(payout)}
+                    disabled={updatePayoutMutation.isPending}
+                    className={hasUnsavedPayout ? "ring-2 ring-offset-2 ring-primary" : ""}
+                  >
+                    {updatePayoutMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Save Payout Settings
+                  </Button>
+                  {hasUnsavedPayout && (
+                    <span
+                      data-testid="text-unsaved-payout"
+                      className="text-sm font-medium text-blue-700"
+                    >
+                      Unsaved changes
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -812,7 +870,7 @@ export default function SettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
             <AlertDialogDescription>
-              You have unsaved notification preference changes. If you leave now, your changes will be lost.
+              You have unsaved changes. If you leave now, your changes will be lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
