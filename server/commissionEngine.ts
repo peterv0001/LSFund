@@ -16,6 +16,7 @@
 // ============================================================================
 
 import {
+  CONFIG,
   COMP_V2026,
   type DistributorTier,
   type SubscriptionProduct,
@@ -397,4 +398,120 @@ export async function fireSubscriptionV2026(
   }
 
   return { producerAmount: result.producerTotal, commType: result.commType, created };
+}
+
+// ── Legacy subscription engine ───────────────────────────────────────────────
+
+export interface LegacySubscriptionResult {
+  producerAmount: number;
+  commType: 'subscription_commission' | 'subscription_residual';
+  created: boolean;
+}
+
+/**
+ * Computes and persists a LEGACY subscription's commissions for one period:
+ * the selling agent's producer payout (pool×decay + optional MCA pairing
+ * bonus, producer only) plus the L1/L2 upline override (pool×decay only —
+ * the bonus is intentionally excluded from upline).
+ *
+ * This is the single authoritative implementation of the legacy formula.
+ * The three former inline copies in webhookHandlers.ts and routes.ts have
+ * been replaced with calls here so they can never silently drift.
+ *
+ * @param checkIdempotency When true, skips creation if a matching commission
+ *   already exists for this subscription/period/type. Used by the monthly
+ *   calculate-commissions route; the webhook path fires at-most-once per
+ *   invoice so it does not need this guard.
+ */
+export async function fireSubscriptionLegacy(
+  storage: CommissionStorage,
+  opts: {
+    sub: {
+      id: number;
+      agentId: number;
+      tier: string;
+      monthlyAmount: string | number;
+      mcaPairedDealId?: number | null;
+      isMemberPurchase?: boolean | null;
+    };
+    monthsSinceStart: number;
+    periodDate: string;
+    checkIdempotency?: boolean;
+  },
+): Promise<LegacySubscriptionResult> {
+  const { sub, monthsSinceStart, periodDate } = opts;
+
+  // Internal member purchases never generate commission.
+  if (sub.isMemberPurchase) {
+    const commType: 'subscription_commission' | 'subscription_residual' =
+      monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
+    return { producerAmount: 0, commType, created: false };
+  }
+
+  // Decay rate — bucket boundaries mirror getDecayBucket() used by v2026.
+  let decayRate: number;
+  if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
+  else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;
+  else if (monthsSinceStart < 9) decayRate = CONFIG.subscriptionDecay.months7to9;
+  else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
+  else decayRate = CONFIG.subscriptionDecay.postMonth12;
+
+  const monthlyAmount = Number(sub.monthlyAmount);
+  const poolRate = CONFIG.subscriptionPools[sub.tier] ?? 0.25;
+
+  // MCA pairing bonus applies only to the producer, only in months 1-3.
+  let commissionRate = poolRate * decayRate;
+  if (sub.mcaPairedDealId && monthsSinceStart < 3) {
+    commissionRate += CONFIG.mcaPairingBonus;
+  }
+
+  const commissionAmount = monthlyAmount * commissionRate;
+  const commType: 'subscription_commission' | 'subscription_residual' =
+    monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
+
+  if (commissionAmount <= 0) {
+    return { producerAmount: 0, commType, created: false };
+  }
+
+  // Idempotency guard — used by the monthly calculate-commissions route.
+  if (opts.checkIdempotency) {
+    const existing = await storage.findSubscriptionCommission(
+      sub.agentId, sub.id, periodDate, commType,
+    );
+    if (existing) {
+      return { producerAmount: commissionAmount, commType, created: false };
+    }
+  }
+
+  await storage.createCommission({
+    agentId: sub.agentId,
+    subscriptionId: sub.id,
+    type: commType,
+    amount: commissionAmount.toFixed(2),
+    periodDate,
+    status: 'pending',
+  });
+
+  // L1/L2 upline override — intentionally excludes the MCA pairing bonus.
+  const upline = await storage.getUpline(sub.agentId);
+  const uplineRates = [
+    CONFIG.subscriptionUplinesOverride.l1Rate,
+    CONFIG.subscriptionUplinesOverride.l2Rate,
+  ];
+  for (let i = 0; i < upline.length && i < uplineRates.length; i++) {
+    const uplineAmount = monthlyAmount * poolRate * uplineRates[i] * decayRate;
+    if (uplineAmount > 0) {
+      await storage.createCommission({
+        agentId: upline[i].id,
+        subscriptionId: sub.id,
+        type: 'subscription_residual',
+        amount: uplineAmount.toFixed(2),
+        periodDate,
+        sourceAgentId: sub.agentId,
+        status: 'pending',
+      });
+    }
+  }
+
+  return { producerAmount: commissionAmount, commType, created: true };
 }

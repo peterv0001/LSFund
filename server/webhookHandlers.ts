@@ -4,8 +4,7 @@ import { eq } from 'drizzle-orm';
 import { storage } from './storage';
 import { maybeNotifyAdminsAgentLostLastSubscription } from './adminAlerts';
 import { emailService } from './email';
-import { CONFIG } from './config';
-import { fireSubscriptionV2026, type AgencyModel } from './commissionEngine';
+import { fireSubscriptionV2026, fireSubscriptionLegacy, type AgencyModel } from './commissionEngine';
 import Stripe from 'stripe';
 import { getUncachableStripeClient } from './stripeClient';
 
@@ -225,57 +224,13 @@ export class WebhookHandlers {
         return;
       }
 
-      let decayRate: number;
-      if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
-      else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;
-      else if (monthsSinceStart < 9) decayRate = CONFIG.subscriptionDecay.months7to9;
-      else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
-      else decayRate = CONFIG.subscriptionDecay.postMonth12;
-
-      const monthlyAmount = Number(sub.monthlyAmount);
-      const poolRate = CONFIG.subscriptionPools[sub.tier] || 0.25;
-      let commissionRate = poolRate * decayRate;
-
-      if (sub.mcaPairedDealId && monthsSinceStart < 3) {
-        commissionRate += CONFIG.mcaPairingBonus;
-      }
-
-      const commissionAmount = monthlyAmount * commissionRate;
-      const commType = monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
       const periodDate = now.toISOString().split('T')[0];
-
-      if (commissionAmount > 0) {
-        await storage.createCommission({
-          agentId: sub.agentId,
-          subscriptionId: sub.id,
-          type: commType,
-          amount: commissionAmount.toFixed(2),
-          periodDate,
-          status: 'pending',
-        });
-
-        const upline = await storage.getUpline(sub.agentId);
-        const uplineRates = [
-          CONFIG.subscriptionUplinesOverride.l1Rate,
-          CONFIG.subscriptionUplinesOverride.l2Rate,
-        ];
-        for (let i = 0; i < upline.length && i < uplineRates.length; i++) {
-          const sponsor = upline[i];
-          const uplineAmount = monthlyAmount * poolRate * uplineRates[i] * decayRate;
-          if (uplineAmount > 0) {
-            await storage.createCommission({
-              agentId: sponsor.id,
-              subscriptionId: sub.id,
-              type: 'subscription_residual',
-              amount: uplineAmount.toFixed(2),
-              periodDate,
-              sourceAgentId: sub.agentId,
-              status: 'pending',
-            });
-          }
-        }
-        console.log(`[Webhook] Fired commissions for subscription ${sub.id}, amount: $${commissionAmount.toFixed(2)}`);
-      }
+      const { producerAmount } = await fireSubscriptionLegacy(storage, {
+        sub,
+        monthsSinceStart,
+        periodDate,
+      });
+      console.log(`[Webhook] Fired legacy commissions for subscription ${sub.id}, producer: $${producerAmount.toFixed(2)}`);
     } catch (err) {
       console.error(`[Webhook] Failed to fire commissions for subscription ${sub.id}:`, err);
     }

@@ -15,7 +15,7 @@ import { seedDatabase } from "./seed";
 import { migrations, revertMigration, applyMigration, DUPLICATE_PLACEMENT_ERROR_PREFIX, findDuplicatePlacements, formatDuplicatePlacementReport } from "./migrations";
 import { checkSchemaHealth } from "./schema-health";
 import { CONFIG } from "./config";
-import { computeMcaV2026, deriveMcaAcceleratorRates, fireSubscriptionV2026, type AgencyModel } from "./commissionEngine";
+import { computeMcaV2026, deriveMcaAcceleratorRates, fireSubscriptionV2026, fireSubscriptionLegacy, type AgencyModel } from "./commissionEngine";
 import {
   recalculateAgentGovernance,
   recalculateAllGovernance,
@@ -2811,53 +2811,13 @@ export async function registerRoutes(
           });
         }
       } else {
-      let decayRate: number;
-      if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
-      else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;
-      else if (monthsSinceStart < 9) decayRate = CONFIG.subscriptionDecay.months7to9;
-      else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
-      else decayRate = CONFIG.subscriptionDecay.postMonth12;
-
-      const poolRate = CONFIG.subscriptionPools[input.tier] || 0.25;
-      let commissionRate = poolRate * decayRate;
-      if (verifiedPairedDealId && monthsSinceStart < 3) {
-        commissionRate += CONFIG.mcaPairingBonus;
-      }
-
-      const commissionAmount = monthlyAmount * commissionRate;
-      const commType = monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
-      const periodDate = now.toISOString().split('T')[0];
-
-      // Governance (Task #473): internal member purchases never pay commission.
-      if (commissionAmount > 0 && !sub.isMemberPurchase) {
-        await storage.createCommission({
-          agentId,
-          type: commType,
-          amount: commissionAmount.toFixed(2),
-          periodDate,
-          status: 'pending',
+        // Legacy commission model — delegates to the shared helper so this path
+        // and the webhook / calculate-commissions paths can never silently drift.
+        await fireSubscriptionLegacy(storage, {
+          sub,
+          monthsSinceStart,
+          periodDate: now.toISOString().split('T')[0],
         });
-
-        const upline = await storage.getUpline(agentId);
-        const uplineRates = [
-          CONFIG.subscriptionUplinesOverride.l1Rate,
-          CONFIG.subscriptionUplinesOverride.l2Rate,
-        ];
-        for (let i = 0; i < upline.length && i < uplineRates.length; i++) {
-          const sponsor = upline[i];
-          const uplineAmount = monthlyAmount * poolRate * uplineRates[i] * decayRate;
-          if (uplineAmount > 0) {
-            await storage.createCommission({
-              agentId: sponsor.id,
-              type: 'subscription_residual',
-              amount: uplineAmount.toFixed(2),
-              periodDate,
-              sourceAgentId: agentId,
-              status: 'pending',
-            });
-          }
-        }
-      }
       }
 
       storage.logActivity({
@@ -3682,56 +3642,35 @@ export async function registerRoutes(
           continue;
         }
 
-        let decayRate: number;
-        if (monthsSinceStart < 3) decayRate = CONFIG.subscriptionDecay.months1to3;
-        else if (monthsSinceStart < 6) decayRate = CONFIG.subscriptionDecay.months4to6;
-        else if (monthsSinceStart < 9) decayRate = CONFIG.subscriptionDecay.months7to9;
-        else if (monthsSinceStart < 12) decayRate = CONFIG.subscriptionDecay.months10to12;
-        else decayRate = CONFIG.subscriptionDecay.postMonth12;
-        
-        const poolRate = CONFIG.subscriptionPools[sub.tier] || 0.25;
-        let commissionRate = poolRate * decayRate;
-        
-        if (sub.mcaPairedDealId && monthsSinceStart < 3) {
-          commissionRate += CONFIG.mcaPairingBonus;
-        }
-        
-        const commissionAmount = Number(sub.monthlyAmount) * commissionRate;
-        const commType = monthsSinceStart >= 12 ? 'subscription_residual' : 'subscription_commission';
-        
-        if (commissionAmount > 0) {
-          const existing = await storage.findSubscriptionCommission(sub.agentId, sub.id, periodDate, commType);
-          if (existing) { skipped++; continue; }
-          await storage.createCommission({
-            agentId: sub.agentId,
-            subscriptionId: sub.id,
-            type: commType,
-            amount: commissionAmount.toFixed(2),
+        const { producerAmount: legacyAmount, commType: legacyCommType, created: legacyCreated } =
+          await fireSubscriptionLegacy(storage, {
+            sub,
+            monthsSinceStart,
             periodDate,
-            status: 'pending'
+            checkIdempotency: true,
           });
-          processed++;
+        if (!legacyCreated) { skipped++; continue; }
+        processed++;
 
-          const commissionTypeLabel = commType === 'subscription_residual' ? 'Subscription Residual' : 'Subscription Commission';
-          const agent = await storage.getAgent(sub.agentId);
-          if (agent) {
-            await storage.createNotification({
-              agentId: sub.agentId,
-              type: 'commission_earned',
-              title: `${commissionTypeLabel} Earned!`,
-              message: `You earned a $${commissionAmount.toFixed(2)} ${commissionTypeLabel} from ${sub.merchantName} (period: ${periodDate}).`,
-              isRead: false,
-              emailSent: false,
-            });
-            const commPrefs = (agent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
-            if (commPrefs.emailOnCommissionEarned !== false) {
-              emailService.sendCommissionEarnedEmail(agent.email, {
-                firstName: agent.firstName,
-                commissionType: commissionTypeLabel,
-                amount: commissionAmount,
-                description: `From your subscription (period: ${periodDate})`,
-              }).catch(console.error);
-            }
+        const commissionTypeLabel = legacyCommType === 'subscription_residual' ? 'Subscription Residual' : 'Subscription Commission';
+        const agent = await storage.getAgent(sub.agentId);
+        if (agent) {
+          await storage.createNotification({
+            agentId: sub.agentId,
+            type: 'commission_earned',
+            title: `${commissionTypeLabel} Earned!`,
+            message: `You earned a $${legacyAmount.toFixed(2)} ${commissionTypeLabel} from ${sub.merchantName} (period: ${periodDate}).`,
+            isRead: false,
+            emailSent: false,
+          });
+          const commPrefs = (agent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+          if (commPrefs.emailOnCommissionEarned !== false) {
+            emailService.sendCommissionEarnedEmail(agent.email, {
+              firstName: agent.firstName,
+              commissionType: commissionTypeLabel,
+              amount: legacyAmount,
+              description: `From your subscription (period: ${periodDate})`,
+            }).catch(console.error);
           }
         }
       }
