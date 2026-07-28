@@ -1247,6 +1247,7 @@ export const api = {
         responses: {
           200: z.object({
             secretStored: z.boolean(),
+            secretConfigured: z.boolean(),
             endpointId: z.string().nullable(),
             endpointUrl: z.string().nullable(),
             endpointActive: z.boolean().nullable(),

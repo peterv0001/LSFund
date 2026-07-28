@@ -25,6 +25,7 @@ import { useState } from "react";
 
 export default function AdminDashboard() {
   const [expiryAlertDismissed, setExpiryAlertDismissed] = useState(false);
+  const [webhookAlertDismissed, setWebhookAlertDismissed] = useState(false);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["admin", "stats"],
@@ -60,6 +61,31 @@ export default function AdminDashboard() {
     },
   });
 
+  const { data: webhookStatus } = useQuery<{
+    secretStored: boolean;
+    secretConfigured: boolean;
+    endpointId: string | null;
+    endpointUrl: string | null;
+    endpointActive: boolean | null;
+  }>({
+    queryKey: ["admin", "webhook-status"],
+    queryFn: async () => {
+      const res = await fetch(api.admin.webhookStatus.get.path, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch webhook status");
+      return res.json();
+    },
+  });
+
+  // secretConfigured accounts for both the env-var and DB-stored secret, matching
+  // the resolution logic in the webhook handler — so the banner only fires when
+  // neither source is present and billing events would actually be dropped.
+  const showWebhookAlert =
+    webhookStatus !== undefined &&
+    !webhookStatus.secretConfigured &&
+    !webhookAlertDismissed;
+
   const expiryFailureCount = expiryFailures?.count ?? 0;
   const showExpiryAlert = expiryFailureCount > 0 && !expiryAlertDismissed;
 
@@ -79,6 +105,37 @@ export default function AdminDashboard() {
           Overview of your network's performance and activity.
         </p>
       </header>
+
+      {showWebhookAlert && (
+        <div
+          className="mb-6 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"
+          data-testid="banner-webhook-secret-missing"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+          <Link
+            href="/admin/settings"
+            className="flex flex-1 items-center gap-1 text-sm font-medium text-amber-800 hover:text-amber-900"
+            data-testid="link-webhook-secret-missing"
+          >
+            <span>
+              Stripe webhook secret is not configured — billing events (payments,
+              failures, cancellations) will be silently dropped. Configure it in
+              Settings.
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-amber-600 hover:bg-amber-100 hover:text-amber-800"
+            onClick={() => setWebhookAlertDismissed(true)}
+            data-testid="button-dismiss-webhook-secret-missing"
+            aria-label="Dismiss webhook warning"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {showExpiryAlert && (
         <div

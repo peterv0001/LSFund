@@ -4056,10 +4056,14 @@ export async function registerRoutes(
     try {
       const saved = await storage.getAllPlatformSettings();
       const secretStored = !!saved.stripe_webhook_secret;
+      // Mirror the resolution logic in webhookHandlers.ts: env var takes priority,
+      // then the DB-stored value. Only this combined boolean is sent to the client —
+      // neither the env var nor the stored secret value is ever exposed.
+      const secretConfigured = !!process.env.STRIPE_WEBHOOK_SECRET || secretStored;
       const endpointId = saved.stripe_webhook_endpoint_id as string | null ?? null;
 
       if (!endpointId) {
-        return res.json({ secretStored, endpointId: null, endpointUrl: null, endpointActive: null });
+        return res.json({ secretStored, secretConfigured, endpointId: null, endpointUrl: null, endpointActive: null });
       }
 
       try {
@@ -4067,12 +4071,13 @@ export async function registerRoutes(
         const ep = await stripe.webhookEndpoints.retrieve(endpointId);
         return res.json({
           secretStored,
+          secretConfigured,
           endpointId,
           endpointUrl: ep.url,
           endpointActive: ep.status === 'enabled',
         });
       } catch {
-        return res.json({ secretStored, endpointId, endpointUrl: null, endpointActive: false });
+        return res.json({ secretStored, secretConfigured, endpointId, endpointUrl: null, endpointActive: false });
       }
     } catch (err) {
       res.status(500).json({ message: "Failed to retrieve webhook status" });
