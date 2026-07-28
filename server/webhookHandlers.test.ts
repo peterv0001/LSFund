@@ -999,6 +999,67 @@ describe('WebhookHandlers.handleInvoicePaid – fires commission payouts', () =>
       })
     );
   });
+
+  it('does not add the MCA pairing bonus to L1 or L2 upline overrides on a paired deal', async () => {
+    const stripeSubId = 'sub_commission_paired_two_upline_test';
+    // Paired, month-0 subscription ($100, tier_1).
+    //   Direct agent:  pool 0.25 + pairing bonus 0.05 = 0.30 × decay 1.00 × $100 = $30.00
+    //   L1 override:   pool 0.25 × l1Rate 0.10 × decay 1.00 × $100 = $2.50  (no +0.05)
+    //   L2 override:   pool 0.25 × l2Rate 0.05 × decay 1.00 × $100 = $1.25  (no +0.05)
+    const fakeSubscription = {
+      id: 207,
+      stripeSubscriptionId: stripeSubId,
+      agentId: 5,
+      tier: 'tier_1',
+      monthlyAmount: '100.00',
+      merchantName: 'Test Merchant',
+      startDate: new Date(),
+      mcaPairedDealId: 42,
+    };
+
+    vi.mocked(db.select).mockReturnValueOnce(mockDbSelectResult([fakeSubscription]));
+    vi.mocked(storage.getUpline).mockResolvedValueOnce([{ id: 7 } as any, { id: 8 } as any]);
+
+    await WebhookHandlers.handleInvoicePaid(stripeSubId, invoiceData);
+
+    // One direct commission + two upline overrides.
+    expect(storage.createCommission).toHaveBeenCalledTimes(3);
+
+    // Direct agent earns the pairing bonus.
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 5,
+        subscriptionId: 207,
+        type: 'subscription_commission',
+        amount: '30.00',
+        status: 'pending',
+      })
+    );
+
+    // L1 override uses only the base pool rate – no pairing bonus.
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 7,
+        subscriptionId: 207,
+        type: 'subscription_residual',
+        amount: '2.50',
+        sourceAgentId: 5,
+        status: 'pending',
+      })
+    );
+
+    // L2 override uses only the base pool rate – no pairing bonus.
+    expect(storage.createCommission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 8,
+        subscriptionId: 207,
+        type: 'subscription_residual',
+        amount: '1.25',
+        sourceAgentId: 5,
+        status: 'pending',
+      })
+    );
+  });
 });
 
 // ── Unit – handleInvoicePaid applies the subscription decay schedule ───────
