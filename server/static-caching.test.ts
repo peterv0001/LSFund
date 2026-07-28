@@ -114,6 +114,7 @@ beforeAll(async () => {
       `<meta property="og:url" content="${homeUrl}" />` +
       `<meta name="twitter:title" content="${homeTitle}" />` +
       `<meta name="twitter:description" content="${homeDesc}" />` +
+      `<link rel="canonical" href="${homeUrl}" />` +
       `</head>` +
       `<body><div id="root"></div>` +
       `<!-- ${"filler ".repeat(300)} -->` +
@@ -616,6 +617,7 @@ describe("public route SEO meta isolation", () => {
   const homeOgUrlTag = `property="og:url" content="https://leadershieldfunding.com/"`;
   const homeTwitterTitleTag = `name="twitter:title" content="${homeTitleEscaped}"`;
   const homeTwitterDescTag = `name="twitter:description" content="${homeDescEscaped}"`;
+  const homeCanonicalTag = `rel="canonical" href="https://leadershieldfunding.com/"`;
 
   it("has a representative sample path for every PUBLIC_ROUTE_META entry", () => {
     // Every meta entry must be exercised by at least one sample so this guard
@@ -668,6 +670,11 @@ describe("public route SEO meta isolation", () => {
       expect(res.text).toContain(
         `name="twitter:description" content="${descEscaped}"`,
       );
+      // Canonical must point to the clean pathname (no query params) so that
+      // referral/tracking parameters don't fragment link equity.
+      expect(res.text).toContain(
+        `rel="canonical" href="${urlEscaped}"`,
+      );
 
       if (samplePath !== "/") {
         // The core bug: when the catch-all read req.path (always "/" under the
@@ -680,6 +687,7 @@ describe("public route SEO meta isolation", () => {
         expect(res.text).not.toContain(homeOgUrlTag);
         expect(res.text).not.toContain(homeTwitterTitleTag);
         expect(res.text).not.toContain(homeTwitterDescTag);
+        expect(res.text).not.toContain(homeCanonicalTag);
       }
     });
   }

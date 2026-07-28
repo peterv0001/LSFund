@@ -382,6 +382,10 @@ function injectMeta(html: string, meta: RouteMeta, requestPath: string): string 
     /(<meta\s+name="twitter:description"\s+content=")[^"]*(")/,
     `$1${description}$2`,
   );
+  result = result.replace(
+    /(<link\s+rel="canonical"\s+href=")[^"]*(")/,
+    `$1${url}$2`,
+  );
 
   return result;
 }
