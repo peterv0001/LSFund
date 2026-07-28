@@ -62,6 +62,87 @@ export type DuplicatePlacement = {
   agentIds: number[];
 };
 
+/** A group of duplicate deal-based commission rows sharing the same (agent_id, deal_id, type). */
+export type DuplicateDealCommission = {
+  agentId: number;
+  dealId: number;
+  type: string;
+  /** All commission IDs in the group, ordered ascending (first = canonical row to keep). */
+  commissionIds: number[];
+};
+
+/**
+ * Finds groups of deal-based commission rows that share the same
+ * (agent_id, deal_id, type) — i.e. duplicates that would violate the
+ * `commissions_deal_type_idx` unique index. Only rows where deal_id IS NOT
+ * NULL are considered; subscription/bonus commissions are untouched.
+ * The commission IDs within each group are ordered ascending so [0] is the
+ * canonical (earliest) row to keep.
+ */
+export async function findDuplicateDealCommissions(
+  client: PoolClient
+): Promise<DuplicateDealCommission[]> {
+  const result = await client.query<{
+    agent_id: number;
+    deal_id: number;
+    type: string;
+    commission_ids: number[];
+  }>(`
+    SELECT agent_id, deal_id, type, array_agg(id ORDER BY id) AS commission_ids
+    FROM commissions
+    WHERE deal_id IS NOT NULL
+    GROUP BY agent_id, deal_id, type
+    HAVING COUNT(*) > 1
+    ORDER BY deal_id, agent_id, type
+  `);
+  return result.rows.map((r) => ({
+    agentId: r.agent_id,
+    dealId: r.deal_id,
+    type: r.type,
+    commissionIds: r.commission_ids,
+  }));
+}
+
+/**
+ * Removes duplicate deal-based commission rows, keeping the earliest row
+ * (lowest id) per (agent_id, deal_id, type) as the canonical record.
+ *
+ * Before deleting a duplicate row the function re-points any holdback that
+ * references it (`holdbacks.commission_id`) to the canonical row, so no
+ * holdback is left dangling after the cleanup.
+ *
+ * Returns a summary of what was done.
+ */
+export async function cleanupDuplicateDealCommissions(
+  client: PoolClient,
+  duplicates: DuplicateDealCommission[]
+): Promise<{ groupsFixed: number; rowsRemoved: number }> {
+  let rowsRemoved = 0;
+
+  for (const group of duplicates) {
+    const [keepId, ...removeIds] = group.commissionIds;
+
+    // Re-point any holdbacks that reference one of the duplicate rows.
+    if (removeIds.length > 0) {
+      await client.query(
+        `UPDATE holdbacks
+         SET commission_id = $1
+         WHERE commission_id = ANY($2::int[])`,
+        [keepId, removeIds]
+      );
+
+      // Delete the duplicate commission rows.
+      const del = await client.query(
+        `DELETE FROM commissions WHERE id = ANY($1::int[])`,
+        [removeIds]
+      );
+      rowsRemoved += del.rowCount ?? 0;
+    }
+  }
+
+  return { groupsFixed: duplicates.length, rowsRemoved };
+}
+
 /**
  * Finds binary-tree placement slots that are occupied by more than one agent
  * — i.e. duplicate (placement_id, leg) pairs. These are the rows that would
@@ -739,6 +820,69 @@ export const migrations: Migration[] = [
       // The removed key carried no behavior (the code ignores it), so there is
       // nothing meaningful to restore.
       console.log("[migrations] 024 down is a no-op (stale preference key not restored)");
+    },
+  },
+  {
+    name: "025_cleanup_duplicate_deal_commissions",
+    async run(client) {
+      // Find all (agent_id, deal_id, type) groups that have more than one
+      // commission row. These were created before migration 015 added the
+      // unique index and could otherwise inflate agent earnings and payouts.
+      const duplicates = await findDuplicateDealCommissions(client);
+
+      if (duplicates.length === 0) {
+        console.log(
+          "[migrations] 025: No duplicate deal commissions found — nothing to clean up"
+        );
+        // Ensure the unique index exists even if migration 015 was somehow
+        // skipped or rolled back on this database.
+        await client.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS commissions_deal_type_idx
+          ON commissions (agent_id, deal_id, type)
+          WHERE deal_id IS NOT NULL
+        `);
+        return;
+      }
+
+      // Log a human-readable preview of what will be removed.
+      const totalDupes = duplicates.reduce(
+        (sum, g) => sum + g.commissionIds.length - 1,
+        0
+      );
+      console.log(
+        `[migrations] 025: Found ${duplicates.length} duplicate group(s) ` +
+          `(${totalDupes} extra row(s)) — cleaning up…`
+      );
+      for (const g of duplicates) {
+        const [keepId, ...removeIds] = g.commissionIds;
+        console.log(
+          `  • agent #${g.agentId}, deal #${g.dealId}, type ${g.type}: ` +
+            `keeping commission #${keepId}, removing ${removeIds.map((id) => `#${id}`).join(", ")}`
+        );
+      }
+
+      const { groupsFixed, rowsRemoved } =
+        await cleanupDuplicateDealCommissions(client, duplicates);
+
+      console.log(
+        `[migrations] 025: Removed ${rowsRemoved} duplicate commission row(s) ` +
+          `across ${groupsFixed} group(s). Holdbacks re-pointed to canonical rows.`
+      );
+
+      // Re-create the unique index now that duplicates are gone (idempotent).
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS commissions_deal_type_idx
+        ON commissions (agent_id, deal_id, type)
+        WHERE deal_id IS NOT NULL
+      `);
+    },
+    async down(client) {
+      // The deleted rows cannot be restored; the down migration is intentionally
+      // a no-op. To re-introduce the removed commissions, replay the original
+      // commission waterfall for the affected deals.
+      console.log(
+        "[migrations] 025 down is a no-op (removed duplicate commissions cannot be restored)"
+      );
     },
   },
 ];
