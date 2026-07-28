@@ -89,7 +89,7 @@ type Subscription = {
   pausedByName: string | null;
   cancelledById: number | null;
   cancelledByName: string | null;
-  billingStatus: "pending" | "active" | "past_due" | "failed" | "cancelled" | null;
+  billingStatus: "pending" | "active" | "past_due" | "failed" | "cancelled" | "no_price_id" | null;
   stripeSubscriptionId: string | null;
   cardLast4: string | null;
   cardBrand: string | null;
@@ -1059,6 +1059,16 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
             </Button>
           )}
         </div>
+      ) : sub.billingStatus === "no_price_id" ? (
+        <div
+          className="flex items-center gap-2 mt-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700"
+          data-testid={`banner-billing-not-started-${sub.id}`}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span className="flex-1">
+            <strong>Billing not started.</strong> A configuration issue prevented automatic billing for this subscription. An admin has been notified and will resolve it.
+          </span>
+        </div>
       ) : null}
 
       <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -1072,11 +1082,15 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
                 ? "border-red-300 text-red-700 bg-red-50"
                 : sub.billingStatus === "pending"
                 ? "border-yellow-300 text-yellow-700 bg-yellow-50"
+                : sub.billingStatus === "no_price_id"
+                ? "border-orange-300 text-orange-700 bg-orange-50"
                 : "border-gray-300 text-gray-600"
             }`}
             data-testid={`badge-billing-status-${sub.id}`}
           >
-            Billing: {sub.billingStatus === "past_due" ? "Past Due" : sub.billingStatus.charAt(0).toUpperCase() + sub.billingStatus.slice(1)}
+            {sub.billingStatus === "no_price_id"
+              ? "⚠ Billing not started"
+              : `Billing: ${sub.billingStatus === "past_due" ? "Past Due" : sub.billingStatus.charAt(0).toUpperCase() + sub.billingStatus.slice(1)}`}
           </Badge>
         )}
         {sub.cardLast4 && (

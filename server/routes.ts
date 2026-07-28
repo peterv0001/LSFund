@@ -2641,6 +2641,14 @@ export async function registerRoutes(
               metadata: { subscriptionId: sub.id.toString(), agentId: agentId.toString() },
               expand: ['latest_invoice.payment_intent'],
             });
+          } else {
+            // No Stripe price ID configured for this tier — billing was NOT started.
+            // Log a warning so the money-leak is surfaced to admins immediately.
+            console.warn(
+              `[Billing] No Stripe price ID configured for tier "${input.tier}". ` +
+              `Subscription #${sub.id} (merchant: "${input.merchantName}") was created ` +
+              `but stripe.subscriptions.create was skipped — no money will be collected.`
+            );
           }
 
           // Get card details from PaymentMethod
@@ -2650,29 +2658,65 @@ export async function registerRoutes(
             cardBrand = pm.card.brand;
           }
 
+          // Use 'no_price_id' billing status when the Stripe price is missing so
+          // the subscription is clearly distinguishable from a normal pending one.
+          const billingStatusToSet = stripePriceId ? 'pending' : 'no_price_id';
+
           // Update subscription with Stripe data
           await storage.updateSubscriptionBilling(sub.id, {
             stripeCustomerId: customer.id,
             stripeSubscriptionId: stripeSubscription?.id ?? null,
             stripePaymentMethodId: input.paymentMethodId,
-            billingStatus: 'pending',
+            billingStatus: billingStatusToSet,
             cardLast4,
             cardBrand,
           });
 
           const updatedSub = await storage.getSubscription(sub.id);
 
-          storage.logActivity({
-            actorId: agentId,
-            actorType: 'agent',
-            action: 'create',
-            entityType: 'subscription',
-            entityId: sub.id,
-            description: `Logged new ${input.tier} subscription for merchant "${input.merchantName}" ($${monthlyAmount}/mo) with Stripe billing`,
-            details: { merchantName: input.merchantName, tier: input.tier, monthlyAmount, mcaPairedDealId: verifiedPairedDealId ?? null },
-            ipAddress: req.ip ?? null,
-            userAgent: req.headers['user-agent'] ?? null,
-          }).catch((err) => console.error('[ActivityLog] Failed to log subscription creation:', err));
+          if (!stripePriceId) {
+            // Activity log entry visible to admins in the audit trail
+            storage.logActivity({
+              actorId: agentId,
+              actorType: 'agent',
+              action: 'create',
+              entityType: 'subscription',
+              entityId: sub.id,
+              description: `⚠️ Billing NOT started for ${input.tier} subscription #${sub.id} (merchant: "${input.merchantName}", $${monthlyAmount}/mo) — no Stripe price ID is configured for this tier. Admins must configure STRIPE_PRICE_${input.tier.toUpperCase()} and re-bill manually.`,
+              details: { merchantName: input.merchantName, tier: input.tier, monthlyAmount, billingSkipped: true, reason: 'missing_stripe_price_id', mcaPairedDealId: verifiedPairedDealId ?? null },
+              ipAddress: req.ip ?? null,
+              userAgent: req.headers['user-agent'] ?? null,
+            }).catch((err) => console.error('[ActivityLog] Failed to log billing-skipped warning:', err));
+
+            // Notify all admin users so they can act immediately
+            pool.query(`SELECT id FROM agents WHERE is_admin = true`)
+              .then(({ rows: adminRows }) => {
+                const notifPromises = adminRows.map((row: { id: number }) =>
+                  storage.createNotification({
+                    agentId: row.id,
+                    type: 'system',
+                    title: '⚠️ Billing not started — missing Stripe price ID',
+                    message: `Subscription #${sub.id} for merchant "${input.merchantName}" (${input.tier}, $${monthlyAmount}/mo) was logged but billing was never started because no Stripe price ID is configured for tier "${input.tier}". Please set STRIPE_PRICE_${input.tier.toUpperCase()} and re-bill this customer.`,
+                    isRead: false,
+                    emailSent: false,
+                  }).catch((err: any) => console.error('[Notification] Failed to notify admin:', err))
+                );
+                return Promise.all(notifPromises);
+              })
+              .catch((err: any) => console.error('[Notification] Failed to fetch admins for billing-skipped alert:', err));
+          } else {
+            storage.logActivity({
+              actorId: agentId,
+              actorType: 'agent',
+              action: 'create',
+              entityType: 'subscription',
+              entityId: sub.id,
+              description: `Logged new ${input.tier} subscription for merchant "${input.merchantName}" ($${monthlyAmount}/mo) with Stripe billing`,
+              details: { merchantName: input.merchantName, tier: input.tier, monthlyAmount, mcaPairedDealId: verifiedPairedDealId ?? null },
+              ipAddress: req.ip ?? null,
+              userAgent: req.headers['user-agent'] ?? null,
+            }).catch((err) => console.error('[ActivityLog] Failed to log subscription creation:', err));
+          }
 
           return res.status(201).json(updatedSub ?? sub);
         } catch (stripeErr: any) {

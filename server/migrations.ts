@@ -885,6 +885,27 @@ export const migrations: Migration[] = [
       );
     },
   },
+  {
+    name: "026_add_no_price_id_billing_status",
+    async run(client) {
+      // Add the 'no_price_id' value to the billing status enum so subscriptions
+      // that were processed without a configured Stripe price ID can be flagged
+      // distinctly instead of appearing as normal pending/active subscriptions.
+      await client.query(`
+        ALTER TYPE subscription_billing_status ADD VALUE IF NOT EXISTS 'no_price_id'
+      `);
+      console.log(
+        "[migrations] 026: Added 'no_price_id' to subscription_billing_status enum"
+      );
+    },
+    async down() {
+      // PostgreSQL does not support removing enum values; this down migration is
+      // intentionally a no-op. The value is harmless if left in the type.
+      console.log(
+        "[migrations] 026 down is a no-op (enum values cannot be removed from PostgreSQL)"
+      );
+    },
+  },
 ];
 
 export async function runMigrations(options?: {

@@ -97,7 +97,13 @@ type Subscription = {
   cancelledBy: Agent | null;
   reactivatedBy: Agent | null;
   billingStatus:
-    "pending" | "active" | "past_due" | "failed" | "cancelled" | null;
+    | "pending"
+    | "active"
+    | "past_due"
+    | "failed"
+    | "cancelled"
+    | "no_price_id"
+    | null;
   stripeSubscriptionId: string | null;
   cardLast4: string | null;
   cardBrand: string | null;
@@ -2273,14 +2279,23 @@ export default function AdminSubscriptions() {
                                     ? "bg-red-100 text-red-700"
                                     : sub.billingStatus === "pending"
                                       ? "bg-yellow-100 text-yellow-700"
-                                      : "bg-gray-100 text-gray-500"
+                                      : sub.billingStatus === "no_price_id"
+                                        ? "bg-orange-100 text-orange-700 border border-orange-300"
+                                        : "bg-gray-100 text-gray-500"
                               }`}
                               data-testid={`badge-billing-status-${sub.id}`}
+                              title={
+                                sub.billingStatus === "no_price_id"
+                                  ? "Billing was never started — no Stripe price ID is configured for this tier. Set the env var and re-bill manually."
+                                  : undefined
+                              }
                             >
                               {sub.billingStatus === "past_due"
                                 ? "Past Due"
-                                : sub.billingStatus.charAt(0).toUpperCase() +
-                                  sub.billingStatus.slice(1)}
+                                : sub.billingStatus === "no_price_id"
+                                  ? "⚠ Not Billing"
+                                  : sub.billingStatus.charAt(0).toUpperCase() +
+                                    sub.billingStatus.slice(1)}
                             </Badge>
                           ) : (
                             <span className="text-gray-300 text-xs">—</span>

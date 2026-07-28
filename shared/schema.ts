@@ -21,7 +21,7 @@ export const leadRequestStatusEnum = pgEnum("lead_request_status", ['pending', '
 
 export const subscriptionTierEnum = pgEnum("subscription_tier", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ['active', 'paused', 'cancelled', 'expired']);
-export const subscriptionBillingStatusEnum = pgEnum("subscription_billing_status", ['pending', 'active', 'past_due', 'failed', 'cancelled']);
+export const subscriptionBillingStatusEnum = pgEnum("subscription_billing_status", ['pending', 'active', 'past_due', 'failed', 'cancelled', 'no_price_id']);
 export const holdbackStatusEnum = pgEnum("holdback_status", ['held', 'partially_released', 'released', 'clawed_back']);
 export const fulfillmentTierLevelEnum = pgEnum("fulfillment_tier_level", ['tier_1', 'tier_2', 'tier_3', 'tier_4']);
 export const invitationStatusEnum = pgEnum("invitation_status", ['pending', 'accepted', 'cancelled', 'expired']);

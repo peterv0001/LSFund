@@ -1830,7 +1830,7 @@ export class DatabaseStorage {
     stripeCustomerId?: string | null;
     stripeSubscriptionId?: string | null;
     stripePaymentMethodId?: string | null;
-    billingStatus?: 'pending' | 'active' | 'past_due' | 'failed' | 'cancelled';
+    billingStatus?: 'pending' | 'active' | 'past_due' | 'failed' | 'cancelled' | 'no_price_id';
     cardLast4?: string | null;
     cardBrand?: string | null;
     lastChargedAt?: Date | null;
