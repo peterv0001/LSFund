@@ -180,3 +180,56 @@ describe("Settings notifications: unsaved changes indicator", () => {
     document.body.removeChild(link);
   });
 });
+
+describe("Settings notifications: 'Payment Retry Pending' toggle", () => {
+  it("renders the toggle", async () => {
+    authState.user = baseUser({});
+    renderSettings();
+    await openNotificationsTab();
+
+    expect(
+      screen.getByTestId("toggle-email-on-payment-retry-pending"),
+    ).toBeTruthy();
+  });
+
+  it("renders the toggle as off when emailOnPaymentRetryPending is stored false", async () => {
+    authState.user = baseUser({ emailOnPaymentRetryPending: false });
+    renderSettings();
+    await openNotificationsTab();
+
+    const toggle = screen.getByTestId("toggle-email-on-payment-retry-pending");
+    expect(toggle.getAttribute("data-state")).toBe("unchecked");
+  });
+
+  it("includes emailOnPaymentRetryPending in the saved payload after toggling", async () => {
+    authState.user = baseUser({ emailOnPaymentRetryPending: true });
+    const user = userEvent.setup();
+
+    let capturedBody: Record<string, unknown> | null = null;
+    vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+      capturedBody = JSON.parse((init?.body as string) ?? "{}");
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    renderSettings();
+    await openNotificationsTab();
+
+    // Toggle off (triggers confirmation dialog)
+    await user.click(
+      screen.getByTestId("toggle-email-on-payment-retry-pending"),
+    );
+    await user.click(screen.getByTestId("dialog-confirm-disable"));
+
+    // Save
+    await user.click(screen.getByTestId("button-save-notification-prefs"));
+
+    if (capturedBody === null) throw new Error("fetch was never called");
+    const body = capturedBody as Record<string, unknown>;
+    expect(
+      Object.prototype.hasOwnProperty.call(body, "emailOnPaymentRetryPending"),
+    ).toBe(true);
+    expect(body.emailOnPaymentRetryPending).toBe(false);
+
+    vi.restoreAllMocks();
+  });
+});
