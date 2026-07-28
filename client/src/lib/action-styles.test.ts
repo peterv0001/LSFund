@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getActionStyle, ACTION_STYLES, FALLBACK_STYLE } from "./action-styles";
+import { getActionStyle, ACTION_STYLES, FALLBACK_STYLE, getActorBadge, ACTOR_BADGE_STYLES } from "./action-styles";
 
 describe("getActionStyle", () => {
   describe("expire events", () => {
@@ -128,5 +128,75 @@ describe("getActionStyle", () => {
         expect(style.dot).not.toBe(FALLBACK_STYLE.dot);
       }
     );
+  });
+});
+
+describe("getActorBadge", () => {
+  describe("admin badge", () => {
+    it("returns the admin badge for actorType 'admin'", () => {
+      const badge = getActorBadge("admin");
+      expect(badge).toEqual(ACTOR_BADGE_STYLES.admin);
+    });
+
+    it("returns purple className for admin", () => {
+      const badge = getActorBadge("admin");
+      expect(badge?.className).toContain("purple");
+    });
+
+    it("returns 'Admin' label for admin", () => {
+      const badge = getActorBadge("admin");
+      expect(badge?.label).toBe("Admin");
+    });
+  });
+
+  describe("agent badge", () => {
+    it("returns the agent badge for actorType 'agent'", () => {
+      const badge = getActorBadge("agent");
+      expect(badge).toEqual(ACTOR_BADGE_STYLES.agent);
+    });
+
+    it("returns blue className for agent", () => {
+      const badge = getActorBadge("agent");
+      expect(badge?.className).toContain("blue");
+    });
+
+    it("returns 'Agent' label for agent", () => {
+      const badge = getActorBadge("agent");
+      expect(badge?.label).toBe("Agent");
+    });
+  });
+
+  describe("null / undefined inputs", () => {
+    it("returns null for null actorType", () => {
+      expect(getActorBadge(null)).toBeNull();
+    });
+
+    it("returns null for undefined actorType", () => {
+      expect(getActorBadge(undefined)).toBeNull();
+    });
+  });
+
+  describe("unrecognized actorType", () => {
+    it("returns null for an unrecognized actorType", () => {
+      expect(getActorBadge("superuser")).toBeNull();
+    });
+
+    it("returns null for an empty string actorType", () => {
+      expect(getActorBadge("")).toBeNull();
+    });
+  });
+
+  describe("admin vs agent are distinct", () => {
+    it("admin and agent badges have different classNames", () => {
+      expect(ACTOR_BADGE_STYLES.admin.className).not.toBe(
+        ACTOR_BADGE_STYLES.agent.className
+      );
+    });
+
+    it("admin and agent badges have different labels", () => {
+      expect(ACTOR_BADGE_STYLES.admin.label).not.toBe(
+        ACTOR_BADGE_STYLES.agent.label
+      );
+    });
   });
 });
