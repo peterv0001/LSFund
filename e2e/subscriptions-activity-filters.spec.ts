@@ -307,3 +307,103 @@ test.describe("All Activity timeline — filter dropdowns narrow results", () =>
     expect(countAfter).toBe(countBefore);
   });
 });
+
+test.describe("All Activity timeline — search box narrows results", () => {
+  let subAId: number;
+  let subBId: number;
+
+  test.beforeEach(async ({ page }) => {
+    await setupAgent(page);
+    subAId = await createSubscription(page, MERCHANT_A);
+    subBId = await createSubscription(page, MERCHANT_B);
+    await pauseSubscription(page, subBId);
+  });
+
+  test("typing a merchant name into the search box shows only matching entries", async ({
+    page,
+  }) => {
+    await openActivityTab(page);
+
+    const timeline = page.getByTestId("all-activity-timeline");
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+
+    // Both merchants visible before searching.
+    await expect(timeline.getByText(MERCHANT_A).first()).toBeVisible();
+    await expect(timeline.getByText(MERCHANT_B).first()).toBeVisible();
+    const countBefore = await entries(page).count();
+
+    // Type merchant A's name into the search box.
+    await page.getByTestId("input-activity-search").fill(MERCHANT_A);
+
+    // Wait for the 300 ms debounce + network round-trip.
+    await page.waitForTimeout(500);
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+
+    // Merchant A entries visible; merchant B entries gone.
+    await expect(timeline.getByText(MERCHANT_A).first()).toBeVisible();
+    await expect(timeline.getByText(MERCHANT_B)).toHaveCount(0);
+
+    // Narrowed set is smaller than (or equal to) the full set but non-empty.
+    const countAfter = await entries(page).count();
+    expect(countAfter).toBeLessThanOrEqual(countBefore);
+    expect(countAfter).toBeGreaterThan(0);
+  });
+
+  test("a search term that matches nothing shows the empty-state message", async ({
+    page,
+  }) => {
+    await openActivityTab(page);
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+
+    // Type a term guaranteed to match no activity entries.
+    await page.getByTestId("input-activity-search").fill(`__no_match_${TS}__`);
+
+    // Wait for debounce + fetch.
+    await page.waitForTimeout(500);
+
+    await expect(page.getByTestId("all-activity-empty")).toBeVisible({
+      timeout: 8000,
+    });
+    await expect(page.getByTestId("all-activity-timeline")).toHaveCount(0);
+  });
+
+  test("Clear filters button resets the search box and restores the full list", async ({
+    page,
+  }) => {
+    await openActivityTab(page);
+
+    const timeline = page.getByTestId("all-activity-timeline");
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+    const countBefore = await entries(page).count();
+
+    // No Clear button until a filter is active.
+    await expect(
+      page.getByTestId("button-clear-activity-filters")
+    ).toHaveCount(0);
+
+    // Type into the search box to narrow results.
+    await page.getByTestId("input-activity-search").fill(MERCHANT_A);
+    await page.waitForTimeout(500);
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+    const countFiltered = await entries(page).count();
+    expect(countFiltered).toBeLessThanOrEqual(countBefore);
+
+    // Clear filters button appears.
+    const clearBtn = page.getByTestId("button-clear-activity-filters");
+    await expect(clearBtn).toBeVisible();
+    await clearBtn.click();
+
+    // Search box is cleared.
+    await expect(page.getByTestId("input-activity-search")).toHaveValue("");
+
+    // Clear button disappears once no filters are active.
+    await expect(clearBtn).toHaveCount(0);
+
+    // Full list is restored: both merchants visible and count matches original.
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+    await expect(timeline.getByText(MERCHANT_A).first()).toBeVisible();
+    await expect(timeline.getByText(MERCHANT_B).first()).toBeVisible();
+    const countAfter = await entries(page).count();
+    expect(countAfter).toBe(countBefore);
+  });
+});
