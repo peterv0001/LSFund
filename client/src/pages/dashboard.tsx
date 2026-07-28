@@ -119,6 +119,7 @@ function ViewsSparkline({ data, testId }: { data: number[]; testId: string }) {
 }
 
 const DISMISSED_EXPIRING_SOON_KEY = "dismissed-expiring-soon-subscriptions";
+const DISMISSED_EXPIRED_KEY = "dismissed-expired-subscriptions";
 
 const TIER_LABELS: Record<string, string> = { standard: "Standard", enhanced: "Enhanced", elite: "Elite" };
 const MEMBERSHIP_LABELS: Record<string, string> = { individual: "Individual", small_agency: "Small Agency", growth_agency: "Growth Agency", enterprise_agency: "Enterprise Agency" };
@@ -242,7 +243,8 @@ export default function Dashboard() {
     }
   };
 
-  const expiredSubscriptionCount = subscriptions.filter((s) => s.status === "expired").length;
+  const expiredSubscriptions = subscriptions.filter((s) => s.status === "expired");
+  const expiredSubscriptionCount = expiredSubscriptions.length;
 
   const now = new Date();
   const endOfDayInSevenDays = new Date(now);
@@ -283,6 +285,40 @@ export default function Dashboard() {
     setDismissedExpiringSoonIds(expiringSoonIds);
     try {
       localStorage.setItem(DISMISSED_EXPIRING_SOON_KEY, JSON.stringify(expiringSoonIds));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const expiredIds = expiredSubscriptions.map((s) => s.id);
+
+  const [dismissedExpiredIds, setDismissedExpiredIds] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(DISMISSED_EXPIRED_KEY);
+      return stored ? (JSON.parse(stored) as number[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const stillExpired = dismissedExpiredIds.filter((id) => expiredIds.includes(id));
+    if (stillExpired.length !== dismissedExpiredIds.length) {
+      setDismissedExpiredIds(stillExpired);
+      try {
+        localStorage.setItem(DISMISSED_EXPIRED_KEY, JSON.stringify(stillExpired));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [expiredIds.join(","), dismissedExpiredIds]);
+
+  const hasNewExpired = expiredIds.some((id) => !dismissedExpiredIds.includes(id));
+
+  const dismissExpiredBanner = () => {
+    setDismissedExpiredIds(expiredIds);
+    try {
+      localStorage.setItem(DISMISSED_EXPIRED_KEY, JSON.stringify(expiredIds));
     } catch {
       // ignore storage errors
     }
@@ -533,13 +569,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {expiredSubscriptionCount > 0 && (
+        {expiredSubscriptionCount > 0 && hasNewExpired && (
           <div
             className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-md p-3 mb-4"
             data-testid="banner-expired-subscriptions-dashboard"
           >
             <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-red-700">
+            <p className="text-xs text-red-700 flex-1">
               <span className="font-semibold">
                 {expiredSubscriptionCount === 1
                   ? "1 subscription has expired"
@@ -550,6 +586,15 @@ export default function Dashboard() {
                 View subscriptions
               </Link>
             </p>
+            <button
+              type="button"
+              onClick={dismissExpiredBanner}
+              className="text-red-400 hover:text-red-600 flex-shrink-0"
+              aria-label="Dismiss expired subscriptions warning"
+              data-testid="button-dismiss-expired-subscriptions"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
