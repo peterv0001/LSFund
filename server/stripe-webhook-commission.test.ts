@@ -206,6 +206,136 @@ describe("POST /api/webhooks/stripe – invoice.paid fires subscription commissi
     await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
   });
 
+  // ── Decay window tests ────────────────────────────────────────────────────
+  // Each test backdates the subscription's startDate so it falls inside a
+  // specific decay bracket, posts a synthetic invoice.paid, and asserts the
+  // resulting commission amount matches poolRate × decayRate × monthlyAmount.
+
+  it("applies 0.75 decay (months4to6) for a subscription ~5 months old", async () => {
+    const fiveMonthsAgo = new Date(Date.now() - 5 * 30.44 * 24 * 60 * 60 * 1000);
+    const subId = `sub_decay_4to6_${Date.now()}`;
+    const sub = await insertStripeSubscription({
+      startDate: fiveMonthsAgo,
+      stripeSubscriptionId: subId,
+    });
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(testApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_test_decay_4to6" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    const agentCommission = commissions.find((c) => c.agentId === testAgentId);
+    expect(agentCommission).toBeDefined();
+    expect(agentCommission!.type).toBe("subscription_commission");
+    // tier_1: poolRate 0.25 × decay 0.75 (months4to6) × $149 = $27.94
+    expect(Number(agentCommission!.amount)).toBeCloseTo(27.9375, 2);
+
+    await db.delete(schema.commissions).where(eq(schema.commissions.subscriptionId, sub.id));
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("applies 0.50 decay (months7to9) for a subscription ~8 months old", async () => {
+    const eightMonthsAgo = new Date(Date.now() - 8 * 30.44 * 24 * 60 * 60 * 1000);
+    const subId = `sub_decay_7to9_${Date.now()}`;
+    const sub = await insertStripeSubscription({
+      startDate: eightMonthsAgo,
+      stripeSubscriptionId: subId,
+    });
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(testApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_test_decay_7to9" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    const agentCommission = commissions.find((c) => c.agentId === testAgentId);
+    expect(agentCommission).toBeDefined();
+    expect(agentCommission!.type).toBe("subscription_commission");
+    // tier_1: poolRate 0.25 × decay 0.50 (months7to9) × $149 = $18.625
+    expect(Number(agentCommission!.amount)).toBeCloseTo(18.625, 2);
+
+    await db.delete(schema.commissions).where(eq(schema.commissions.subscriptionId, sub.id));
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("applies 0.25 decay (months10to12) for a subscription ~11 months old", async () => {
+    const elevenMonthsAgo = new Date(Date.now() - 11 * 30.44 * 24 * 60 * 60 * 1000);
+    const subId = `sub_decay_10to12_${Date.now()}`;
+    const sub = await insertStripeSubscription({
+      startDate: elevenMonthsAgo,
+      stripeSubscriptionId: subId,
+    });
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(testApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_test_decay_10to12" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    const agentCommission = commissions.find((c) => c.agentId === testAgentId);
+    expect(agentCommission).toBeDefined();
+    expect(agentCommission!.type).toBe("subscription_commission");
+    // tier_1: poolRate 0.25 × decay 0.25 (months10to12) × $149 = $9.3125
+    expect(Number(agentCommission!.amount)).toBeCloseTo(9.3125, 2);
+
+    await db.delete(schema.commissions).where(eq(schema.commissions.subscriptionId, sub.id));
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
+  it("applies 0.10 decay (postMonth12) and sets type to subscription_residual for a subscription ~13 months old", async () => {
+    const thirteenMonthsAgo = new Date(Date.now() - 13 * 30.44 * 24 * 60 * 60 * 1000);
+    const subId = `sub_decay_post12_${Date.now()}`;
+    const sub = await insertStripeSubscription({
+      startDate: thirteenMonthsAgo,
+      stripeSubscriptionId: subId,
+    });
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(testApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_test_decay_post12" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    const agentCommission = commissions.find((c) => c.agentId === testAgentId);
+    expect(agentCommission).toBeDefined();
+    // Past 12 months: commission type must switch to subscription_residual
+    expect(agentCommission!.type).toBe("subscription_residual");
+    // tier_1: poolRate 0.25 × decay 0.10 (postMonth12) × $149 = $3.725
+    expect(Number(agentCommission!.amount)).toBeCloseTo(3.725, 2);
+
+    await db.delete(schema.commissions).where(eq(schema.commissions.subscriptionId, sub.id));
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, sub.id));
+  });
+
   it("does not fire a commission when the subscription is unknown", async () => {
     useMockStripeWithEvent(buildInvoicePaidEvent("sub_does_not_exist_xyz"));
 
