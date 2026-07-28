@@ -3379,12 +3379,17 @@ export async function registerRoutes(
       // Notify the agent about the payment retry result
       const tierLabel = sub.tier.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
       const isSuccess = newBillingStatus === 'active';
+      const isPending = newBillingStatus === 'past_due';
       const notifTitle = isSuccess
         ? `Payment Successful: ${sub.merchantName}`
-        : `Payment Failed: ${sub.merchantName}`;
+        : isPending
+          ? `Payment Pending: ${sub.merchantName}`
+          : `Payment Failed: ${sub.merchantName}`;
       const notifMessage = isSuccess
         ? `Your outstanding payment for ${sub.merchantName} (${tierLabel}) has been processed successfully. Your subscription is now active.`
-        : `The payment retry for ${sub.merchantName} (${tierLabel}) has failed. Please update your payment method and try again.`;
+        : isPending
+          ? `Your payment for ${sub.merchantName} (${tierLabel}) is still being processed. We'll update you once it clears.`
+          : `The payment retry for ${sub.merchantName} (${tierLabel}) has failed. Please update your payment method and try again.`;
 
       storage.createNotification({
         agentId: sub.agentId,
@@ -3395,12 +3400,15 @@ export async function registerRoutes(
 
       storage.getAgent(sub.agentId).then((agent) => {
         if (!agent) return;
-        const prefs = (agent.emailPreferences as { emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
+        const prefs = (agent.emailPreferences as { emailOnPaymentRetrySuccess?: boolean; emailOnPaymentRetryPending?: boolean; emailOnPaymentRetryFailed?: boolean } | null) ?? {};
         const emailData = { firstName: agent.firstName, merchantName: sub.merchantName, tier: tierLabel };
         if (isSuccess && prefs.emailOnPaymentRetrySuccess !== false) {
           emailService.sendPaymentRetrySuccessEmail(agent.email, emailData)
             .catch((err) => console.error('[Email] Failed to send payment retry success email:', err));
-        } else if (!isSuccess && prefs.emailOnPaymentRetryFailed !== false) {
+        } else if (isPending && prefs.emailOnPaymentRetryPending !== false) {
+          emailService.sendPaymentRetryPendingEmail(agent.email, emailData)
+            .catch((err) => console.error('[Email] Failed to send payment retry pending email:', err));
+        } else if (!isSuccess && !isPending && prefs.emailOnPaymentRetryFailed !== false) {
           emailService.sendPaymentRetryFailedEmail(agent.email, emailData)
             .catch((err) => console.error('[Email] Failed to send payment retry failed email:', err));
         }
