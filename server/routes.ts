@@ -4659,6 +4659,94 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Relocate an agent whose placement slot conflicts with another agent.
+  // Finds the next available open slot under the agent's current sponsor using
+  // the existing placement-resolution logic and moves the agent there.
+  app.post("/api/admin/agents/:id/relocate-placement", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        return res.status(400).json({ message: "Invalid agent ID." });
+      }
+
+      const agent = await storage.getAgent(id);
+      if (!agent) return res.status(404).json({ message: "Agent not found." });
+      if (!agent.placementId || !agent.leg) {
+        return res.status(400).json({ message: "Agent has no current placement to relocate." });
+      }
+      if (!agent.sponsorId) {
+        return res.status(400).json({ message: "Cannot relocate the root agent — they have no sponsor." });
+      }
+
+      // Find an open slot in the binary tree under this agent's sponsor,
+      // preferring auto (weaker-leg) placement. If the slot is taken by the
+      // time we write (concurrent request), retry up to 8 times.
+      const MAX_ATTEMPTS = 8;
+      let updatedAgent;
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const placement = await storage.findPlacement(agent.sponsorId, 'auto');
+
+        // Make sure we're not putting the agent back in the same conflicting slot.
+        if (placement.placementId === agent.placementId && placement.leg === agent.leg) {
+          // The slot we found IS the conflicting one — that means all open slots
+          // under the sponsor already start here; try the other leg.
+          const otherLeg: 'left' | 'right' = placement.leg === 'left' ? 'right' : 'left';
+          const taken = await storage.getAgentByPlacement(placement.placementId, otherLeg);
+          if (!taken) {
+            updatedAgent = await storage.updateAgent(id, {
+              placementId: placement.placementId,
+              leg: otherLeg,
+              placementStatus: 'placed',
+            });
+            break;
+          }
+          // Both legs at this level are occupied — this should not happen in
+          // practice but guard against it.
+          return res.status(409).json({ message: "No open slot found under this agent's sponsor. Please resolve another conflict first or place them manually." });
+        }
+
+        // Verify the slot isn't already taken (race guard).
+        const taken = await storage.getAgentByPlacement(placement.placementId, placement.leg);
+        if (taken) continue; // slot stolen — retry
+
+        updatedAgent = await storage.updateAgent(id, {
+          placementId: placement.placementId,
+          leg: placement.leg,
+          placementStatus: 'placed',
+        });
+        break;
+      }
+
+      if (!updatedAgent) {
+        return res.status(409).json({ message: "Could not find an open placement slot after several retries. Please try again." });
+      }
+
+      await storage.logActivity({
+        actorId: req.user!.id,
+        actorType: 'admin',
+        action: 'update',
+        entityType: 'agent',
+        entityId: id,
+        description: `Admin ${req.user!.firstName} ${req.user!.lastName} relocated agent #${id} to the ${updatedAgent.leg} leg under agent #${updatedAgent.placementId} to resolve a duplicate-placement conflict`,
+        details: { placementId: updatedAgent.placementId, leg: updatedAgent.leg },
+      });
+
+      await storage.createNotification({
+        agentId: id,
+        type: 'system',
+        title: 'Your team position was updated',
+        message: 'An admin has moved your position in the team structure as part of routine maintenance. Nothing changes for you — you are still in good standing.',
+        isRead: false,
+        emailSent: false,
+      });
+
+      res.json(updatedAgent);
+    } catch (err) {
+      console.error("[relocate-placement]", err);
+      res.status(500).json({ message: "Failed to relocate agent placement." });
+    }
+  });
+
   // Admin: Apply a pending migration
   app.post("/api/admin/migrations/:name/apply", requireAdmin, async (req, res) => {
     const { name } = req.params;

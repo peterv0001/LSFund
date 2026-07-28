@@ -10,6 +10,7 @@ import {
   RefreshCw,
   ShieldCheck,
   ShieldOff,
+  MoveRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,6 +80,43 @@ export default function AdminMigrations() {
       queryKey: ["/api/admin/migrations/duplicate-placements"],
     });
   };
+
+  const relocateMutation = useMutation({
+    mutationFn: async (agentId: number) => {
+      const res = await fetch(`/api/admin/agents/${agentId}/relocate-placement`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const body: unknown = await res.json();
+      if (!res.ok) {
+        const msg =
+          typeof body === "object" &&
+          body !== null &&
+          "message" in body &&
+          typeof (body as Record<string, unknown>).message === "string"
+            ? ((body as Record<string, unknown>).message as string)
+            : "Failed to relocate agent";
+        throw new Error(msg);
+      }
+      return body;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Agent relocated",
+        description: "The agent has been moved to an open placement slot.",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/migrations/duplicate-placements"],
+      });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Relocation failed",
+        description: err instanceof Error ? err.message : "Failed to relocate agent",
+        variant: "destructive",
+      });
+    },
+  });
 
   const revertMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -740,21 +778,130 @@ export default function AdminMigrations() {
                                         before this index can be created.
                                       </p>
                                       <ul
-                                        className="mt-1.5 space-y-1"
+                                        className="mt-2 space-y-3"
                                         data-testid={`list-duplicate-placements-${m.name}`}
                                       >
                                         {duplicatePlacements.duplicates.map(
                                           (d) => (
                                             <li
                                               key={`${d.placementId}-${d.leg}`}
-                                              className="text-xs font-mono"
+                                              className="rounded border border-amber-200 bg-white px-3 py-2"
                                               data-testid={`duplicate-placement-${d.placementId}-${d.leg}`}
                                             >
-                                              Parent agent #{d.placementId},{" "}
-                                              {d.leg} leg: agents{" "}
-                                              {d.agentIds
-                                                .map((id) => `#${id}`)
-                                                .join(", ")}
+                                              <p className="text-xs font-mono font-semibold text-amber-900 mb-1.5">
+                                                Parent #{d.placementId},{" "}
+                                                {d.leg} leg
+                                              </p>
+                                              <ul className="space-y-1.5">
+                                                {d.agentIds.map(
+                                                  (agentId, idx) => (
+                                                    <li
+                                                      key={agentId}
+                                                      className="flex items-center gap-2"
+                                                      data-testid={`conflict-agent-${d.placementId}-${d.leg}-${agentId}`}
+                                                    >
+                                                      <span className="text-xs font-mono text-amber-800 w-16 shrink-0">
+                                                        Agent #{agentId}
+                                                      </span>
+                                                      {idx === 0 ? (
+                                                        <span className="text-xs text-amber-600 italic">
+                                                          stays in slot
+                                                        </span>
+                                                      ) : (
+                                                        <AlertDialog>
+                                                          <AlertDialogTrigger
+                                                            asChild
+                                                          >
+                                                            <Button
+                                                              variant="outline"
+                                                              size="sm"
+                                                              className="h-6 px-2 text-xs text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-800"
+                                                              disabled={
+                                                                relocateMutation.isPending
+                                                              }
+                                                              data-testid={`button-relocate-${agentId}`}
+                                                            >
+                                                              <MoveRight className="w-3 h-3 mr-1" />
+                                                              Move to open slot
+                                                            </Button>
+                                                          </AlertDialogTrigger>
+                                                          <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                              <AlertDialogTitle>
+                                                                Move agent #
+                                                                {agentId} to an
+                                                                open slot?
+                                                              </AlertDialogTitle>
+                                                              <AlertDialogDescription
+                                                                asChild
+                                                              >
+                                                                <div className="space-y-2 text-sm text-gray-600">
+                                                                  <p>
+                                                                    Agent #
+                                                                    {agentId}{" "}
+                                                                    currently
+                                                                    shares the{" "}
+                                                                    <span className="font-mono font-semibold">
+                                                                      {d.leg}{" "}
+                                                                      leg under
+                                                                      agent #
+                                                                      {
+                                                                        d.placementId
+                                                                      }
+                                                                    </span>{" "}
+                                                                    with agent #
+                                                                    {
+                                                                      d
+                                                                        .agentIds[0]
+                                                                    }
+                                                                    .
+                                                                  </p>
+                                                                  <p>
+                                                                    This will
+                                                                    move agent #
+                                                                    {agentId} to
+                                                                    the next
+                                                                    available
+                                                                    open slot
+                                                                    under their
+                                                                    sponsor.
+                                                                    Their
+                                                                    commissions,
+                                                                    deals, and
+                                                                    team
+                                                                    relationships
+                                                                    are not
+                                                                    affected.
+                                                                  </p>
+                                                                </div>
+                                                              </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                              <AlertDialogCancel
+                                                                data-testid={`button-cancel-relocate-${agentId}`}
+                                                              >
+                                                                Cancel
+                                                              </AlertDialogCancel>
+                                                              <AlertDialogAction
+                                                                className="bg-blue-700 hover:bg-blue-800 focus:ring-blue-700"
+                                                                onClick={() =>
+                                                                  relocateMutation.mutate(
+                                                                    agentId,
+                                                                  )
+                                                                }
+                                                                data-testid={`button-confirm-relocate-${agentId}`}
+                                                              >
+                                                                Move agent #
+                                                                {agentId}
+                                                              </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                          </AlertDialogContent>
+                                                        </AlertDialog>
+                                                      )}
+                                                    </li>
+                                                  ),
+                                                )}
+                                              </ul>
                                             </li>
                                           ),
                                         )}
