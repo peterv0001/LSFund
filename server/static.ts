@@ -2,6 +2,7 @@ import express, { type Express, type Request } from "express";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
+import { COMP_V2026 } from "../shared/compensation";
 
 const KNOWN_ROUTES = [
   /^\/$/,
@@ -207,6 +208,107 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
     },
   },
 ];
+
+const {
+  distributorQualification,
+  downlineLevels,
+  maxDownlineLevels,
+  membership,
+} = COMP_V2026;
+
+const _usd = (n: number) => `$${n.toLocaleString()}`;
+const _pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+
+interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+const ROUTE_FAQ: Array<{ pattern: RegExp; faqs: FaqEntry[] }> = [
+  {
+    pattern: /^\/funding$/,
+    faqs: [
+      {
+        question: "How does merchant cash advance funding work?",
+        answer:
+          "Funding is structured as a merchant cash advance with a factor rate that is typically 15%–49%, set by underwriting based on the merchant's profile — not a traditional APR-based loan. A factor rate means the merchant repays the advance plus a single fixed fee, not interest that compounds over time. Amounts range from $2,000 to $2,000,000, with repayment over 30 days to 24 months via ACH or card processing holdbacks. Every file is reviewed individually based on revenue, time in business, credit, and cash flow.",
+      },
+      {
+        question: "How fast can a business get funded?",
+        answer:
+          "With minimal paperwork — a one-page application, three to six months of bank statements, a driver's license, and a voided business check — funding can be available as quickly as one business day after underwriting review.",
+      },
+    ],
+  },
+  {
+    pattern: /^\/platform$/,
+    faqs: [
+      {
+        question: "What is the Merchant Growth Platform?",
+        answer:
+          "The Merchant Growth Platform is a subscription suite of lead-generation, marketing-automation, CRM, and AI customer-acquisition tools that help merchants attract, capture, and convert more customers. Powered by Marketing Titan AI and Lead Titan AI, it's a recurring revenue product that provides a stable, long-term income stream for full agents.",
+      },
+    ],
+  },
+  {
+    pattern: /^\/opportunity$/,
+    faqs: [
+      {
+        question: "Do I need experience to get started?",
+        answer:
+          "No prior experience is required — drive and relationships matter more than your background. Our comprehensive training academy covers everything from product knowledge and sales techniques to compliance guidelines. You'll have access to scripts, objection handlers, and ongoing support from our team.",
+      },
+      {
+        question: "Can I sell both MCA and subscriptions to the same merchant?",
+        answer:
+          "Yes — when it's the right fit for the merchant. Distributors can offer both products, and consistent MCA-plus-subscription attachment is one of the performance accelerators that can lift your subscription commission pool by up to an additional +5%. It's an accelerator earned across your production, not a standalone per-deal pairing bonus, and you should only place products that genuinely suit the merchant's needs.",
+      },
+    ],
+  },
+  {
+    pattern: /^\/commissions$/,
+    faqs: [
+      {
+        question: "How are commissions calculated and how often am I paid?",
+        answer:
+          "Commissions are calculated on collected revenue — the money the company actually collects from merchants — and are paid monthly.",
+      },
+      {
+        question: "How do distributor tiers work?",
+        answer: `There are three tiers — Standard, Enhanced, and Elite — and your tier is recalculated every month from your own production. You reach Enhanced by hitting any one of: ${_usd(distributorQualification.enhanced.fundedVolume)} funded volume, ${_usd(distributorQualification.enhanced.subscriptionRevenue)} in monthly subscription revenue, or ${distributorQualification.enhanced.activeSubscriptions} active subscriptions. Elite requires ${_usd(distributorQualification.elite.fundedVolume)}, ${_usd(distributorQualification.elite.subscriptionRevenue)}, or ${distributorQualification.elite.activeSubscriptions} active subscriptions. Higher tiers earn higher commission pools.`,
+      },
+      {
+        question: "How deep do override commissions go?",
+        answer: `Override commissions flow up to ${maxDownlineLevels} levels deep in your organization — ${_pct(downlineLevels.level1)} on Level 1, ${_pct(downlineLevels.level2)} on Level 2, and ${_pct(downlineLevels.level3)} on Level 3 of the override portion you've allocated to your team.`,
+      },
+      {
+        question: "Is there a fee to be a LeaderShield distributor?",
+        answer: `Distributors pay a ${_usd(membership.individual.fee)} monthly membership for access to the CRM, reporting, training, and support. It is automatically waived in any month you collect at least ${_usd(membership.individual.waiverThreshold)} in commissions, so active producers effectively pay nothing. Agency plans are available at ${_usd(membership.small_agency.fee)}, ${_usd(membership.growth_agency.fee)}, and ${_usd(membership.enterprise_agency.fee)} per month with higher waiver thresholds.`,
+      },
+    ],
+  },
+];
+
+function buildFaqJsonLd(faqs: FaqEntry[]): string {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+  return `<script type="application/ld+json">\n    ${JSON.stringify(schema, null, 2).replace(/\n/g, "\n    ")}\n    </script>`;
+}
+
+function injectFaqSchema(html: string, faqs: FaqEntry[]): string {
+  const scriptTag = buildFaqJsonLd(faqs);
+  return html.replace("</head>", `    ${scriptTag}\n  </head>`);
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -436,10 +538,16 @@ export function serveStatic(app: Express, distPathOverride?: string) {
     res.setHeader("Cache-Control", "no-cache");
 
     const match = PUBLIC_ROUTE_META.find(({ pattern }) => pattern.test(pathname));
-    if (match) {
-      // Meta routes rewrite the HTML per-request, so the precompressed sibling
-      // can't be reused; let the `compression` middleware gzip the result.
-      const injected = injectMeta(getIndexHtml(), match.meta, pathname);
+    const faqMatch = ROUTE_FAQ.find(({ pattern }) => pattern.test(pathname));
+    if (match || faqMatch) {
+      // Meta/FAQ routes rewrite the HTML per-request, so the precompressed
+      // sibling can't be reused; let the `compression` middleware gzip it.
+      let injected = match
+        ? injectMeta(getIndexHtml(), match.meta, pathname)
+        : getIndexHtml();
+      if (faqMatch) {
+        injected = injectFaqSchema(injected, faqMatch.faqs);
+      }
       res.status(status).setHeader("Content-Type", "text/html; charset=utf-8");
       res.send(injected);
       return;
