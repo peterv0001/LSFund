@@ -505,3 +505,74 @@ test.describe("Activity log filters — backwards date range warning", () => {
     await expect(page.getByTestId("text-invalid-date-range")).not.toBeVisible({ timeout: 5000 });
   });
 });
+
+// ─── Suite 5: Date range constrains the returned rows ────────────────────────
+
+test.describe("Activity log filters — date range constrains returned rows", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test("a narrow date range entirely in the past shows the empty state", async ({ page }) => {
+    // Seed data was created in 2026; using a range from 2010 guarantees zero matches.
+    await page.goto("/admin/activity?startDate=2010-01-01&endDate=2010-12-31");
+    await waitForResults(page);
+
+    // No rows — date filter is correctly applied server-side
+    expect(await rowCount(page)).toBe(0);
+    await expect(
+      page.getByText("No activity matches your filters.")
+    ).toBeVisible({ timeout: 8000 });
+  });
+
+  test("a wide date range that spans all seed entries returns the same count as the unfiltered view", async ({ page }) => {
+    // Load the unfiltered view first to capture the baseline count
+    await page.goto("/admin/activity");
+    await waitForResults(page);
+    await expect(page.locator('[data-testid^="row-activity-"]').first()).toBeVisible({
+      timeout: 8000,
+    });
+    const countUnfiltered = await rowCount(page);
+    expect(countUnfiltered).toBeGreaterThan(0);
+
+    // Apply a date range that covers well before and well after all seed data
+    await page.goto("/admin/activity?startDate=2020-01-01&endDate=2030-12-31");
+    await waitForResults(page);
+    await expect(page.locator('[data-testid^="row-activity-"]').first()).toBeVisible({
+      timeout: 8000,
+    });
+    const countFiltered = await rowCount(page);
+
+    // The wide range must not drop any rows that the unfiltered view returned
+    expect(countFiltered).toBe(countUnfiltered);
+  });
+
+  test("setting only a startDate excludes entries before that date", async ({ page }) => {
+    // Baseline: unfiltered view
+    await page.goto("/admin/activity");
+    await waitForResults(page);
+    await expect(page.locator('[data-testid^="row-activity-"]').first()).toBeVisible({
+      timeout: 8000,
+    });
+
+    // Apply startDate far in the future so nothing qualifies
+    await page.goto("/admin/activity?startDate=2099-01-01");
+    await waitForResults(page);
+
+    expect(await rowCount(page)).toBe(0);
+    await expect(
+      page.getByText("No activity matches your filters.")
+    ).toBeVisible({ timeout: 8000 });
+  });
+
+  test("setting only an endDate excludes entries after that date", async ({ page }) => {
+    // endDate of a date before any seed entries were created → zero results
+    await page.goto("/admin/activity?endDate=2010-12-31");
+    await waitForResults(page);
+
+    expect(await rowCount(page)).toBe(0);
+    await expect(
+      page.getByText("No activity matches your filters.")
+    ).toBeVisible({ timeout: 8000 });
+  });
+});
