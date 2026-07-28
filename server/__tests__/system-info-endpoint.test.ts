@@ -108,6 +108,70 @@ describe("GET /api/admin/system-info – HTTP endpoint", () => {
     expect(res.body.expiryCheckIntervalMs).toBeGreaterThan(0);
   });
 
+  it("returns expiryWarningDays as a positive number", async () => {
+    const cookie = await loginAsAdmin();
+
+    const res = await request(testApp)
+      .get("/api/admin/system-info")
+      .set("Cookie", cookie)
+      .expect(200);
+
+    expect(typeof res.body.expiryWarningDays).toBe("number");
+    expect(res.body.expiryWarningDays).toBeGreaterThan(0);
+  });
+
+  it("returns nodeEnv as a non-empty string", async () => {
+    const cookie = await loginAsAdmin();
+
+    const res = await request(testApp)
+      .get("/api/admin/system-info")
+      .set("Cookie", cookie)
+      .expect(200);
+
+    expect(typeof res.body.nodeEnv).toBe("string");
+    expect(res.body.nodeEnv.length).toBeGreaterThan(0);
+  });
+
+  it("returns schedulerLastRunAt as a string or null", async () => {
+    const cookie = await loginAsAdmin();
+
+    const res = await request(testApp)
+      .get("/api/admin/system-info")
+      .set("Cookie", cookie)
+      .expect(200);
+
+    const val = res.body.schedulerLastRunAt;
+    expect(val === null || typeof val === "string").toBe(true);
+  });
+
+  it("returns schedulerNextRunAt as a string or null", async () => {
+    const cookie = await loginAsAdmin();
+
+    const res = await request(testApp)
+      .get("/api/admin/system-info")
+      .set("Cookie", cookie)
+      .expect(200);
+
+    const val = res.body.schedulerNextRunAt;
+    expect(val === null || typeof val === "string").toBe(true);
+  });
+
+  it("returns all required operational fields in a single response", async () => {
+    const cookie = await loginAsAdmin();
+
+    const res = await request(testApp)
+      .get("/api/admin/system-info")
+      .set("Cookie", cookie)
+      .expect(200);
+
+    // Presence and type check for every field the UI card consumes.
+    expect(typeof res.body.expiryCheckIntervalMs).toBe("number");
+    expect(typeof res.body.expiryWarningDays).toBe("number");
+    expect(typeof res.body.nodeEnv).toBe("string");
+    expect(res.body).toHaveProperty("schedulerLastRunAt");
+    expect(res.body).toHaveProperty("schedulerNextRunAt");
+  });
+
   it("returns 401 when not authenticated", async () => {
     await request(testApp).get("/api/admin/system-info").expect(401);
   });

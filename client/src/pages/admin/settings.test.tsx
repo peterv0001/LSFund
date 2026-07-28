@@ -158,4 +158,64 @@ describe("Admin settings – System Info card", () => {
     expect(fallback.textContent).toContain("1 hr");
     expect(fallback.textContent).toMatch(/3.?600.?000\s*ms/);
   });
+
+  it("renders the expiry warning days badge", async () => {
+    renderSettings();
+
+    const badge = await screen.findByTestId("badge-expiry-warning-days");
+    expect(badge.textContent).toContain("7");
+    expect(badge.textContent).toContain("day");
+  });
+
+  it("renders the node env badge", async () => {
+    renderSettings();
+
+    const badge = await screen.findByTestId("badge-node-env");
+    expect(badge.textContent).toContain("test");
+  });
+
+  it("renders the scheduler last-run badge showing em-dash when null", async () => {
+    renderSettings();
+
+    const badge = await screen.findByTestId("badge-scheduler-last-run");
+    // schedulerLastRunAt is null in the mock → formatTimestamp returns "—"
+    expect(badge.textContent).toContain("—");
+  });
+
+  it("renders the scheduler next-run badge showing em-dash when null", async () => {
+    renderSettings();
+
+    const badge = await screen.findByTestId("badge-scheduler-next-run");
+    // schedulerNextRunAt is null in the mock → formatTimestamp returns "—"
+    expect(badge.textContent).toContain("—");
+  });
+
+  it("renders the scheduler last-run badge as a formatted date when a timestamp is provided", async () => {
+    // Override the fetch mock to return a real ISO timestamp.
+    const isoTs = "2026-06-01T10:30:00.000Z";
+    fetchMock.mockImplementation((input: any) => {
+      if (String(input).startsWith(SYSTEM_INFO_PATH)) {
+        return Promise.resolve(
+          jsonResponse({
+            expiryCheckIntervalMs: 3_600_000,
+            expiryCheckIntervalInvalid: false,
+            expiryCheckIntervalRejectedValue: null,
+            expiryCheckIntervalDefaultMs: 3_600_000,
+            expiryWarningDays: 7,
+            nodeEnv: "test",
+            schedulerLastRunAt: isoTs,
+            schedulerNextRunAt: null,
+          }) as any,
+        );
+      }
+      return Promise.resolve(routeFetch(String(input)) as any);
+    });
+
+    renderSettings();
+
+    const badge = await screen.findByTestId("badge-scheduler-last-run");
+    // Should not show "—" because a real timestamp was returned.
+    expect(badge.textContent).not.toBe("—");
+    expect(badge.textContent!.trim().length).toBeGreaterThan(0);
+  });
 });
