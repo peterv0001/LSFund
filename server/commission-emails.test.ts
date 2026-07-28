@@ -631,6 +631,95 @@ describe("deal approval sponsor override – emailOnCommissionEarned gate", () =
   });
 });
 
+describe("deal approval TFC – emailOnCommissionEarned gate", () => {
+  it("sends a TFC email to the fulfillment agent when emailOnCommissionEarned is true", async () => {
+    const fulfillmentAgent = await createRankedAgent("tfc-on-fulfillment", "agent", {
+      emailOnCommissionEarned: true,
+    });
+    const dealAgent = await createRankedAgent("tfc-on-deal", "agent", {});
+    // Insert a pending deal that designates the separate fulfillment agent.
+    const [deal] = await db
+      .insert(schema.deals)
+      .values({
+        agentId: dealAgent.id,
+        fulfillmentAgentId: fulfillmentAgent.id,
+        merchantName: "TFC Merchant On",
+        loanAmount: "50000.00",
+        companyRevenue: "10000.00",
+        gbrAmount: "10000.00",
+        status: "pending",
+        commissionModel: "legacy",
+      })
+      .returning();
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+    const callForFulfillment = calls.find(
+      (args: unknown[]) => args[0] === fulfillmentAgent.email
+    );
+    expect(callForFulfillment).toBeDefined();
+    expect(callForFulfillment![1]).toEqual(
+      expect.objectContaining({
+        firstName: fulfillmentAgent.firstName,
+        commissionType: "Transaction Fulfillment Compensation (TFC)",
+      })
+    );
+
+    await cleanupAgentFull(fulfillmentAgent.id);
+    await cleanupAgentFull(dealAgent.id);
+  });
+
+  it("does NOT send a TFC email when the fulfillment agent's emailOnCommissionEarned is false", async () => {
+    const fulfillmentAgent = await createRankedAgent("tfc-off-fulfillment", "agent", {
+      emailOnCommissionEarned: false,
+    });
+    const dealAgent = await createRankedAgent("tfc-off-deal", "agent", {});
+    const [deal] = await db
+      .insert(schema.deals)
+      .values({
+        agentId: dealAgent.id,
+        fulfillmentAgentId: fulfillmentAgent.id,
+        merchantName: "TFC Merchant Off",
+        loanAmount: "50000.00",
+        companyRevenue: "10000.00",
+        gbrAmount: "10000.00",
+        status: "pending",
+        commissionModel: "legacy",
+      })
+      .returning();
+
+    await request(testApp)
+      .post(`/api/admin/deals/${deal.id}/approve`)
+      .set("Cookie", adminCookie)
+      .expect(200);
+
+    await shortDelay();
+
+    // The TFC commission row should still be created (proving the waterfall ran)
+    // even though the email is suppressed.
+    const tfcCommissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.agentId, fulfillmentAgent.id));
+    expect(tfcCommissions.some((c) => c.type === "tfc")).toBe(true);
+
+    const calls = (emailService.sendCommissionEarnedEmail as ReturnType<typeof vi.fn>).mock.calls;
+    const calledForFulfillment = calls.some(
+      (args: unknown[]) => args[0] === fulfillmentAgent.email
+    );
+    expect(calledForFulfillment).toBe(false);
+
+    await cleanupAgentFull(fulfillmentAgent.id);
+    await cleanupAgentFull(dealAgent.id);
+  });
+});
+
 // =========================================================
 // File-level safety net. Registered last, so it runs FIRST (afterAll hooks run
 // in reverse registration order). It purges every row this file created — child
