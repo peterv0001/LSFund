@@ -283,6 +283,7 @@ export class DatabaseStorage {
     rank?: string;
     sortBy?: string;
     sortOrder?: string;
+    lostAllSubs?: boolean;
   }): Promise<{ agents: (Agent & { totalSubscriptionCount: number; activeSubscriptionCount: number })[]; total: number }> {
     const offset = (page - 1) * pageSize;
     
@@ -303,6 +304,12 @@ export class DatabaseStorage {
     
     if (filters?.rank) {
       conditions.push(eq(agents.currentRank, filters.rank as any));
+    }
+
+    if (filters?.lostAllSubs) {
+      // At least one subscription exists but none are active
+      conditions.push(sql`(SELECT COUNT(*) FROM subscriptions WHERE subscriptions.agent_id = agents.id) > 0`);
+      conditions.push(sql`(SELECT COUNT(*) FROM subscriptions WHERE subscriptions.agent_id = agents.id AND subscriptions.status = 'active') = 0`);
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

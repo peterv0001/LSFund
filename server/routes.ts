@@ -1871,8 +1871,9 @@ export async function registerRoutes(
     const rank = req.query.rank as string | undefined;
     const sortBy = req.query.sortBy as string | undefined;
     const sortOrder = req.query.sortOrder as string | undefined;
+    const lostAllSubs = req.query.lostAllSubs === "true";
     
-    const result = await storage.getAgentsPaginated(page, pageSize, { search, status, rank, sortBy, sortOrder });
+    const result = await storage.getAgentsPaginated(page, pageSize, { search, status, rank, sortBy, sortOrder, lostAllSubs });
     res.json({ ...result, page, pageSize });
   });
 

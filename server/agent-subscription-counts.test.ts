@@ -263,3 +263,123 @@ describe("GET /api/admin/agents – activeSubscriptionCount and totalSubscriptio
     await request(testApp).get("/api/admin/agents").expect(401);
   });
 });
+
+// =========================================================
+// lostAllSubs filter – only agents who had subs but now have none active
+// =========================================================
+
+describe("GET /api/admin/agents?lostAllSubs=true", () => {
+  // We create two agents:
+  //   lostAgent  – has cancelled + expired subs (zero active, total > 0)  → must appear
+  //   activeAgent – has one active sub                                     → must NOT appear
+  //   neverAgent  – has no subs at all                                     → must NOT appear
+  let lostAgentId: number;
+  let activeAgentId: number;
+  let neverAgentId: number;
+  let subIds: number[] = [];
+
+  beforeAll(async () => {
+    const lost = await (async () => {
+      const pw = "not-a-real-hash";
+      const [a] = await db.insert(schema.agents).values({
+        email: `${TEST_PREFIX}-lost@example.com`,
+        password: pw,
+        firstName: "Lost",
+        lastName: "SubsTest",
+        currentRank: "agent",
+        highestRank: "agent",
+        isAdmin: false,
+      }).returning();
+      return a;
+    })();
+    lostAgentId = lost.id;
+
+    const active = await (async () => {
+      const [a] = await db.insert(schema.agents).values({
+        email: `${TEST_PREFIX}-activesub@example.com`,
+        password: "not-a-real-hash",
+        firstName: "Active",
+        lastName: "SubsTest",
+        currentRank: "agent",
+        highestRank: "agent",
+        isAdmin: false,
+      }).returning();
+      return a;
+    })();
+    activeAgentId = active.id;
+
+    const never = await (async () => {
+      const [a] = await db.insert(schema.agents).values({
+        email: `${TEST_PREFIX}-neversub@example.com`,
+        password: "not-a-real-hash",
+        firstName: "Never",
+        lastName: "SubsTest",
+        currentRank: "agent",
+        highestRank: "agent",
+        isAdmin: false,
+      }).returning();
+      return a;
+    })();
+    neverAgentId = never.id;
+
+    // lostAgent: one cancelled, one expired – zero active
+    const [s1] = await db.insert(schema.subscriptions).values({
+      agentId: lostAgentId, merchantName: "Lost M1", tier: "tier_1", monthlyAmount: "99.00", status: "cancelled",
+    }).returning();
+    const [s2] = await db.insert(schema.subscriptions).values({
+      agentId: lostAgentId, merchantName: "Lost M2", tier: "tier_1", monthlyAmount: "99.00", status: "expired",
+    }).returning();
+
+    // activeAgent: one active sub
+    const [s3] = await db.insert(schema.subscriptions).values({
+      agentId: activeAgentId, merchantName: "Active M1", tier: "tier_1", monthlyAmount: "99.00", status: "active",
+    }).returning();
+
+    subIds = [s1.id, s2.id, s3.id];
+  }, 30000);
+
+  afterAll(async () => {
+    for (const id of subIds) {
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, id));
+    }
+    for (const id of [lostAgentId, activeAgentId, neverAgentId]) {
+      if (id) await db.delete(schema.agents).where(eq(schema.agents.id, id));
+    }
+  });
+
+  it("storage layer: lostAllSubs filter returns only agents with no active subs but at least one total", async () => {
+    const result = await storage.getAgentsPaginated(1, 100, { lostAllSubs: true });
+    const ids = result.agents.map((a) => a.id);
+    expect(ids).toContain(lostAgentId);
+    expect(ids).not.toContain(activeAgentId);
+    expect(ids).not.toContain(neverAgentId);
+  });
+
+  it("API: lostAllSubs=true filter returns only at-risk agents with correct counts", async () => {
+    const cookie = await loginAsAdmin();
+    const res = await request(testApp)
+      .get("/api/admin/agents?lostAllSubs=true")
+      .set("Cookie", cookie)
+      .expect(200);
+
+    const returnedIds: number[] = res.body.agents.map((a: { id: number }) => a.id);
+    expect(returnedIds).toContain(lostAgentId);
+    expect(returnedIds).not.toContain(activeAgentId);
+    expect(returnedIds).not.toContain(neverAgentId);
+
+    const lostRow = res.body.agents.find((a: { id: number }) => a.id === lostAgentId);
+    expect(lostRow.activeSubscriptionCount).toBe(0);
+    expect(lostRow.totalSubscriptionCount).toBeGreaterThan(0);
+  });
+
+  it("API: lostAllSubs=false (omitted) still returns agents with active subs", async () => {
+    const cookie = await loginAsAdmin();
+    const res = await request(testApp)
+      .get("/api/admin/agents")
+      .set("Cookie", cookie)
+      .expect(200);
+
+    const returnedIds: number[] = res.body.agents.map((a: { id: number }) => a.id);
+    expect(returnedIds).toContain(activeAgentId);
+  });
+});

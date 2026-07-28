@@ -149,6 +149,10 @@ export default function AdminAgents() {
     const r = params.get("rank");
     return r && r !== "all" ? r : "all";
   });
+  const [lostAllSubsFilter, setLostAllSubsFilter] = useState<boolean>(() => {
+    const params = new URLSearchParams(urlSearch);
+    return params.get("lostAllSubs") === "true";
+  });
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<string | null>(() => {
     const params = new URLSearchParams(urlSearch);
@@ -241,6 +245,23 @@ export default function AdminAgents() {
     [setLocation],
   );
 
+  const updateLostAllSubsInUrl = useCallback(
+    (enabled: boolean) => {
+      const params = new URLSearchParams(window.location.search);
+      if (enabled) {
+        params.set("lostAllSubs", "true");
+      } else {
+        params.delete("lostAllSubs");
+      }
+      const qs = params.toString();
+      setLocation(
+        qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+        { replace: true },
+      );
+    },
+    [setLocation],
+  );
+
   const updateSortInUrl = useCallback(
     (nextSortBy: string | null, nextSortOrder: "asc" | "desc") => {
       const params = new URLSearchParams(window.location.search);
@@ -310,6 +331,7 @@ export default function AdminAgents() {
       search,
       statusFilter,
       rankFilter,
+      lostAllSubsFilter,
       page,
       sortBy,
       sortOrder,
@@ -322,6 +344,7 @@ export default function AdminAgents() {
           search: search || undefined,
           status: statusFilter !== "all" ? statusFilter : undefined,
           rank: rankFilter !== "all" ? rankFilter : undefined,
+          lostAllSubs: lostAllSubsFilter ? "true" : undefined,
           page,
           pageSize: 20,
           sortBy: sortBy || undefined,
@@ -626,6 +649,26 @@ export default function AdminAgents() {
                 <SelectItem value="partner">Partner</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant={lostAllSubsFilter ? "default" : "outline"}
+              size="sm"
+              data-testid="toggle-lost-all-subs"
+              aria-pressed={lostAllSubsFilter}
+              onClick={() => {
+                const next = !lostAllSubsFilter;
+                setLostAllSubsFilter(next);
+                updateLostAllSubsInUrl(next);
+                setPage(1);
+              }}
+              className={
+                lostAllSubsFilter
+                  ? "bg-amber-500 hover:bg-amber-600 border-amber-500 text-white"
+                  : ""
+              }
+            >
+              <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+              Lost all subscriptions
+            </Button>
           </div>
 
           {/* Table */}
