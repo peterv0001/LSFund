@@ -2272,6 +2272,37 @@ export class DatabaseStorage {
       .where(eq(adminExportTemplates.id, id));
     return template;
   }
+
+  // ==================== ADMIN ALERT HELPERS ====================
+
+  /** All agents with isAdmin=true. Used to fan-out admin-facing notifications. */
+  async getAdminAgents(): Promise<Agent[]> {
+    return await db.select().from(agents).where(eq(agents.isAdmin, true));
+  }
+
+  /** Total subscription count for an agent regardless of status. */
+  async getTotalSubscriptionCountForAgent(agentId: number): Promise<number> {
+    const [row] = await db.select({ c: count(subscriptions.id) }).from(subscriptions)
+      .where(eq(subscriptions.agentId, agentId));
+    return Number(row?.c ?? 0);
+  }
+
+  /**
+   * Returns true if any admin already has an unread "lost last subscription"
+   * alert for this agent. Used to suppress duplicates when multiple events
+   * (e.g. two subs cancelled in quick succession) would all fire the alert.
+   */
+  async hasUnreadAdminLastSubAlertForAgent(subjectAgentId: number): Promise<boolean> {
+    const ALERT_TITLE = 'Agent Lost Last Active Subscription';
+    const pattern = `%agent-id:${subjectAgentId}%`;
+    const [row] = await db.select({ c: count() }).from(notifications)
+      .where(and(
+        eq(notifications.title, ALERT_TITLE),
+        like(notifications.message, pattern),
+        eq(notifications.isRead, false),
+      ));
+    return Number(row?.c ?? 0) > 0;
+  }
 }
 
 export const storage = new DatabaseStorage();

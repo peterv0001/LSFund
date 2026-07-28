@@ -31,6 +31,7 @@ import { emailService } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { resolveExpiryWarningDays, EXPIRY_CHECK_INTERVAL_MS, getSchedulerStatus, getSchedulerConfigHealth, sendDueExpiryWarnings } from "./scheduler";
+import { maybeNotifyAdminsAgentLostLastSubscription } from "./adminAlerts";
 import rateLimit from "express-rate-limit";
 
 // Extend Express User type
@@ -2908,6 +2909,18 @@ export async function registerRoutes(
         }
       }
 
+      // Alert admins if this self-service action caused the agent to lose their
+      // last active subscription (paused or cancelled only — active is a reactivation).
+      if (status !== 'active' && sub.status !== status) {
+        const agentRecord = await storage.getAgent(agentId);
+        if (agentRecord) {
+          maybeNotifyAdminsAgentLostLastSubscription(
+            agentRecord.id,
+            `${agentRecord.firstName} ${agentRecord.lastName}`,
+          ).catch((err) => console.error('[AdminAlert] last-sub alert error (self-service):', err));
+        }
+      }
+
       // Log subscription status change to activity log
       const actionLabel = status === 'paused' ? 'pause' : status === 'cancelled' ? 'cancel' : 'reactivate';
       storage.logActivity({
@@ -3424,6 +3437,18 @@ export async function registerRoutes(
             emailService.sendSubscriptionReactivatedEmail(agent.email, { ...emailData, newEndDate })
               .catch((err) => console.error('[Email] Failed to send admin-triggered subscription reactivated email:', err));
           }
+        }
+      }
+
+      // Alert admins if this status change caused the agent to lose their last
+      // active subscription (paused/cancelled/expired can all trigger this).
+      if (existingSub && existingSub.status !== status && status !== 'active') {
+        const agent = await storage.getAgent(existingSub.agentId);
+        if (agent) {
+          maybeNotifyAdminsAgentLostLastSubscription(
+            agent.id,
+            `${agent.firstName} ${agent.lastName}`,
+          ).catch((err) => console.error('[AdminAlert] last-sub alert error:', err));
         }
       }
 

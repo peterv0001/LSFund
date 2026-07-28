@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { emailService } from "./email";
 import { recalculateAllGovernance } from "./governance";
+import { maybeNotifyAdminsAgentLostLastSubscription } from "./adminAlerts";
 
 const DEFAULT_EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // default: 1 hour
 
@@ -236,6 +237,14 @@ export async function expireOverdueSubscriptions(): Promise<void> {
 
       // Status transition succeeded; side effects are fire-and-forget.
       const agent = await storage.getAgent(sub.agentId).catch(() => null);
+
+      // Alert admins if expiry caused this agent to lose their last active sub.
+      if (agent) {
+        maybeNotifyAdminsAgentLostLastSubscription(
+          agent.id,
+          `${agent.firstName} ${agent.lastName}`,
+        ).catch((err) => console.error('[AdminAlert] last-sub alert error (scheduler):', err));
+      }
 
       const effectiveDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',

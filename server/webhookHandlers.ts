@@ -2,6 +2,7 @@ import { db } from './db';
 import { subscriptions, platformSettings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { storage } from './storage';
+import { maybeNotifyAdminsAgentLostLastSubscription } from './adminAlerts';
 import { emailService } from './email';
 import { CONFIG } from './config';
 import { fireSubscriptionV2026, type AgencyModel } from './commissionEngine';
@@ -172,11 +173,24 @@ export class WebhookHandlers {
 
     if (!sub) return;
 
+    // Mark both the billing status AND the subscription status as cancelled so
+    // that getActiveSubscriptionCount correctly reflects the deletion and the
+    // last-subscription alert can fire accurately.
     await db.update(subscriptions)
-      .set({ billingStatus: 'cancelled', updatedAt: new Date() })
+      .set({ billingStatus: 'cancelled', status: 'cancelled', updatedAt: new Date() })
       .where(eq(subscriptions.id, sub.id));
 
     console.log(`[Webhook] Subscription ${sub.id} billing status set to cancelled`);
+
+    // Alert admins if the agent just lost their last active subscription.
+    // Awaited so callers (e.g. tests) can rely on the alert being persisted.
+    const agent = await storage.getAgent(sub.agentId);
+    if (agent) {
+      await maybeNotifyAdminsAgentLostLastSubscription(
+        agent.id,
+        `${agent.firstName} ${agent.lastName}`,
+      ).catch((err) => console.error('[AdminAlert] last-sub alert error (webhook):', err));
+    }
   }
 
   private static async fireCommissions(sub: any, now: Date): Promise<void> {
