@@ -234,6 +234,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
   const [referralLocked, setReferralLocked] = useState(!!referralCode);
   const [referralCleared, setReferralCleared] = useState(false);
   const [sponsorError, setSponsorError] = useState<string | null>(null);
+  const [referralChecking, setReferralChecking] = useState(!!referralCode);
 
   const registerSchema = api.auth.register.input.extend({
     legalConsent: z.literal(true, {
@@ -258,6 +259,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
 
   useEffect(() => {
     if (referralCode) {
+      setReferralChecking(true);
       fetch(`/api/sponsors/search?q=${encodeURIComponent(referralCode)}`)
         .then(res => res.json())
         .then((sponsors: SponsorOption[]) => {
@@ -267,9 +269,20 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
             form.setValue("sponsorId", match.id);
             form.setValue("referralCode", "");
             setReferralLocked(true);
+          } else {
+            setSponsorError(
+              "This referral link is no longer valid because the sponsor's account is unavailable. You can sign up without a referral instead."
+            );
           }
         })
-        .catch(console.error);
+        .catch(() => {
+          setSponsorError(
+            "This referral link is no longer valid because the sponsor's account is unavailable. You can sign up without a referral instead."
+          );
+        })
+        .finally(() => {
+          setReferralChecking(false);
+        });
     }
   }, [referralCode]);
 
@@ -382,7 +395,12 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          ) : referralCode && !referralCleared ? (
+          ) : referralChecking ? (
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground" data-testid="badge-referral-checking">
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+              <span>Checking referral code…</span>
+            </div>
+          ) : referralCode && !referralCleared && !sponsorError ? (
             <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg text-sm text-primary">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Sponsor Code Applied: <strong>{referralCode}</strong></span>
