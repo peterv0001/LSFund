@@ -130,7 +130,10 @@ export default function AdminAgents() {
   const urlSearch = useSearch();
   const [, setLocation] = useLocation();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState<string>(() => {
+    const params = new URLSearchParams(urlSearch);
+    return params.get("search") ?? "";
+  });
   const [statusFilter, setStatusFilter] = useState<string>(() => {
     const params = new URLSearchParams(urlSearch);
     const s = params.get("status");
@@ -141,7 +144,11 @@ export default function AdminAgents() {
     } catch {}
     return "all";
   });
-  const [rankFilter, setRankFilter] = useState<string>("all");
+  const [rankFilter, setRankFilter] = useState<string>(() => {
+    const params = new URLSearchParams(urlSearch);
+    const r = params.get("rank");
+    return r && r !== "all" ? r : "all";
+  });
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<string | null>(() => {
     const params = new URLSearchParams(urlSearch);
@@ -199,6 +206,40 @@ export default function AdminAgents() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const updateSearchInUrl = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(window.location.search);
+      if (value) {
+        params.set("search", value);
+      } else {
+        params.delete("search");
+      }
+      const qs = params.toString();
+      setLocation(
+        qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+        { replace: true },
+      );
+    },
+    [setLocation],
+  );
+
+  const updateRankInUrl = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(window.location.search);
+      if (value && value !== "all") {
+        params.set("rank", value);
+      } else {
+        params.delete("rank");
+      }
+      const qs = params.toString();
+      setLocation(
+        qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+        { replace: true },
+      );
+    },
+    [setLocation],
+  );
 
   const updateSortInUrl = useCallback(
     (nextSortBy: string | null, nextSortOrder: "asc" | "desc") => {
@@ -542,6 +583,7 @@ export default function AdminAgents() {
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
+                  updateSearchInUrl(e.target.value);
                   setPage(1);
                 }}
               />
@@ -568,6 +610,7 @@ export default function AdminAgents() {
               value={rankFilter}
               onValueChange={(v) => {
                 setRankFilter(v);
+                updateRankInUrl(v);
                 setPage(1);
               }}
             >
