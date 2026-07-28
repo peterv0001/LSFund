@@ -4810,6 +4810,91 @@ export async function registerRoutes(
     });
   });
 
+  // Admin: Apply a target migration together with all earlier unapplied
+  // migrations that block it. Applies predecessors first (earliest → latest),
+  // then the target itself, reporting the outcome of each step.
+  app.post("/api/admin/migrations/:name/apply-chain", requireAdmin, async (req, res) => {
+    const { name } = req.params;
+
+    const migration = migrations.find((m) => m.name === name);
+    if (!migration) {
+      return res.status(400).json({ message: `Migration "${name}" not found` });
+    }
+
+    const appliedRows = await pool.query<{ name: string }>(
+      `SELECT name FROM schema_migrations`
+    );
+    const appliedNames = new Set(appliedRows.rows.map((r) => r.name));
+
+    if (appliedNames.has(name)) {
+      return res.status(400).json({ message: `Migration "${name}" has already been applied` });
+    }
+
+    // Build the chain: every earlier unapplied migration plus the target,
+    // in order (earliest first so each can be applied in sequence).
+    const migrationIndex = migrations.findIndex((m) => m.name === name);
+    const chain = migrations
+      .slice(0, migrationIndex + 1)
+      .filter((m) => !appliedNames.has(m.name));
+
+    const results: {
+      name: string;
+      status: "applied" | "failed" | "skipped";
+      message: string;
+    }[] = [];
+    let failed = false;
+
+    for (const m of chain) {
+      if (failed) {
+        results.push({
+          name: m.name,
+          status: "skipped",
+          message: "Skipped because an earlier step failed",
+        });
+        continue;
+      }
+      try {
+        await applyMigration(m.name);
+        await storage.logActivity({
+          actorId: req.user!.id,
+          actorType: "admin",
+          action: "run_migration",
+          entityType: "migration",
+          entityId: 0,
+          description: `Applied migration: ${m.name} (chain apply of "${name}")`,
+          details: { migration: m.name, chainTarget: name },
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers["user-agent"] ?? null,
+        });
+        results.push({
+          name: m.name,
+          status: "applied",
+          message: `Migration "${m.name}" applied successfully`,
+        });
+      } catch (err: unknown) {
+        console.error(`[migrations] chain apply step "${m.name}" failed`, err);
+        failed = true;
+        results.push({
+          name: m.name,
+          status: "failed",
+          message: "Migration apply failed due to a server error",
+        });
+      }
+    }
+
+    const success = !failed;
+    const failedStep = results.find((r) => r.status === "failed");
+    res.json({
+      success,
+      results,
+      ...(success
+        ? {}
+        : {
+            message: `Migration chain apply stopped: "${failedStep?.name ?? name}" failed to apply.`,
+          }),
+    });
+  });
+
   app.get("/api/admin/health/schema", requireAdmin, async (_req, res) => {
     try {
       const result = await checkSchemaHealth();

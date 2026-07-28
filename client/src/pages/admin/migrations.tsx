@@ -170,6 +170,59 @@ export default function AdminMigrations() {
     },
   });
 
+  type ApplyChainResult = {
+    name: string;
+    status: "applied" | "failed" | "skipped";
+    message: string;
+  };
+
+  const applyChainMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch(
+        `/api/admin/migrations/${encodeURIComponent(name)}/apply-chain`,
+        { method: "POST", credentials: "include" },
+      );
+      const body: unknown = await res.json();
+      if (!res.ok) {
+        const serverMessage =
+          typeof body === "object" &&
+          body !== null &&
+          "message" in body &&
+          typeof (body as Record<string, unknown>).message === "string"
+            ? ((body as Record<string, unknown>).message as string)
+            : "Failed to apply migration chain";
+        throw new Error(serverMessage);
+      }
+      return body as { success: boolean; results: ApplyChainResult[] };
+    },
+    onSuccess: (data, name) => {
+      const applied = data.results.filter((r) => r.status === "applied");
+      if (data.success) {
+        toast({
+          title: "Migration chain applied",
+          description: `Applied ${applied.length} migration${applied.length === 1 ? "" : "s"} ending with "${name}".`,
+        });
+      } else {
+        const failedStep = data.results.find((r) => r.status === "failed");
+        toast({
+          title: "Chain apply stopped",
+          description: `Applied ${applied.length} migration${applied.length === 1 ? "" : "s"} before "${failedStep?.name ?? name}" failed. The rest were not applied.`,
+          variant: "destructive",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/migrations"] });
+    },
+    onError: (err: unknown) => {
+      const message =
+        err instanceof Error ? err.message : "Failed to apply migration chain";
+      toast({
+        title: "Chain apply failed",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const applyMutation = useMutation({
     mutationFn: async (name: string) => {
       const res = await fetch(
@@ -712,40 +765,121 @@ export default function AdminMigrations() {
                               )}
                           </div>
                           {isBlocked ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span
-                                  className="ml-4"
-                                  data-testid={`button-apply-blocked-${m.name}`}
-                                >
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled
-                                    className="pointer-events-none opacity-50 text-green-700 border-green-200"
-                                    data-testid={`button-apply-${m.name}`}
+                            <div className="flex items-center gap-2 ml-4 shrink-0">
+                              {(() => {
+                                const applyOrder = [...blockers, m.name];
+                                return (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-green-700 border-green-200 hover:bg-green-50 hover:text-green-800"
+                                        disabled={applyChainMutation.isPending}
+                                        data-testid={`button-apply-chain-${m.name}`}
+                                      >
+                                        <Play className="w-3.5 h-3.5 mr-1.5" />
+                                        Apply all required
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                          Apply this migration and its
+                                          prerequisites?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription asChild>
+                                          <div className="space-y-3">
+                                            <p>
+                                              To apply{" "}
+                                              <span className="font-mono font-semibold">
+                                                {m.name}
+                                              </span>
+                                              , the earlier migrations that it
+                                              depends on must be applied first.
+                                              The following{" "}
+                                              {applyOrder.length} migrations
+                                              will be applied in this order:
+                                            </p>
+                                            <ol
+                                              className="list-decimal list-inside space-y-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5"
+                                              data-testid={`list-apply-chain-${m.name}`}
+                                            >
+                                              {applyOrder.map((n) => (
+                                                <li
+                                                  key={n}
+                                                  className="text-sm font-mono text-gray-800"
+                                                  data-testid={`list-apply-chain-item-${n}`}
+                                                >
+                                                  {n}
+                                                  {n === m.name && (
+                                                    <span className="ml-1.5 text-xs font-sans text-gray-500">
+                                                      (target)
+                                                    </span>
+                                                  )}
+                                                </li>
+                                              ))}
+                                            </ol>
+                                            <p className="text-sm text-gray-500">
+                                              This modifies the database schema.
+                                              If any step fails, the remaining
+                                              migrations are left unapplied.
+                                            </p>
+                                          </div>
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel data-testid="button-cancel-apply-chain">
+                                          Cancel
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                          className="bg-green-700 hover:bg-green-800 focus:ring-green-700"
+                                          onClick={() =>
+                                            applyChainMutation.mutate(m.name)
+                                          }
+                                          data-testid="button-confirm-apply-chain"
+                                        >
+                                          Apply {applyOrder.length} migrations
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                );
+                              })()}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    data-testid={`button-apply-blocked-${m.name}`}
                                   >
-                                    <Play className="w-3.5 h-3.5 mr-1.5" />
-                                    Apply
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="left" className="max-w-xs">
-                                <div className="flex items-start gap-1.5 text-xs">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
-                                  <span>
-                                    Apply{" "}
-                                    {blockers.length > 1
-                                      ? "these earlier migrations"
-                                      : "this earlier migration"}{" "}
-                                    first:{" "}
-                                    <span className="font-mono font-semibold">
-                                      {blockers.join(", ")}
-                                    </span>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled
+                                      className="pointer-events-none opacity-50 text-green-700 border-green-200"
+                                      data-testid={`button-apply-${m.name}`}
+                                    >
+                                      <Play className="w-3.5 h-3.5 mr-1.5" />
+                                      Apply
+                                    </Button>
                                   </span>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-xs">
+                                  <div className="flex items-start gap-1.5 text-xs">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />
+                                    <span>
+                                      Apply{" "}
+                                      {blockers.length > 1
+                                        ? "these earlier migrations"
+                                        : "this earlier migration"}{" "}
+                                      first:{" "}
+                                      <span className="font-mono font-semibold">
+                                        {blockers.join(", ")}
+                                      </span>
+                                    </span>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
                           ) : (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
