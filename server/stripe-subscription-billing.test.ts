@@ -614,3 +614,215 @@ describe("POST /api/subscriptions – gracefully skips billing when the tier pri
     await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subId));
   });
 });
+
+// ── POST /api/subscriptions – graceful fallback when STRIPE_PRICE_TIER_2 missing ─
+describe("POST /api/subscriptions – gracefully skips billing when the tier_2 price ID is missing", () => {
+  const TARGET_TIER = "tier_2" as const;
+  const MISSING_AGENT_EMAIL = `stripe-missing-price-t2-test-${Date.now()}@example.com`;
+  const MISSING_AGENT_PASSWORD = "MissingPriceT2Pass1!";
+
+  let missingApp: ReturnType<typeof express>;
+  let missingCookie: string[];
+  let missingAgentId: number;
+  let missingMockStripe: MockStripeClient;
+  let savedPriceId: string | undefined;
+
+  beforeAll(async () => {
+    savedPriceId = process.env.STRIPE_PRICE_TIER_2;
+    delete process.env.STRIPE_PRICE_TIER_2;
+
+    vi.resetModules();
+    const stripeClientMod = await import("./stripeClient.js");
+    const routesMod = await import("./routes.js");
+
+    missingMockStripe = buildMockStripeClient();
+    vi.mocked(stripeClientMod.getUncachableStripeClient).mockResolvedValue(
+      missingMockStripe as unknown as Stripe
+    );
+
+    const [agent] = await db
+      .insert(schema.agents)
+      .values({
+        email: MISSING_AGENT_EMAIL,
+        password: await hashPasswordForTest(MISSING_AGENT_PASSWORD),
+        emailVerifiedAt: new Date(),
+        firstName: "Missing",
+        lastName: "PriceT2",
+        currentRank: "agent",
+        highestRank: "agent",
+      })
+      .returning();
+    missingAgentId = agent.id;
+
+    missingApp = express();
+    missingApp.use(express.json());
+    const httpServer = createServer(missingApp);
+    await routesMod.registerRoutes(httpServer, missingApp);
+
+    const loginRes = await request(missingApp)
+      .post("/api/login")
+      .send({ username: MISSING_AGENT_EMAIL, password: MISSING_AGENT_PASSWORD });
+    missingCookie = loginRes.headers["set-cookie"] as unknown as string[];
+  }, 30000);
+
+  afterAll(async () => {
+    if (savedPriceId !== undefined) {
+      process.env.STRIPE_PRICE_TIER_2 = savedPriceId;
+    }
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, missingAgentId));
+    await db.delete(schema.agents).where(eq(schema.agents.id, missingAgentId));
+    vi.resetModules();
+  });
+
+  it("returns 201 and links the Stripe Customer but never calls stripe.subscriptions.create", async () => {
+    const res = await request(missingApp)
+      .post("/api/subscriptions")
+      .set("Cookie", missingCookie)
+      .send({
+        merchantName: "Missing Price T2 Merchant",
+        merchantEmail: "missing-price-t2@example.com",
+        tier: TARGET_TIER,
+        paymentMethodId: "pm_test_visa",
+      })
+      .expect(201);
+
+    expect(missingMockStripe.customers.create).toHaveBeenCalledTimes(1);
+    expect(res.body.stripeCustomerId).toBe(MOCK_CUSTOMER_ID);
+
+    expect(missingMockStripe.subscriptions.create).not.toHaveBeenCalled();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, res.body.id));
+  });
+
+  it("persists a stripeCustomerId but leaves stripeSubscriptionId null on the DB record", async () => {
+    const res = await request(missingApp)
+      .post("/api/subscriptions")
+      .set("Cookie", missingCookie)
+      .send({
+        merchantName: "Missing Price T2 DB Merchant",
+        merchantEmail: "missing-price-t2-db@example.com",
+        tier: TARGET_TIER,
+        paymentMethodId: "pm_test_visa",
+      })
+      .expect(201);
+
+    const subId: number = res.body.id;
+
+    const [dbSub] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, subId));
+
+    expect(dbSub).toBeDefined();
+    expect(dbSub.stripeCustomerId).toBe(MOCK_CUSTOMER_ID);
+    expect(dbSub.stripeSubscriptionId).toBeNull();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subId));
+  });
+});
+
+// ── POST /api/subscriptions – graceful fallback when STRIPE_PRICE_TIER_3 missing ─
+describe("POST /api/subscriptions – gracefully skips billing when the tier_3 price ID is missing", () => {
+  const TARGET_TIER = "tier_3" as const;
+  const MISSING_AGENT_EMAIL = `stripe-missing-price-t3-test-${Date.now()}@example.com`;
+  const MISSING_AGENT_PASSWORD = "MissingPriceT3Pass1!";
+
+  let missingApp: ReturnType<typeof express>;
+  let missingCookie: string[];
+  let missingAgentId: number;
+  let missingMockStripe: MockStripeClient;
+  let savedPriceId: string | undefined;
+
+  beforeAll(async () => {
+    savedPriceId = process.env.STRIPE_PRICE_TIER_3;
+    delete process.env.STRIPE_PRICE_TIER_3;
+
+    vi.resetModules();
+    const stripeClientMod = await import("./stripeClient.js");
+    const routesMod = await import("./routes.js");
+
+    missingMockStripe = buildMockStripeClient();
+    vi.mocked(stripeClientMod.getUncachableStripeClient).mockResolvedValue(
+      missingMockStripe as unknown as Stripe
+    );
+
+    const [agent] = await db
+      .insert(schema.agents)
+      .values({
+        email: MISSING_AGENT_EMAIL,
+        password: await hashPasswordForTest(MISSING_AGENT_PASSWORD),
+        emailVerifiedAt: new Date(),
+        firstName: "Missing",
+        lastName: "PriceT3",
+        currentRank: "agent",
+        highestRank: "agent",
+      })
+      .returning();
+    missingAgentId = agent.id;
+
+    missingApp = express();
+    missingApp.use(express.json());
+    const httpServer = createServer(missingApp);
+    await routesMod.registerRoutes(httpServer, missingApp);
+
+    const loginRes = await request(missingApp)
+      .post("/api/login")
+      .send({ username: MISSING_AGENT_EMAIL, password: MISSING_AGENT_PASSWORD });
+    missingCookie = loginRes.headers["set-cookie"] as unknown as string[];
+  }, 30000);
+
+  afterAll(async () => {
+    if (savedPriceId !== undefined) {
+      process.env.STRIPE_PRICE_TIER_3 = savedPriceId;
+    }
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, missingAgentId));
+    await db.delete(schema.agents).where(eq(schema.agents.id, missingAgentId));
+    vi.resetModules();
+  });
+
+  it("returns 201 and links the Stripe Customer but never calls stripe.subscriptions.create", async () => {
+    const res = await request(missingApp)
+      .post("/api/subscriptions")
+      .set("Cookie", missingCookie)
+      .send({
+        merchantName: "Missing Price T3 Merchant",
+        merchantEmail: "missing-price-t3@example.com",
+        tier: TARGET_TIER,
+        paymentMethodId: "pm_test_visa",
+      })
+      .expect(201);
+
+    expect(missingMockStripe.customers.create).toHaveBeenCalledTimes(1);
+    expect(res.body.stripeCustomerId).toBe(MOCK_CUSTOMER_ID);
+
+    expect(missingMockStripe.subscriptions.create).not.toHaveBeenCalled();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, res.body.id));
+  });
+
+  it("persists a stripeCustomerId but leaves stripeSubscriptionId null on the DB record", async () => {
+    const res = await request(missingApp)
+      .post("/api/subscriptions")
+      .set("Cookie", missingCookie)
+      .send({
+        merchantName: "Missing Price T3 DB Merchant",
+        merchantEmail: "missing-price-t3-db@example.com",
+        tier: TARGET_TIER,
+        paymentMethodId: "pm_test_visa",
+      })
+      .expect(201);
+
+    const subId: number = res.body.id;
+
+    const [dbSub] = await db
+      .select()
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.id, subId));
+
+    expect(dbSub).toBeDefined();
+    expect(dbSub.stripeCustomerId).toBe(MOCK_CUSTOMER_ID);
+    expect(dbSub.stripeSubscriptionId).toBeNull();
+
+    await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subId));
+  });
+});
