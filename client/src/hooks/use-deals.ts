@@ -25,9 +25,17 @@ export function useCreateDeal() {
         loanAmount: Number(data.loanAmount),
       });
 
+      // Generate a per-submission idempotency key so concurrent or retried
+      // network requests carrying the same key are deduplicated server-side
+      // and always produce exactly one deal row.
+      const idempotencyKey = crypto.randomUUID();
+
       const res = await fetch(api.deals.create.path, {
         method: api.deals.create.method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify(validated),
         credentials: "include",
       });

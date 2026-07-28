@@ -1241,6 +1241,18 @@ export async function registerRoutes(
 
   // ==================== DEAL ROUTES ====================
 
+  // In-memory idempotency cache for deal creation.
+  //
+  // Each entry stores the Promise for an in-flight or recently-completed deal
+  // creation keyed by "<agentId>:<X-Idempotency-Key>". Concurrent requests that
+  // arrive with the same key while the first is still in-flight both await the
+  // same Promise and receive the same Deal. Replay requests arriving within the
+  // 60-second TTL window also receive the original result without hitting the
+  // database again. If the creation promise rejects the entry is evicted so a
+  // subsequent attempt can retry.
+  type Deal = Awaited<ReturnType<typeof storage.createDeal>>;
+  const dealIdempotencyCache = new Map<string, Promise<Deal>>();
+
   app.post(api.deals.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.deals.create.input.parse(req.body);
@@ -1256,50 +1268,95 @@ export async function registerRoutes(
         });
       }
 
-      const companyRevenue = Number(input.loanAmount) * 0.10;
-      const gbrAmount = input.gbrAmount ? Number(input.gbrAmount) : companyRevenue;
-      
-      // Detect state compliance flags from business state
-      const businessState = (input.businessState || '').toUpperCase();
-      const isVaMerchant = businessState === 'VA';
-      const isCaMerchant = businessState === 'CA';
-      const isUtMerchant = businessState === 'UT';
+      // Server-side idempotency: if the client supplied X-Idempotency-Key, check
+      // whether we already have a pending or recently-completed creation for this
+      // (agent, key) pair. Both concurrent and retried requests receive the same
+      // deal without inserting a duplicate row.
+      const rawKey = req.headers["x-idempotency-key"];
+      const idempotencyKey =
+        typeof rawKey === "string" && rawKey.trim().length > 0
+          ? rawKey.trim()
+          : null;
 
-      // Deals start as 'pending' — closed by the closing team, not the submitting agent
-      const deal = await storage.createDeal({
-        ...input,
-        agentId,
-        loanAmount: input.loanAmount.toString(),
-        companyRevenue: companyRevenue.toString(),
-        gbrAmount: gbrAmount.toString(),
-        avgMonthlyRevenue: input.avgMonthlyRevenue ? input.avgMonthlyRevenue.toString() : null,
-        requestedAmount: input.requestedAmount ? input.requestedAmount.toString() : null,
-        isVaMerchant,
-        isCaMerchant,
-        isUtMerchant,
-        status: 'pending',
-        pmfSubmissionStatus: 'pending',
-        documents: input.documents || [],
-      });
-      
-      // Stub PMF API submission (replace with real API call when endpoint is available)
-      submitToPmf(deal, agentId).catch(err => 
-        console.error(`PMF submission error for deal ${deal.id}:`, err)
-      );
-      
-      const agent = await storage.getAgent(agentId);
-      
-      // Notify agent their deal was submitted (not funded yet — that happens when admin approves)
-      await storage.createNotification({
-        agentId,
-        type: 'deal_funded',
-        title: 'Deal Submitted to Closing Team',
-        message: `Your MCA application for ${deal.merchantName} has been submitted. The closing team will review and update you on status.`,
-        dealId: deal.id,
-        isRead: false,
-        emailSent: false,
-      });
+      if (idempotencyKey) {
+        const cacheKey = `${agentId}:${idempotencyKey}`;
+        const cached = dealIdempotencyCache.get(cacheKey);
+        if (cached) {
+          // Return the result of the original (possibly still-in-flight) request.
+          const deal = await cached;
+          return res.status(201).json(deal);
+        }
+      }
 
+      // Build the creation promise. Storing it BEFORE the first await means
+      // any concurrent request that arrives while this one is in-flight will
+      // find it in the cache and await the same Promise (Node.js is single-
+      // threaded so there is no gap between cache.set and the first await).
+      const creationPromise: Promise<Deal> = (async () => {
+        const companyRevenue = Number(input.loanAmount) * 0.10;
+        const gbrAmount = input.gbrAmount ? Number(input.gbrAmount) : companyRevenue;
+        
+        // Detect state compliance flags from business state
+        const businessState = (input.businessState || '').toUpperCase();
+        const isVaMerchant = businessState === 'VA';
+        const isCaMerchant = businessState === 'CA';
+        const isUtMerchant = businessState === 'UT';
+
+        // Deals start as 'pending' — closed by the closing team, not the submitting agent
+        const deal = await storage.createDeal({
+          ...input,
+          agentId,
+          loanAmount: input.loanAmount.toString(),
+          companyRevenue: companyRevenue.toString(),
+          gbrAmount: gbrAmount.toString(),
+          avgMonthlyRevenue: input.avgMonthlyRevenue ? input.avgMonthlyRevenue.toString() : null,
+          requestedAmount: input.requestedAmount ? input.requestedAmount.toString() : null,
+          isVaMerchant,
+          isCaMerchant,
+          isUtMerchant,
+          status: 'pending',
+          pmfSubmissionStatus: 'pending',
+          documents: input.documents || [],
+        });
+
+        // Stub PMF API submission (replace with real API call when endpoint is available)
+        submitToPmf(deal, agentId).catch(err =>
+          console.error(`PMF submission error for deal ${deal.id}:`, err)
+        );
+
+        // Notify agent their deal was submitted (not funded yet — that happens when admin approves)
+        await storage.createNotification({
+          agentId,
+          type: 'deal_funded',
+          title: 'Deal Submitted to Closing Team',
+          message: `Your MCA application for ${deal.merchantName} has been submitted. The closing team will review and update you on status.`,
+          dealId: deal.id,
+          isRead: false,
+          emailSent: false,
+        });
+
+        return deal;
+      })();
+
+      if (idempotencyKey) {
+        const cacheKey = `${agentId}:${idempotencyKey}`;
+        dealIdempotencyCache.set(cacheKey, creationPromise);
+
+        // Evict after 60 s so the Map doesn't grow without bound.
+        const timer = setTimeout(
+          () => dealIdempotencyCache.delete(cacheKey),
+          60_000
+        );
+        // Don't prevent the process from exiting during tests.
+        if (typeof timer === "object" && timer !== null && "unref" in timer) {
+          (timer as ReturnType<typeof setTimeout> & { unref(): void }).unref();
+        }
+
+        // If creation fails, remove the entry so the client can retry.
+        creationPromise.catch(() => dealIdempotencyCache.delete(cacheKey));
+      }
+
+      const deal = await creationPromise;
       res.status(201).json(deal);
     } catch (err) {
       if (err instanceof z.ZodError) {

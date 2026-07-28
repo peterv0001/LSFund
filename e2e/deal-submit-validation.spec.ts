@@ -47,16 +47,65 @@ test.describe("MCA application wizard surfaces validation errors instead of fail
   test.beforeAll(async ({ browser }) => {
     context = await browser.newContext();
     page = await context.newPage();
-    await context.request.post("/api/register", {
-      data: {
-        firstName: "Deal",
-        lastName: `Val${TS}`,
-        email: AGENT_EMAIL,
-        password: AGENT_PASSWORD,
-        referralCode: "",
-      },
-      failOnStatusCode: false,
-    });
+
+    // Registration is done in a throwaway context that is immediately discarded.
+    // Passport 0.7 calls req.session.regenerate() inside req.login(), so posting
+    // to /api/register replaces the current session with an agent session. If we
+    // used the admin context for registration, its admin session would be silently
+    // overwritten, making subsequent admin API calls fail with 403 on every repeat.
+    let agentId: number | undefined;
+    const regCtx = await browser.newContext();
+    try {
+      const regRes = await regCtx.request.post("/api/register", {
+        data: {
+          firstName: "Deal",
+          lastName: `Val${TS}`,
+          email: AGENT_EMAIL,
+          password: AGENT_PASSWORD,
+          referralCode: "",
+        },
+        failOnStatusCode: false,
+      });
+      if (regRes.ok()) {
+        agentId = (await regRes.json()).id;
+      }
+    } finally {
+      await regCtx.close();
+    }
+
+    // Admin context is used ONLY for admin operations — never for registration —
+    // so the admin session cookie is never overwritten by req.login(agent).
+    const adminCtx = await browser.newContext();
+    try {
+      const adminLogin = await adminCtx.request.post("/api/login", {
+        data: { username: "admin@psl.capital", password: "password123" },
+      });
+      if (!adminLogin.ok()) throw new Error("Admin login failed during test setup");
+
+      // If registration was skipped (agent already exists from a prior repeat),
+      // look them up via the admin agents search endpoint.
+      if (agentId === undefined) {
+        const searchRes = await adminCtx.request.get(
+          `/api/admin/agents?search=${encodeURIComponent(AGENT_EMAIL)}&pageSize=5`,
+        );
+        if (searchRes.ok()) {
+          const { agents } = await searchRes.json();
+          agentId = agents?.[0]?.id;
+        }
+      }
+
+      // Mark the agent's email as verified so POST /api/deals doesn't 403.
+      if (agentId !== undefined) {
+        const verifyRes = await adminCtx.request.post(
+          `/api/admin/agents/${agentId}/verify-email`,
+        );
+        if (!verifyRes.ok()) throw new Error("Email verification failed during test setup");
+      }
+    } finally {
+      await adminCtx.close();
+    }
+
+    // Log the test agent in exactly once with the shared context.
     const res = await context.request.post("/api/login", {
       data: { username: AGENT_EMAIL, password: AGENT_PASSWORD },
     });
@@ -266,5 +315,107 @@ test.describe("MCA application wizard surfaces validation errors instead of fail
     await expect(
       page.locator("table").getByText(merchantName, { exact: false }).first()
     ).toBeVisible({ timeout: 10000 });
+  });
+
+  test("double-clicking Submit only sends one POST /api/deals (no duplicate deal)", async () => {
+    test.setTimeout(60000);
+    const merchantName = `E2E Double-Click Merchant ${TS}`;
+
+    await openWizard();
+
+    // Step 1
+    await fillStep1Valid(merchantName);
+    await page.locator('[data-testid="button-next-step"]').click();
+    await expect(page.getByText("Owner / Principal Information")).toBeVisible({ timeout: 5000 });
+
+    // Step 2
+    await fillStep2Valid();
+    await page.locator('[data-testid="button-next-step"]').click();
+
+    // Step 3 — funding details
+    await expect(
+      page.getByRole("heading", { name: "Funding Details" })
+    ).toBeVisible({ timeout: 5000 });
+    await page.locator('[data-testid="input-requested-amount"]').fill("60000");
+    await page.locator('[data-testid="input-avg-monthly-revenue"]').fill("30000");
+    await page.locator('[data-testid="input-loan-amount"]').fill("60000");
+    await page.locator('[data-testid="button-next-step"]').click();
+
+    // Step 4 — review & submit
+    await expect(
+      page.getByRole("heading", { name: "Review & Submit" })
+    ).toBeVisible({ timeout: 5000 });
+
+    // Count every POST /api/deals that the browser sends.
+    const dealCreateRequests: string[] = [];
+    const trackDeals = (req: import("@playwright/test").Request) => {
+      if (req.method() === "POST" && new URL(req.url()).pathname === "/api/deals") {
+        dealCreateRequests.push(req.url());
+      }
+    };
+    page.on("request", trackDeals);
+
+    // Hold the POST /api/deals response until we explicitly release it. This keeps
+    // isPending=true — and therefore the button disabled — long enough for a genuine
+    // second click to land on the disabled element. Without the hold the dialog
+    // closes immediately after the first click and the second click never dispatches.
+    let releaseRequest!: () => void;
+    const requestHeld = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+    await page.route("**/api/deals", async (route) => {
+      await requestHeld;
+      await route.continue();
+    });
+
+    const submitBtn = page.locator('[data-testid="button-submit-application"]');
+    await submitBtn.waitFor({ state: "visible", timeout: 5000 });
+
+    // First click: fires the form submission. The request is held in-flight so
+    // isPending stays true and the button transitions to disabled.
+    await submitBtn.click();
+
+    // Wait until the submit button is actually disabled (isPending = true). This
+    // confirms the first click was received and the mutation is in progress.
+    await expect(submitBtn).toBeDisabled({ timeout: 3000 });
+
+    // Second click on the disabled button. force:true bypasses Playwright's
+    // "element must be actionable" check so we can assert that a disabled submit
+    // button does NOT trigger a second form submission, not that Playwright won't
+    // even attempt to interact with it.
+    await submitBtn.click({ force: true });
+
+    // Brief pause so any stray second request would have time to appear.
+    await page.waitForTimeout(300);
+
+    // Core assertion: exactly one deal-creation request was sent to the server
+    // (the second click on the disabled button did not produce another one).
+    expect(dealCreateRequests).toHaveLength(1);
+
+    // Release the held response so the deal is actually created on the server.
+    // Do NOT unroute yet — calling page.unroute() while route.continue() is
+    // still in-flight aborts the request. Wait for the success view to render
+    // (confirming the server round-trip completed) before tearing down the intercept.
+    releaseRequest();
+
+    // Success state confirms the deal was created and the wizard completed.
+    await expect(
+      page.locator('[data-testid="text-submission-success-title"]')
+    ).toHaveText("Application Submitted!", { timeout: 15000 });
+
+    // Safe to clean up now — the route.continue() has already resolved.
+    await page.unroute("**/api/deals");
+    page.off("request", trackDeals);
+
+    // Close the success view and verify the deal appears exactly once in the table.
+    try {
+      await page.locator('[data-testid="button-close-success"]').click({ timeout: 5000 });
+    } catch {
+      // Best effort: element may detach as the dialog closes.
+    }
+
+    const dealRows = page.locator("table").getByText(merchantName, { exact: false });
+    await expect(dealRows.first()).toBeVisible({ timeout: 10000 });
+    await expect(dealRows).toHaveCount(1);
   });
 });

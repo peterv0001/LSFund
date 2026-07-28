@@ -491,7 +491,7 @@ function RegisterForm({ onSubmit, isLoading, onToggle, referralCode }: {
           <Checkbox
             id="legalConsent"
             checked={form.watch("legalConsent")}
-            onCheckedChange={(checked) => form.setValue("legalConsent", checked === true as any, { shouldValidate: true })}
+            onCheckedChange={(checked) => form.setValue("legalConsent", (checked === true) as any, { shouldValidate: true })}
             data-testid="checkbox-legal-consent"
           />
           <label htmlFor="legalConsent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
