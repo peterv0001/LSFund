@@ -100,6 +100,7 @@ export default function LeadsPage() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [newStatus, setNewStatus] = useState<string>("");
   const [notes, setNotes] = useState("");
@@ -171,7 +172,12 @@ export default function LeadsPage() {
       lead.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.contactEmail?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const src = getLeadSource(lead);
+    const matchesSource =
+      sourceFilter === "all" ||
+      (sourceFilter === "shared" && src.isShared) ||
+      (src.isShared && src.campaign === sourceFilter);
+    return matchesSearch && matchesStatus && matchesSource;
   });
 
   const handleUpdateStatus = () => {
@@ -325,6 +331,18 @@ export default function LeadsPage() {
               <SelectItem value="all">All Statuses</SelectItem>
               {Object.entries(statusLabels).map(([value, label]) => (
                 <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-44" data-testid="select-source-filter">
+              <SelectValue placeholder="All Sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="shared">Shared link leads</SelectItem>
+              {Object.entries(campaignLabels).map(([campaign, label]) => (
+                <SelectItem key={campaign} value={campaign}>{label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
