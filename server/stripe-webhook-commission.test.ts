@@ -497,3 +497,231 @@ describe("POST /api/webhooks/stripe – invoice.paid fires upline override commi
     expect(Number(l2Commission!.amount)).toBeCloseTo(1.86, 2);
   });
 });
+
+// ── v2026 residual governance: webhook path reads agent standing from storage ──
+//
+// These tests prove the REAL invoice.paid caller correctly reads
+// agent.residualStatus and agent.status (→ membershipActive) from the DB and
+// passes them through to fireSubscriptionV2026, so standing actually scales or
+// zeros residual payouts in the live billing path.
+//
+// Subscription: tier_2, commissionModel:'v2026', startDate ~14 months ago
+//   (monthsSinceStart ≥ 12 → 'residual' bucket)
+// Agent defaults: distributorTier:'standard', agencyModel:'independent'
+//
+// Expected producerTotal formula:
+//   basis = retail − wholesale = 497 − 175 = $322
+//   poolRate (standard/tier_2/residual) = 0.10
+//   agencySplit (independent) producer = 1.00
+//
+//   good_standing:  322 × 0.10 × 1.0 × 1.00 = $32.20
+//   reduced:        322 × 0.10 × 0.5 × 1.00 = $16.10
+//   suspended:      govFactor = 0 → $0 (no commission row)
+//   inactive agent: membershipActive = false → govFactor = 0 → no commission row
+
+describe("POST /api/webhooks/stripe – invoice.paid v2026 residual governance", () => {
+  const GOV_EMAIL_PREFIX = `stripe-webhook-gov-${Date.now()}`;
+  let goodStandingAgentId: number;
+  let reducedAgentId: number;
+  let suspendedAgentId: number;
+  let inactiveAgentId: number;
+  let govApp: ReturnType<typeof express>;
+
+  // 14 months ago — safely inside the residual bucket (monthsSinceStart ≥ 12)
+  const fourteenMonthsAgo = new Date(Date.now() - 14 * 30.44 * 24 * 60 * 60 * 1000);
+
+  async function insertV2026ResidualSub(
+    agentId: number,
+    stripeSubId: string,
+  ) {
+    const [sub] = await db
+      .insert(schema.subscriptions)
+      .values({
+        agentId,
+        merchantName: "Gov Merchant",
+        tier: "tier_2",
+        monthlyAmount: "497",
+        startDate: fourteenMonthsAgo,
+        stripeSubscriptionId: stripeSubId,
+        stripeCustomerId: `cus_gov_test_${agentId}`,
+        billingStatus: "active",
+        commissionModel: "v2026",
+      })
+      .returning();
+    return sub;
+  }
+
+  beforeAll(async () => {
+    // good_standing active agent (defaults)
+    const [gs] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${GOV_EMAIL_PREFIX}-gs@example.com`,
+        password: "x",
+        firstName: "Good",
+        lastName: "Standing",
+        currentRank: "agent",
+        highestRank: "agent",
+        status: "active",
+        residualStatus: "good_standing",
+        emailVerifiedAt: new Date(),
+      })
+      .returning();
+    goodStandingAgentId = gs.id;
+
+    // reduced standing active agent
+    const [red] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${GOV_EMAIL_PREFIX}-red@example.com`,
+        password: "x",
+        firstName: "Reduced",
+        lastName: "Standing",
+        currentRank: "agent",
+        highestRank: "agent",
+        status: "active",
+        residualStatus: "reduced",
+        emailVerifiedAt: new Date(),
+      })
+      .returning();
+    reducedAgentId = red.id;
+
+    // suspended standing active agent
+    const [sus] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${GOV_EMAIL_PREFIX}-sus@example.com`,
+        password: "x",
+        firstName: "Suspended",
+        lastName: "Standing",
+        currentRank: "agent",
+        highestRank: "agent",
+        status: "active",
+        residualStatus: "suspended",
+        emailVerifiedAt: new Date(),
+      })
+      .returning();
+    suspendedAgentId = sus.id;
+
+    // inactive agent (membershipActive = false regardless of residualStatus)
+    const [inact] = await db
+      .insert(schema.agents)
+      .values({
+        email: `${GOV_EMAIL_PREFIX}-inact@example.com`,
+        password: "x",
+        firstName: "Inactive",
+        lastName: "Agent",
+        currentRank: "agent",
+        highestRank: "agent",
+        status: "inactive",
+        residualStatus: "good_standing",
+        emailVerifiedAt: new Date(),
+      })
+      .returning();
+    inactiveAgentId = inact.id;
+
+    govApp = buildWebhookApp();
+  }, 30000);
+
+  afterAll(async () => {
+    for (const agentId of [goodStandingAgentId, reducedAgentId, suspendedAgentId, inactiveAgentId]) {
+      await db.delete(schema.commissions).where(eq(schema.commissions.agentId, agentId));
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.agentId, agentId));
+      await db.delete(schema.agents).where(eq(schema.agents.id, agentId));
+    }
+  });
+
+  it("pays full residual to a good-standing active agent (govFactor = 1.0)", async () => {
+    const subId = `sub_gov_gs_${Date.now()}`;
+    const sub = await insertV2026ResidualSub(goodStandingAgentId, subId);
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(govApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_gov_gs" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    const agentCommission = commissions.find((c) => c.agentId === goodStandingAgentId);
+    expect(agentCommission).toBeDefined();
+    expect(agentCommission!.type).toBe("subscription_residual");
+    // basis $322 × poolRate 0.10 × govFactor 1.0 × producerSplit 1.00 = $32.20
+    expect(Number(agentCommission!.amount)).toBeCloseTo(32.20, 2);
+  });
+
+  it("halves the residual payout for a reduced-standing active agent (govFactor = 0.5)", async () => {
+    const subId = `sub_gov_red_${Date.now()}`;
+    const sub = await insertV2026ResidualSub(reducedAgentId, subId);
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(govApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_gov_red" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    const agentCommission = commissions.find((c) => c.agentId === reducedAgentId);
+    expect(agentCommission).toBeDefined();
+    expect(agentCommission!.type).toBe("subscription_residual");
+    // basis $322 × poolRate 0.10 × govFactor 0.5 × producerSplit 1.00 = $16.10
+    expect(Number(agentCommission!.amount)).toBeCloseTo(16.10, 2);
+  });
+
+  it("pays zero residual to a suspended-standing agent (govFactor = 0, no commission row)", async () => {
+    const subId = `sub_gov_sus_${Date.now()}`;
+    const sub = await insertV2026ResidualSub(suspendedAgentId, subId);
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(govApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_gov_sus" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    // Suspended standing → govFactor 0 → fireSubscriptionV2026 returns without
+    // persisting any row.
+    const agentCommission = commissions.find((c) => c.agentId === suspendedAgentId);
+    expect(agentCommission).toBeUndefined();
+  });
+
+  it("pays zero residual to an inactive agent (membershipActive = false, no commission row)", async () => {
+    const subId = `sub_gov_inact_${Date.now()}`;
+    const sub = await insertV2026ResidualSub(inactiveAgentId, subId);
+    useMockStripeWithEvent(buildInvoicePaidEvent(subId));
+
+    await request(govApp)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "t=1,v1=mocksig")
+      .set("Content-Type", "application/json")
+      .send(Buffer.from(JSON.stringify({ id: "evt_gov_inact" })))
+      .expect(200);
+
+    const commissions = await db
+      .select()
+      .from(schema.commissions)
+      .where(eq(schema.commissions.subscriptionId, sub.id));
+
+    // agent.status !== 'active' → membershipActive = false → isResidualEligible
+    // returns false → govFactor 0 → no commission row.
+    const agentCommission = commissions.find((c) => c.agentId === inactiveAgentId);
+    expect(agentCommission).toBeUndefined();
+  });
+});
