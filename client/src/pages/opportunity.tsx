@@ -33,9 +33,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { COMP_V2026 } from "@shared/compensation";
-
-const usd = (n: number) => `$${n.toLocaleString()}`;
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+import { usd, pct } from "@shared/compensation-format";
 const {
   mcaAllocation,
   mcaAccelerators,
@@ -569,7 +567,7 @@ export default function OpportunityPage() {
                 />
                 <FAQItem
                   question="Can I sell both MCA and subscriptions to the same merchant?"
-                  answer="Yes — when it's the right fit for the merchant. Distributors can offer both products, and consistent MCA-plus-subscription attachment is one of the performance accelerators that can lift your subscription commission pool by up to an additional +5%. It's an accelerator earned across your production, not a standalone per-deal pairing bonus, and you should only place products that genuinely suit the merchant's needs."
+                  answer={`Yes — when it's the right fit for the merchant. Distributors can offer both products, and consistent MCA-plus-subscription attachment is one of the performance accelerators that can lift your subscription commission pool by up to an additional ${pct(subscriptionAccelerators.cap)}. It's an accelerator earned across your production, not a standalone per-deal pairing bonus, and you should only place products that genuinely suit the merchant's needs.`}
                 />
               </CardContent>
             </Card>

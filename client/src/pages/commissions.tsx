@@ -18,9 +18,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { COMP_V2026 } from "@shared/compensation";
-
-const usd = (n: number) => `$${n.toLocaleString()}`;
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+import { usd, pct } from "@shared/compensation-format";
 const {
   mcaAllocation,
   mcaAccelerators,
