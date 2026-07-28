@@ -26,9 +26,14 @@ type SponsorOption = {
 };
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
-  const { login, register, isLoggingIn, isRegistering } = useAuth();
+  // Derive initial mode from the URL so that a direct request to /signup
+  // starts in registration mode and keeps its server-injected metadata after
+  // hydration.  The user can still toggle within the same page; useState only
+  // reads the initial value once per mount, and wouter remounts AuthPage when
+  // navigating between the /login and /signup routes.
   const [location] = useLocation();
+  const [isLogin, setIsLogin] = useState(location !== "/signup");
+  const { login, register, isLoggingIn, isRegistering } = useAuth();
   usePageMeta(
     isLogin ? "Agent Sign In | LeaderShield Funding" : "Create Agent Account | LeaderShield Funding",
     isLogin

@@ -5,6 +5,7 @@ import path from "path";
 
 import { precompressAssets } from "./precompress.js";
 import { assertLandingBundleWithinBudget } from "./bundle-budget.js";
+import { prerender } from "./prerender.js";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -55,6 +56,16 @@ async function buildAll() {
       "build: vite build did not return a Rollup output; cannot enforce the landing bundle budget",
     );
   }
+
+  // SSR bundle — used only by the prerender step below; not shipped to users.
+  // Uses a separate vite.ssr.config.ts so the client manualChunks settings
+  // (which reference React packages that Rollup externalises in SSR mode)
+  // never apply to this build.
+  console.log("building SSR bundle for prerendering...");
+  await viteBuild({ configFile: path.resolve("vite.ssr.config.ts") });
+
+  console.log("prerendering public routes...");
+  await prerender();
 
   console.log("precompressing static assets...");
   const compressed = await precompressAssets(path.resolve("dist/public"));

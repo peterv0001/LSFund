@@ -207,6 +207,30 @@ export const PUBLIC_ROUTE_META: Array<{ pattern: RegExp; meta: RouteMeta }> = [
         "Become a LeaderShield Funding agent: earn the 32.5% Opening Agent Pool on funded MCA deals plus recurring Merchant Growth Platform subscription commissions (up to 55%) and lifetime residuals.",
     },
   },
+  {
+    pattern: /^\/lp\/platform$/,
+    meta: {
+      title: `Your marketing department. Run by AI. | ${SITE}`,
+      description:
+        "The Merchant Growth Platform is a fully AI-native marketing and sales engine: brand intelligence, AI CRM, lead generation, outreach, social content, and AI-managed ads — from $149/mo.",
+    },
+  },
+  {
+    pattern: /^\/lp\/leaks$/,
+    meta: {
+      title: `You don't have a leads problem. You have a leaks problem. | ${SITE}`,
+      description:
+        "Missed calls, unanswered chats, leads that never get a follow-up. The Merchant Growth Platform captures every inquiry 24/7 and follows up automatically — from $497/mo.",
+    },
+  },
+  {
+    pattern: /^\/lp\/scale$/,
+    meta: {
+      title: `Scale the revenue. Skip the headcount. | ${SITE}`,
+      description:
+        "Revenue Scale AI is a full AI marketing-and-sales department: an AI Caller that books meetings, AI-managed paid ads, content across Meta, LinkedIn and X — $1,497/mo instead of payroll.",
+    },
+  },
 ];
 
 const {
@@ -498,6 +522,10 @@ export function serveStatic(app: Express, distPathOverride?: string) {
 
   app.use(
     express.static(distPath, {
+      // Do not auto-serve index.html for "/": we need every public URL,
+      // including the root, to pass through our prerender-aware catch-all so
+      // the server-rendered body content and per-route metadata are injected.
+      index: false,
       setHeaders: (res, filePath) => {
         // Vite emits content-hashed filenames under /assets, so they can be
         // cached forever. index.html must never be cached so new deploys are
@@ -521,6 +549,27 @@ export function serveStatic(app: Express, distPathOverride?: string) {
     return indexHtml;
   }
 
+  // Cache prerendered HTML strings keyed by URL pathname.
+  // null means "no prerendered file exists for this route".
+  const prerenderedCache = new Map<string, string | null>();
+
+  function getPrerenderedHtml(pathname: string): string | null {
+    if (prerenderedCache.has(pathname)) {
+      return prerenderedCache.get(pathname)!;
+    }
+    const fileName =
+      pathname === "/" ? "index.html" : pathname.slice(1) + ".html";
+    const filePath = path.join(distPath, "prerendered", fileName);
+    try {
+      const html = fs.readFileSync(filePath, "utf-8");
+      prerenderedCache.set(pathname, html);
+      return html;
+    } catch {
+      prerenderedCache.set(pathname, null);
+      return null;
+    }
+  }
+
   app.use("/{*path}", (req, res) => {
     // This handler is mounted at the `/{*path}` wildcard, so Express strips the
     // matched segment into `req.baseUrl` and leaves `req.path` as the remainder
@@ -536,6 +585,24 @@ export function serveStatic(app: Express, distPathOverride?: string) {
 
     // The SPA shell must never be cached so new deploys load immediately.
     res.setHeader("Cache-Control", "no-cache");
+
+    // Prefer the prerendered file when it exists: it contains real page body
+    // HTML so crawlers receive route-specific content in the first response
+    // instead of the empty SPA shell.  Head metadata is still injected
+    // server-side so the prerendered file's default <title>/<meta> are
+    // overwritten with the correct per-route values.
+    const prerendered = getPrerenderedHtml(pathname);
+    if (prerendered) {
+      const match = PUBLIC_ROUTE_META.find(({ pattern }) =>
+        pattern.test(pathname),
+      );
+      const html = match
+        ? injectMeta(prerendered, match.meta, pathname)
+        : prerendered;
+      res.status(status).setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(html);
+      return;
+    }
 
     const match = PUBLIC_ROUTE_META.find(({ pattern }) => pattern.test(pathname));
     const faqMatch = ROUTE_FAQ.find(({ pattern }) => pattern.test(pathname));

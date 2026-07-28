@@ -85,6 +85,14 @@ const INDEX_GZIP_MARKER =
   "this exact text only exists inside the precompressed index.html.gz " +
   "and never in the source shell".repeat(20);
 
+// Unique strings placed inside the prerendered <div id="root"> so tests can
+// prove the server sent the prerendered body rather than the empty SPA shell.
+const PRERENDERED_ROOT_BODY_MARKER =
+  "UNIQUE_PRERENDERED_ROOT_BODY_CONTENT_MARKER_NEVER_IN_SHELL";
+
+const PRERENDERED_LP_PLATFORM_BODY_MARKER =
+  "UNIQUE_PRERENDERED_LP_PLATFORM_BODY_CONTENT_MARKER_NEVER_IN_SHELL";
+
 beforeAll(async () => {
   distDir = fs.mkdtempSync(path.join(os.tmpdir(), "static-caching-"));
   fs.mkdirSync(path.join(distDir, "assets"));
@@ -152,6 +160,41 @@ beforeAll(async () => {
   fs.writeFileSync(
     path.join(distDir, "assets", "prebuilt-aaa11111.js.gz"),
     zlib.gzipSync(Buffer.from(PRECOMPRESSED_GZIP_MARKER)),
+  );
+
+  // Prerendered files as produced by script/prerender.ts at build time.
+  // Each file is a copy of index.html with the root div filled with
+  // server-rendered body HTML.  The server detects them and serves them
+  // instead of the empty SPA shell so crawlers receive real page content.
+  //
+  // Use the same head structure as the index.html fixture above so that
+  // injectMeta() can find and replace the title/description/og tags.
+  const shellHead =
+    `<title>${escapeHtml(HOME_META.title)}</title>` +
+    `<meta name="description" content="${escapeHtml(HOME_META.description)}" />` +
+    `<meta property="og:title" content="${escapeHtml(HOME_META.title)}" />` +
+    `<meta property="og:description" content="${escapeHtml(HOME_META.description)}" />` +
+    `<meta property="og:url" content="https://leadershieldfunding.com/" />` +
+    `<meta name="twitter:title" content="${escapeHtml(HOME_META.title)}" />` +
+    `<meta name="twitter:description" content="${escapeHtml(HOME_META.description)}" />`;
+
+  // data-ssr="1" on the root div mirrors what script/prerender.ts writes;
+  // client/src/main.tsx reads this attribute to decide whether to call
+  // hydrateRoot (keep server DOM) or createRoot (fresh mount).
+  const makePrerenderedHtml = (bodyMarker: string) =>
+    `<!doctype html><html><head>${shellHead}</head>` +
+    `<body><div id="root" data-ssr="1"><main>${bodyMarker}</main></div></body></html>`;
+
+  fs.mkdirSync(path.join(distDir, "prerendered", "lp"), { recursive: true });
+
+  fs.writeFileSync(
+    path.join(distDir, "prerendered", "index.html"),
+    makePrerenderedHtml(PRERENDERED_ROOT_BODY_MARKER),
+  );
+
+  fs.writeFileSync(
+    path.join(distDir, "prerendered", "lp", "platform.html"),
+    makePrerenderedHtml(PRERENDERED_LP_PLATFORM_BODY_MARKER),
   );
 
   // Mirror the production wiring: compression before the static handler.
@@ -557,6 +600,9 @@ describe("public route SEO meta isolation", () => {
     "/lp/seasonal",
     "/lp/partners",
     "/lp/referral",
+    "/lp/platform",
+    "/lp/leaks",
+    "/lp/scale",
   ];
 
   const homeTitleEscaped = escapeHtml(HOME_META.title);
@@ -637,4 +683,70 @@ describe("public route SEO meta isolation", () => {
       }
     });
   }
+});
+
+describe("prerendered route serving", () => {
+  // The server should detect prerendered files placed at
+  //   dist/public/prerendered/<route>.html
+  // and serve their body content (which contains real page HTML) instead of
+  // the empty SPA shell.  Per-route head metadata is still injected on top,
+  // so crawlers receive both real copy and correct SEO tags in one response.
+
+  it("serves / from its prerendered file — body content is present, not the empty shell", async () => {
+    const res = await request(testApp)
+      .get("/")
+      .set("Accept-Encoding", "identity");
+    expect(res.status).toBe(200);
+    expect(res.headers["cache-control"]).toBe("no-cache");
+    // The prerendered body must be present.
+    expect(res.text).toContain(PRERENDERED_ROOT_BODY_MARKER);
+    // The root div is not empty — confirm it contains the SSR marker attribute.
+    expect(res.text).toContain('data-ssr="1"');
+    // Homepage SEO metadata must still be injected.
+    expect(res.text).toContain(`<title>${escapeHtml(HOME_META.title)}</title>`);
+  });
+
+  it("serves /lp/platform from its prerendered file with platform-specific SEO metadata injected", async () => {
+    const res = await request(testApp)
+      .get("/lp/platform")
+      .set("Accept-Encoding", "identity");
+    expect(res.status).toBe(200);
+    expect(res.headers["cache-control"]).toBe("no-cache");
+    // The prerendered body must be present.
+    expect(res.text).toContain(PRERENDERED_LP_PLATFORM_BODY_MARKER);
+    // The platform-specific SEO title must be injected (not the homepage's).
+    const platformMeta = PUBLIC_ROUTE_META.find(({ pattern }) =>
+      pattern.test("/lp/platform"),
+    )!.meta;
+    expect(res.text).toContain(
+      `<title>${escapeHtml(platformMeta.title)}</title>`,
+    );
+    expect(res.text).not.toContain(
+      `<title>${escapeHtml(HOME_META.title)}</title>`,
+    );
+  });
+
+  it("falls back to the meta-injected SPA shell for routes without a prerendered file", async () => {
+    // /login has no prerendered file — the server should serve the normal
+    // meta-injected SPA shell.
+    const res = await request(testApp)
+      .get("/login")
+      .set("Accept-Encoding", "identity");
+    expect(res.status).toBe(200);
+    // The root div must be EMPTY (no prerendered body).
+    expect(res.text).not.toContain('data-ssr="1"');
+    expect(res.text).not.toContain(PRERENDERED_ROOT_BODY_MARKER);
+    // The sign-in metadata must still be injected.
+    expect(res.text).toContain("Agent Sign In");
+  });
+
+  it("prerendered / response is gzip-compressed when the client accepts gzip", async () => {
+    const res = await request(testApp)
+      .get("/")
+      .set("Accept-Encoding", "gzip");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-encoding"]).toBe("gzip");
+    // Decompressed body must still contain the prerendered marker.
+    expect(res.text).toContain(PRERENDERED_ROOT_BODY_MARKER);
+  });
 });
