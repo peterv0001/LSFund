@@ -18,7 +18,7 @@ const KNOWN_ROUTES = [
   /^\/privacy$/,
   /^\/refund-policy$/,
   /^\/terms$/,
-  /^\/lp\/(declined|consolidation|growth|seasonal|partners|referral)$/,
+  /^\/lp\/(declined|consolidation|growth|seasonal|partners|referral|platform|leaks|scale)$/,
   /^\/dashboard$/,
   /^\/team$/,
   /^\/deals$/,

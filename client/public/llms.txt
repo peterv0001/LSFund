@@ -25,6 +25,9 @@
 - [Seasonal Funding](https://leadershieldfunding.com/lp/seasonal): Landing page for merchants with seasonal cash flow needs.
 - [For Partners & ISOs](https://leadershieldfunding.com/lp/partners): Partner and call center ISO recruitment page.
 - [Become an Agent](https://leadershieldfunding.com/lp/referral): Agent recruitment landing page covering both income streams — MCA producer commissions and recurring Merchant Growth Platform subscription commissions.
+- [Platform Landing Page](https://leadershieldfunding.com/lp/platform): Campaign landing page spotlighting the Merchant Growth Platform subscription tiers for inbound platform-focused traffic.
+- [Revenue Leaks Landing Page](https://leadershieldfunding.com/lp/leaks): Campaign landing page targeting merchants experiencing revenue leakage, positioning the platform as the diagnostic and fix.
+- [Scale Landing Page](https://leadershieldfunding.com/lp/scale): Campaign landing page for merchants ready to scale, leading with the Revenue Scale AI tier and its AI-powered growth stack.
 
 ## Products
 
