@@ -1597,6 +1597,85 @@ describe("GET /api/subscriptions/history – cross-agent read isolation", () => 
       await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
     }
   });
+
+  it("does not leak agent A's history when agent B filters by ?action=", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+
+    try {
+      await storage.logActivity({
+        actorId: agentRouteAgentId,
+        actorType: "agent",
+        action: "pause",
+        entityType: "subscription",
+        entityId: subOwnedByAgentA.id,
+        description: "Cross-agent action-filter isolation test entry",
+      });
+
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      const res = await request(testApp)
+        .get("/api/subscriptions/history?action=pause")
+        .set("Cookie", agentBCookie);
+
+      // The action filter must not widen scope beyond agent B's own subscriptions.
+      expect([200, 403]).toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body).toHaveProperty("logs");
+        expect(Array.isArray(res.body.logs)).toBe(true);
+        const returnedEntityIds = (res.body.logs as Array<{ entityId: number }>).map(
+          (l) => l.entityId
+        );
+        expect(returnedEntityIds).not.toContain(subOwnedByAgentA.id);
+      }
+    } finally {
+      await cleanupActivityLog(subOwnedByAgentA.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+    }
+  });
+
+  it("does not leak agent A's history when agent B filters by ?search=", async () => {
+    const subOwnedByAgentA = await createTestSubscription(agentRouteAgentId, "active");
+    const uniqueDescription = `AgentA-distinctive-search-term-${subOwnedByAgentA.id}`;
+
+    try {
+      await storage.logActivity({
+        actorId: agentRouteAgentId,
+        actorType: "agent",
+        action: "pause",
+        entityType: "subscription",
+        entityId: subOwnedByAgentA.id,
+        description: uniqueDescription,
+      });
+
+      const loginRes = await request(testApp)
+        .post("/api/login")
+        .send({ username: `${AGENT_B_EMAIL_PREFIX}@example.com`, password: AGENT_B_PASSWORD });
+      expect(loginRes.status).toBe(200);
+      const agentBCookie = loginRes.headers["set-cookie"] as unknown as string[];
+
+      const res = await request(testApp)
+        .get(`/api/subscriptions/history?search=${encodeURIComponent(uniqueDescription)}`)
+        .set("Cookie", agentBCookie);
+
+      // The search filter must not widen scope beyond agent B's own subscriptions.
+      expect([200, 403]).toContain(res.status);
+      if (res.status === 200) {
+        expect(res.body).toHaveProperty("logs");
+        expect(Array.isArray(res.body.logs)).toBe(true);
+        const returnedEntityIds = (res.body.logs as Array<{ entityId: number }>).map(
+          (l) => l.entityId
+        );
+        expect(returnedEntityIds).not.toContain(subOwnedByAgentA.id);
+      }
+    } finally {
+      await cleanupActivityLog(subOwnedByAgentA.id);
+      await db.delete(schema.subscriptions).where(eq(schema.subscriptions.id, subOwnedByAgentA.id));
+    }
+  });
 });
 
 // =========================================================
