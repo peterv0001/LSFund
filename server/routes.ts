@@ -1430,7 +1430,7 @@ export async function registerRoutes(
       const openingImmediate = result.producerAmount * CONFIG.holdback.immediateRelease;
       const openingDeferred = result.producerAmount * CONFIG.holdback.deferred;
 
-      const openingComm = await storage.createCommission({
+      const { commission: openingComm, isNew: openingIsNew } = await storage.createCommission({
         agentId,
         type: 'mac_primary',
         amount: openingImmediate.toFixed(2),
@@ -1439,32 +1439,34 @@ export async function registerRoutes(
         status: 'pending',
       });
 
-      await storage.createHoldback({
-        dealId: deal.id,
-        agentId,
-        commissionId: openingComm.id,
-        totalAmount: openingDeferred.toFixed(2),
-        releaseDate,
-      });
+      if (openingIsNew) {
+        await storage.createHoldback({
+          dealId: deal.id,
+          agentId,
+          commissionId: openingComm.id,
+          totalAmount: openingDeferred.toFixed(2),
+          releaseDate,
+        });
 
-      await storage.createNotification({
-        agentId,
-        type: 'deal_funded',
-        title: 'Deal Funded!',
-        message: `Your deal for ${deal.merchantName} ($${Number(deal.loanAmount).toLocaleString()}) has been funded. Opening Agent commission: $${openingImmediate.toFixed(2)} (+ $${openingDeferred.toFixed(2)} held for release).`,
-        dealId: deal.id,
-        isRead: false,
-        emailSent: false,
-      });
+        await storage.createNotification({
+          agentId,
+          type: 'deal_funded',
+          title: 'Deal Funded!',
+          message: `Your deal for ${deal.merchantName} ($${Number(deal.loanAmount).toLocaleString()}) has been funded. Opening Agent commission: $${openingImmediate.toFixed(2)} (+ $${openingDeferred.toFixed(2)} held for release).`,
+          dealId: deal.id,
+          isRead: false,
+          emailSent: false,
+        });
 
-      const v2026AgentPrefs = (agent!.emailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
-      if (v2026AgentPrefs.emailOnDealFunded !== false) {
-        emailService.sendDealFundedEmail(agent!.email, {
-          firstName: agent!.firstName,
-          merchantName: deal.merchantName,
-          amount: Number(deal.loanAmount),
-          commission: openingImmediate,
-        }).catch(console.error);
+        const v2026AgentPrefs = (agent!.emailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
+        if (v2026AgentPrefs.emailOnDealFunded !== false) {
+          emailService.sendDealFundedEmail(agent!.email, {
+            firstName: agent!.firstName,
+            merchantName: deal.merchantName,
+            amount: Number(deal.loanAmount),
+            commission: openingImmediate,
+          }).catch(console.error);
+        }
       }
 
       // --- Performance accelerator (from the 2.5% pool) → opening agent, immediate ---
@@ -1487,7 +1489,7 @@ export async function registerRoutes(
           const amount = result.overrideByLevel[i].amount;
           if (amount <= 0) continue;
           const sponsor = upline[i];
-          await storage.createCommission({
+          const { isNew: overrideIsNew } = await storage.createCommission({
             agentId: sponsor.id,
             type: overrideTypes[i],
             amount: amount.toFixed(2),
@@ -1496,22 +1498,24 @@ export async function registerRoutes(
             periodDate,
             status: 'pending',
           });
-          await storage.createNotification({
-            agentId: sponsor.id,
-            type: 'commission_earned',
-            title: 'Agency Override Earned!',
-            message: `You earned a $${amount.toFixed(2)} L${i + 1} agency override from ${agent!.firstName} ${agent!.lastName}'s deal.`,
-            isRead: false,
-            emailSent: false,
-          });
-          const sponsorOverridePrefs = (sponsor.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
-          if (sponsorOverridePrefs.emailOnCommissionEarned !== false) {
-            emailService.sendCommissionEarnedEmail(sponsor.email, {
-              firstName: sponsor.firstName,
-              commissionType: `L${i + 1} Agency Override`,
-              amount,
-              description: `From ${agent!.firstName} ${agent!.lastName}'s deal (${deal.merchantName})`,
-            }).catch(console.error);
+          if (overrideIsNew) {
+            await storage.createNotification({
+              agentId: sponsor.id,
+              type: 'commission_earned',
+              title: 'Agency Override Earned!',
+              message: `You earned a $${amount.toFixed(2)} L${i + 1} agency override from ${agent!.firstName} ${agent!.lastName}'s deal.`,
+              isRead: false,
+              emailSent: false,
+            });
+            const sponsorOverridePrefs = (sponsor.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+            if (sponsorOverridePrefs.emailOnCommissionEarned !== false) {
+              emailService.sendCommissionEarnedEmail(sponsor.email, {
+                firstName: sponsor.firstName,
+                commissionType: `L${i + 1} Agency Override`,
+                amount,
+                description: `From ${agent!.firstName} ${agent!.lastName}'s deal (${deal.merchantName})`,
+              }).catch(console.error);
+            }
           }
         }
       }
@@ -1526,7 +1530,7 @@ export async function registerRoutes(
       const macImmediate = macPrimaryAmount * CONFIG.holdback.immediateRelease;
       const macDeferred = macPrimaryAmount * CONFIG.holdback.deferred;
       
-      const macCommission = await storage.createCommission({
+      const { commission: macCommission, isNew: macIsNew } = await storage.createCommission({
         agentId,
         type: 'mac_primary',
         amount: macImmediate.toFixed(2),
@@ -1534,33 +1538,35 @@ export async function registerRoutes(
         periodDate,
         status: 'pending'
       });
-      
-      await storage.createHoldback({
-        dealId: deal.id,
-        agentId,
-        commissionId: macCommission.id,
-        totalAmount: macDeferred.toFixed(2),
-        releaseDate,
-      });
-      
-      await storage.createNotification({
-        agentId,
-        type: 'deal_funded',
-        title: 'Deal Funded!',
-        message: `Your deal for ${deal.merchantName} ($${Number(deal.loanAmount).toLocaleString()}) has been funded. MAC: $${macImmediate.toFixed(2)} (+ $${macDeferred.toFixed(2)} held for release).`,
-        dealId: deal.id,
-        isRead: false,
-        emailSent: false,
-      });
-      
-      const agentPrefs = (agent!.emailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
-      if (agentPrefs.emailOnDealFunded !== false) {
-        emailService.sendDealFundedEmail(agent!.email, {
-          firstName: agent!.firstName,
-          merchantName: deal.merchantName,
-          amount: Number(deal.loanAmount),
-          commission: macImmediate,
-        }).catch(console.error);
+
+      if (macIsNew) {
+        await storage.createHoldback({
+          dealId: deal.id,
+          agentId,
+          commissionId: macCommission.id,
+          totalAmount: macDeferred.toFixed(2),
+          releaseDate,
+        });
+
+        await storage.createNotification({
+          agentId,
+          type: 'deal_funded',
+          title: 'Deal Funded!',
+          message: `Your deal for ${deal.merchantName} ($${Number(deal.loanAmount).toLocaleString()}) has been funded. MAC: $${macImmediate.toFixed(2)} (+ $${macDeferred.toFixed(2)} held for release).`,
+          dealId: deal.id,
+          isRead: false,
+          emailSent: false,
+        });
+
+        const agentPrefs = (agent!.emailPreferences as { emailOnDealFunded?: boolean } | null) ?? {};
+        if (agentPrefs.emailOnDealFunded !== false) {
+          emailService.sendDealFundedEmail(agent!.email, {
+            firstName: agent!.firstName,
+            merchantName: deal.merchantName,
+            amount: Number(deal.loanAmount),
+            commission: macImmediate,
+          }).catch(console.error);
+        }
       }
       
       // === MAC SPONSOR OVERRIDES (3-level cap with compression) ===
@@ -1582,7 +1588,7 @@ export async function registerRoutes(
           const sponsorImmediate = sponsorAmount * CONFIG.holdback.immediateRelease;
           const sponsorDeferred = sponsorAmount * CONFIG.holdback.deferred;
           
-          const sponsorComm = await storage.createCommission({
+          const { commission: sponsorComm, isNew: sponsorIsNew } = await storage.createCommission({
             agentId: sponsor.id,
             type: sponsorConfig.type,
             amount: sponsorImmediate.toFixed(2),
@@ -1591,31 +1597,33 @@ export async function registerRoutes(
             periodDate,
             status: 'pending'
           });
-          
-          await storage.createHoldback({
-            dealId: deal.id,
-            agentId: sponsor.id,
-            commissionId: sponsorComm.id,
-            totalAmount: sponsorDeferred.toFixed(2),
-            releaseDate,
-          });
-          
-          await storage.createNotification({
-            agentId: sponsor.id,
-            type: 'commission_earned',
-            title: 'Sponsor Override Earned!',
-            message: `You earned a $${sponsorImmediate.toFixed(2)} L${sponsorLevel + 1} sponsor override from ${agent!.firstName} ${agent!.lastName}'s deal.`,
-            isRead: false,
-            emailSent: false,
-          });
-          const sponsorCommPrefs = (sponsor.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
-          if (sponsorCommPrefs.emailOnCommissionEarned !== false) {
-            emailService.sendCommissionEarnedEmail(sponsor.email, {
-              firstName: sponsor.firstName,
-              commissionType: `L${sponsorLevel + 1} Sponsor Override`,
-              amount: sponsorImmediate,
-              description: `From ${agent!.firstName} ${agent!.lastName}'s deal (${deal.merchantName})`,
-            }).catch(console.error);
+
+          if (sponsorIsNew) {
+            await storage.createHoldback({
+              dealId: deal.id,
+              agentId: sponsor.id,
+              commissionId: sponsorComm.id,
+              totalAmount: sponsorDeferred.toFixed(2),
+              releaseDate,
+            });
+
+            await storage.createNotification({
+              agentId: sponsor.id,
+              type: 'commission_earned',
+              title: 'Sponsor Override Earned!',
+              message: `You earned a $${sponsorImmediate.toFixed(2)} L${sponsorLevel + 1} sponsor override from ${agent!.firstName} ${agent!.lastName}'s deal.`,
+              isRead: false,
+              emailSent: false,
+            });
+            const sponsorCommPrefs = (sponsor.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+            if (sponsorCommPrefs.emailOnCommissionEarned !== false) {
+              emailService.sendCommissionEarnedEmail(sponsor.email, {
+                firstName: sponsor.firstName,
+                commissionType: `L${sponsorLevel + 1} Sponsor Override`,
+                amount: sponsorImmediate,
+                description: `From ${agent!.firstName} ${agent!.lastName}'s deal (${deal.merchantName})`,
+              }).catch(console.error);
+            }
           }
           
           sponsorLevel++;
@@ -1630,7 +1638,7 @@ export async function registerRoutes(
       const tfcDeferred = tfcAmount * CONFIG.holdback.deferred;
       
       if (fulfillmentAgentId !== agentId || !deal.fulfillmentAgentId) {
-        const tfcComm = await storage.createCommission({
+        const { commission: tfcComm, isNew: tfcIsNew } = await storage.createCommission({
           agentId: fulfillmentAgentId,
           type: 'tfc',
           amount: tfcImmediate.toFixed(2),
@@ -1639,34 +1647,36 @@ export async function registerRoutes(
           periodDate,
           status: 'pending'
         });
-        
-        await storage.createHoldback({
-          dealId: deal.id,
-          agentId: fulfillmentAgentId,
-          commissionId: tfcComm.id,
-          totalAmount: tfcDeferred.toFixed(2),
-          releaseDate,
-        });
-        
-        if (fulfillmentAgentId !== agentId) {
-          await storage.createNotification({
+
+        if (tfcIsNew) {
+          await storage.createHoldback({
+            dealId: deal.id,
             agentId: fulfillmentAgentId,
-            type: 'commission_earned',
-            title: 'Fulfillment Commission Earned!',
-            message: `You earned a $${tfcImmediate.toFixed(2)} TFC from ${deal.merchantName} deal.`,
-            isRead: false,
-            emailSent: false,
+            commissionId: tfcComm.id,
+            totalAmount: tfcDeferred.toFixed(2),
+            releaseDate,
           });
-          const fulfillmentAgent = await storage.getAgent(fulfillmentAgentId);
-          if (fulfillmentAgent) {
-            const fulfillmentCommPrefs = (fulfillmentAgent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
-            if (fulfillmentCommPrefs.emailOnCommissionEarned !== false) {
-              emailService.sendCommissionEarnedEmail(fulfillmentAgent.email, {
-                firstName: fulfillmentAgent.firstName,
-                commissionType: 'Transaction Fulfillment Compensation (TFC)',
-                amount: tfcImmediate,
-                description: `From ${deal.merchantName} deal`,
-              }).catch(console.error);
+
+          if (fulfillmentAgentId !== agentId) {
+            await storage.createNotification({
+              agentId: fulfillmentAgentId,
+              type: 'commission_earned',
+              title: 'Fulfillment Commission Earned!',
+              message: `You earned a $${tfcImmediate.toFixed(2)} TFC from ${deal.merchantName} deal.`,
+              isRead: false,
+              emailSent: false,
+            });
+            const fulfillmentAgent = await storage.getAgent(fulfillmentAgentId);
+            if (fulfillmentAgent) {
+              const fulfillmentCommPrefs = (fulfillmentAgent.emailPreferences as { emailOnCommissionEarned?: boolean } | null) ?? {};
+              if (fulfillmentCommPrefs.emailOnCommissionEarned !== false) {
+                emailService.sendCommissionEarnedEmail(fulfillmentAgent.email, {
+                  firstName: fulfillmentAgent.firstName,
+                  commissionType: 'Transaction Fulfillment Compensation (TFC)',
+                  amount: tfcImmediate,
+                  description: `From ${deal.merchantName} deal`,
+                }).catch(console.error);
+              }
             }
           }
         }

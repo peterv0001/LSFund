@@ -163,7 +163,7 @@ describe("createCommission storage method – idempotency", () => {
   const commissionType = "subscription_commission" as const;
 
   it("inserts and returns a new commission when none exists", async () => {
-    const comm = await storage.createCommission({
+    const { commission: comm, isNew } = await storage.createCommission({
       agentId,
       subscriptionId,
       type: commissionType,
@@ -175,10 +175,11 @@ describe("createCommission storage method – idempotency", () => {
     expect(comm).toBeDefined();
     expect(comm.agentId).toBe(agentId);
     expect(comm.amount).toBe("75.00");
+    expect(isNew).toBe(true);
   });
 
   it("returns the existing commission instead of throwing when a duplicate is attempted", async () => {
-    const first = await storage.createCommission({
+    const { commission: first } = await storage.createCommission({
       agentId,
       subscriptionId,
       type: commissionType,
@@ -187,7 +188,7 @@ describe("createCommission storage method – idempotency", () => {
       status: "pending",
     });
 
-    const duplicate = await storage.createCommission({
+    const { commission: duplicate, isNew } = await storage.createCommission({
       agentId,
       subscriptionId,
       type: commissionType,
@@ -199,6 +200,7 @@ describe("createCommission storage method – idempotency", () => {
     expect(duplicate).toBeDefined();
     expect(duplicate.id).toBe(first.id);
     expect(duplicate.amount).toBe("75.00");
+    expect(isNew).toBe(false);
   });
 
   it("does not create a second record when createCommission is called twice for the same key", async () => {
@@ -337,7 +339,7 @@ describe("createCommission storage method – deal idempotency", () => {
   const commissionType = "generation_override" as const;
 
   it("inserts and returns a new deal commission when none exists", async () => {
-    const comm = await storage.createCommission({
+    const { commission: comm, isNew } = await storage.createCommission({
       agentId,
       dealId,
       type: commissionType,
@@ -349,10 +351,11 @@ describe("createCommission storage method – deal idempotency", () => {
     expect(comm).toBeDefined();
     expect(comm.dealId).toBe(dealId);
     expect(comm.amount).toBe("60.00");
+    expect(isNew).toBe(true);
   });
 
   it("returns the existing deal commission instead of throwing when a duplicate is attempted", async () => {
-    const first = await storage.createCommission({
+    const { commission: first } = await storage.createCommission({
       agentId,
       dealId,
       type: commissionType,
@@ -361,7 +364,7 @@ describe("createCommission storage method – deal idempotency", () => {
       status: "pending",
     });
 
-    const duplicate = await storage.createCommission({
+    const { commission: duplicate, isNew } = await storage.createCommission({
       agentId,
       dealId,
       type: commissionType,
@@ -373,6 +376,7 @@ describe("createCommission storage method – deal idempotency", () => {
     expect(duplicate).toBeDefined();
     expect(duplicate.id).toBe(first.id);
     expect(duplicate.amount).toBe("60.00");
+    expect(isNew).toBe(false);
   });
 
   it("does not create a second record when createCommission is called twice for the same deal key", async () => {

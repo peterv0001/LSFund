@@ -730,7 +730,7 @@ export class DatabaseStorage {
 
   // ==================== COMMISSIONS ====================
 
-  async createCommission(commission: Partial<Commission> & { agentId: number; type: Commission['type']; amount: string; periodDate: string }): Promise<Commission> {
+  async createCommission(commission: Partial<Commission> & { agentId: number; type: Commission['type']; amount: string; periodDate: string }): Promise<{ commission: Commission; isNew: boolean }> {
     const values = {
       agentId: commission.agentId,
       type: commission.type,
@@ -751,7 +751,7 @@ export class DatabaseStorage {
 
     if (commission.subscriptionId != null) {
       const [inserted] = await db.insert(commissions).values(values).onConflictDoNothing().returning();
-      if (inserted) return inserted;
+      if (inserted) return { commission: inserted, isNew: true };
       const [existing] = await db.select().from(commissions).where(
         and(
           eq(commissions.agentId, commission.agentId),
@@ -760,12 +760,12 @@ export class DatabaseStorage {
           eq(commissions.type, commission.type),
         )
       ).limit(1);
-      return existing;
+      return { commission: existing, isNew: false };
     }
 
     if (commission.dealId != null) {
       const [inserted] = await db.insert(commissions).values(values).onConflictDoNothing().returning();
-      if (inserted) return inserted;
+      if (inserted) return { commission: inserted, isNew: true };
       const [existing] = await db.select().from(commissions).where(
         and(
           eq(commissions.agentId, commission.agentId),
@@ -773,11 +773,11 @@ export class DatabaseStorage {
           eq(commissions.type, commission.type),
         )
       ).limit(1);
-      return existing;
+      return { commission: existing, isNew: false };
     }
 
     const [newComm] = await db.insert(commissions).values(values).returning();
-    return newComm;
+    return { commission: newComm, isNew: true };
   }
 
   async findSubscriptionCommission(agentId: number, subscriptionId: number, periodDate: string, type: Commission['type']): Promise<Commission | null> {

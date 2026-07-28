@@ -286,7 +286,7 @@ export function computeMcaV2026(params: McaV2026Params): McaV2026Result {
 // existing behavior.
 
 interface CommissionStorage {
-  createCommission(commission: any): Promise<{ id: number }>;
+  createCommission(commission: any): Promise<{ commission: { id: number }; isNew: boolean }>;
   findSubscriptionCommission(
     agentId: number,
     subscriptionId: number,
