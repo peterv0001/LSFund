@@ -886,6 +886,20 @@ export const migrations: Migration[] = [
     },
   },
   {
+    name: "027_add_agent_timezone",
+    async run(client) {
+      await client.query(`
+        ALTER TABLE agents
+          ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'UTC'
+      `);
+      console.log("[migrations] 027: Added timezone column to agents");
+    },
+    async down(client) {
+      await client.query(`ALTER TABLE agents DROP COLUMN IF EXISTS timezone`);
+      console.log("[migrations] 027 down: Dropped timezone column from agents");
+    },
+  },
+  {
     name: "026_add_no_price_id_billing_status",
     async run(client) {
       // Add the 'no_price_id' value to the billing status enum so subscriptions

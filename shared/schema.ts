@@ -125,6 +125,11 @@ export const agents = pgTable("agents", {
   // Residual good-standing status (governs residual eligibility/decay later).
   residualStatus: residualStatusEnum("residual_status").default("good_standing").notNull(),
 
+  // Agent's local time zone (IANA name, e.g. "America/New_York"). Defaults to
+  // UTC so existing records and agents who haven't set a preference are
+  // unaffected. Used for daily-views sparkline bucketing.
+  timezone: text("timezone").default("UTC").notNull(),
+
   // Timestamps
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

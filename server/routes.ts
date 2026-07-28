@@ -1106,7 +1106,8 @@ export async function registerRoutes(
 
   // Per-page traffic for the agent's shared landing pages (views + leads).
   app.get(api.agents.shareStats.path, requireAuth, async (req, res) => {
-    const stats = await storage.getShareStats(req.user!.id);
+    const agent = await storage.getAgent(req.user!.id);
+    const stats = await storage.getShareStats(req.user!.id, agent?.timezone ?? 'UTC');
     res.json(stats);
   });
 

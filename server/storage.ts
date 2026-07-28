@@ -1540,12 +1540,22 @@ export class DatabaseStorage {
   // each link was opened (views) and how many leads it produced. Lead counts
   // come from leads assigned to the agent whose source matches the page's
   // campaign tag (source = `landing:<campaign>`).
-  async getShareStats(agentId: number): Promise<Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number; dailyViews: number[] }>> {
+  async getShareStats(agentId: number, timezone: string = 'UTC'): Promise<Record<'platform' | 'leaks' | 'scale', { views: number; leads: number; views7d: number; views30d: number; dailyViews: number[] }>> {
     const campaignByPage: Record<'platform' | 'leaks' | 'scale', string> = {
       platform: 'landing:lp-platform-overview',
       leaks: 'landing:lp-platform-leaks',
       scale: 'landing:lp-platform-scale',
     };
+
+    // Validate the supplied timezone name; fall back to UTC if it is not a
+    // recognised IANA identifier so a bad stored value can't crash the query.
+    let tz = 'UTC';
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: timezone });
+      tz = timezone;
+    } catch {
+      tz = 'UTC';
+    }
 
     const now = new Date();
     const since7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -1562,27 +1572,42 @@ export class DatabaseStorage {
       .where(eq(landingPageViews.agentId, agentId))
       .groupBy(landingPageViews.page);
 
-    // Per-day view counts over the trailing 30 days, used to render an inline
-    // sparkline of each shared page's traffic trend.
+    // Per-day view counts over the trailing 30 days, bucketed by the agent's
+    // local calendar day so the sparkline matches the agent's intuition.
     const DAY_BUCKETS = 30;
-    const startOfTodayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const seriesStart = new Date(startOfTodayUTC.getTime() - (DAY_BUCKETS - 1) * 24 * 60 * 60 * 1000);
 
+    // Build the 30 day-key labels (YYYY-MM-DD) in the agent's local timezone.
+    // We step backward from "today" in the agent's timezone so each label
+    // matches what PostgreSQL's AT TIME ZONE bucketing will produce.
+    const localDateFmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const dayKeys: string[] = [];
+    for (let i = DAY_BUCKETS - 1; i >= 0; i--) {
+      dayKeys.push(localDateFmt.format(new Date(now.getTime() - i * 24 * 60 * 60 * 1000)));
+    }
+
+    // The WHERE cutoff is generous: one extra day of padding ensures we never
+    // clip a view that falls on "day 30" in a timezone that is ahead of UTC.
+    const seriesStart = new Date(now.getTime() - (DAY_BUCKETS + 1) * 24 * 60 * 60 * 1000);
+
+    // Embed the timezone as a SQL literal rather than a bind parameter so that
+    // the SELECT and GROUP BY expressions are textually identical; PostgreSQL
+    // requires this when grouping by a non-trivial expression. `tz` has been
+    // validated above via Intl.DateTimeFormat so it is safe to interpolate.
+    const tzLiteral = sql.raw(`'${tz}'`);
     const dailyRows = await db
       .select({
         page: landingPageViews.page,
-        day: sql<string>`to_char((${landingPageViews.createdAt} AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')`,
+        day: sql<string>`to_char((${landingPageViews.createdAt} AT TIME ZONE ${tzLiteral})::date, 'YYYY-MM-DD')`,
         cnt: count(),
       })
       .from(landingPageViews)
       .where(and(eq(landingPageViews.agentId, agentId), gte(landingPageViews.createdAt, seriesStart)))
-      .groupBy(landingPageViews.page, sql`(${landingPageViews.createdAt} AT TIME ZONE 'UTC')::date`);
-
-    const dayKeys: string[] = [];
-    for (let i = 0; i < DAY_BUCKETS; i++) {
-      const d = new Date(seriesStart.getTime() + i * 24 * 60 * 60 * 1000);
-      dayKeys.push(d.toISOString().slice(0, 10));
-    }
+      .groupBy(landingPageViews.page, sql`(${landingPageViews.createdAt} AT TIME ZONE ${tzLiteral})::date`);
 
     const dailyByPage = new Map<string, Map<string, number>>();
     for (const r of dailyRows) {
