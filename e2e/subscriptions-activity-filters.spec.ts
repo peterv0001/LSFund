@@ -164,6 +164,102 @@ test.describe("All Activity timeline — filter dropdowns narrow results", () =>
     expect(countAfter).toBeGreaterThan(0);
   });
 
+  test("filters survive a page reload — both dropdowns and results persist", async ({
+    page,
+  }) => {
+    await openActivityTab(page);
+
+    const timeline = page.getByTestId("all-activity-timeline");
+    await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+
+    // Apply subscription filter (merchant A only).
+    await page.getByTestId("select-filter-subscription").click();
+    await page.getByTestId(`filter-sub-option-${subAId}`).click();
+    await expect(page.getByTestId("select-filter-subscription")).toContainText(MERCHANT_A);
+
+    // Also apply action filter (pause).
+    await page.getByTestId("select-filter-action").click();
+    await page.getByTestId("filter-action-option-pause").click();
+    await expect(page.getByTestId("select-filter-action")).toContainText("Paused");
+
+    // Wait for results to settle; the combo of sub A + pause may yield 0 results
+    // (merchant A was never paused), so capture the URL before checking counts.
+    await page.waitForTimeout(500);
+
+    // Capture the URL that encodes both filters.
+    const filteredUrl = page.url();
+    expect(filteredUrl).toContain("actSub=");
+    expect(filteredUrl).toContain("actAction=pause");
+
+    // Reload the page — tab defaults back to "subscriptions", filters stay in URL.
+    await page.reload();
+
+    // Navigate back to the activity tab.
+    await page.getByTestId("tab-activity").click();
+    await expect(page.getByTestId("activity-filter-bar")).toBeVisible({ timeout: 8000 });
+    await page
+      .getByTestId("all-activity-loading")
+      .waitFor({ state: "hidden", timeout: 8000 })
+      .catch(() => {/* may already be gone */});
+
+    // Both dropdowns must still reflect the pre-reload selections.
+    await expect(page.getByTestId("select-filter-subscription")).toContainText(MERCHANT_A);
+    await expect(page.getByTestId("select-filter-action")).toContainText("Paused");
+
+    // The clear-filters button is visible because filters are active.
+    await expect(page.getByTestId("button-clear-activity-filters")).toBeVisible();
+
+    // The filtered result set must not contain merchant B entries.
+    const timelineOrEmpty = page.locator(
+      '[data-testid="all-activity-timeline"], [data-testid="all-activity-empty"]'
+    );
+    await expect(timelineOrEmpty.first()).toBeVisible({ timeout: 8000 });
+    await expect(timeline.getByText(MERCHANT_B)).toHaveCount(0);
+  });
+
+  test("deep link with actAction=pause pre-selects the action dropdown and filters results", async ({
+    page,
+  }) => {
+    await setupAgent(page); // Note: setupAgent is idempotent (failOnStatusCode: false on register)
+
+    // Navigate directly with the actAction filter in the URL.
+    await page.goto(`/subscriptions?actAction=pause`);
+
+    // Click the activity tab to reveal the timeline.
+    await page.getByTestId("tab-activity").click();
+    await expect(page.getByTestId("activity-filter-bar")).toBeVisible({ timeout: 8000 });
+    await page
+      .getByTestId("all-activity-loading")
+      .waitFor({ state: "hidden", timeout: 8000 })
+      .catch(() => {/* may already be gone */});
+
+    // The action dropdown must reflect "pause" from the deep-linked URL.
+    await expect(page.getByTestId("select-filter-action")).toContainText("Paused");
+
+    // The subscription dropdown remains at its default.
+    await expect(page.getByTestId("select-filter-subscription")).toContainText("All subscriptions");
+
+    // The clear-filters button is visible (at least one filter is active).
+    await expect(page.getByTestId("button-clear-activity-filters")).toBeVisible();
+
+    // Either results appear (all "pause" entries) or the empty-state is shown.
+    // If results exist, no "create" entries may appear (only pause actions).
+    const timeline = page.getByTestId("all-activity-timeline");
+    const emptyState = page.getByTestId("all-activity-empty");
+    const hasResults = await timeline.isVisible().catch(() => false);
+
+    if (hasResults) {
+      await expect(entries(page).first()).toBeVisible({ timeout: 8000 });
+      const descriptions = timeline.locator('[data-testid^="activity-entry-"] p.font-medium');
+      const descCount = await descriptions.count();
+      for (let i = 0; i < descCount; i++) {
+        await expect(descriptions.nth(i)).toContainText(/paus/i);
+      }
+    } else {
+      await expect(emptyState).toBeVisible({ timeout: 8000 });
+    }
+  });
+
   test("Clear filters button restores the full unfiltered list", async ({
     page,
   }) => {
