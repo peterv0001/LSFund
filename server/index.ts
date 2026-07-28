@@ -186,7 +186,7 @@ async function initStripe() {
 
 (async () => {
   await runMigrations();
-  startScheduler();
+  await startScheduler();
   await logSchemaHealth();
   await initStripe();
 

@@ -63,6 +63,7 @@ export function getSchedulerConfigHealth(): {
 
 // Track scheduler timing so the admin System Info panel can report when the
 // expiry checks last ran and when they are next due, without reading logs.
+// lastRunAt is also persisted to platform settings so it survives restarts.
 let lastRunAt: Date | null = null;
 let nextRunAt: Date | null = null;
 
@@ -73,9 +74,31 @@ export function getSchedulerStatus(): { lastRunAt: string | null; nextRunAt: str
   };
 }
 
+// Reads the persisted last-run timestamp from platform settings and populates
+// the in-memory lastRunAt so the System Info panel is not blank right after a
+// restart. Called once during startup before the first scheduler tick.
+export async function initSchedulerStatus(): Promise<void> {
+  try {
+    const stored = await storage.getPlatformSetting('schedulerLastRunAt');
+    if (typeof stored === 'string') {
+      const parsed = new Date(stored);
+      if (!Number.isNaN(parsed.getTime())) {
+        lastRunAt = parsed;
+      }
+    }
+  } catch (err) {
+    // Non-fatal: if the setting is missing we just start blank.
+    console.warn('[Scheduler] Could not read persisted last-run time:', err);
+  }
+}
+
 function recordSchedulerRun(): void {
   lastRunAt = new Date();
   nextRunAt = new Date(lastRunAt.getTime() + EXPIRY_CHECK_INTERVAL_MS);
+  // Persist so the timestamp survives a restart. Fire-and-forget; a failure
+  // only affects the admin display, not the scheduler itself.
+  storage.savePlatformSetting('schedulerLastRunAt', lastRunAt.toISOString())
+    .catch((err) => console.warn('[Scheduler] Could not persist last-run time:', err));
 }
 
 export async function resolveExpiryWarningDays(): Promise<number> {
@@ -287,7 +310,10 @@ export async function recalculateGovernanceIfDue(now: Date = new Date()): Promis
   }
 }
 
-export function startScheduler(): void {
+export async function startScheduler(): Promise<void> {
+  // Restore the persisted last-run time before the first tick so the System
+  // Info panel shows the previous run immediately after a restart.
+  await initSchedulerStatus();
   recordSchedulerRun();
   warnUpcomingExpirations();
   expireOverdueSubscriptions();
