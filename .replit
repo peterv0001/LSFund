@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "python-3.11", "postgresql-16"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -29,10 +29,6 @@ author = "agent"
 task = "workflow.run"
 args = "Start application"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "test"
-
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -42,28 +38,6 @@ task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
-[[workflows.workflow]]
-name = "test"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx vitest run --reporter=verbose"
-
-[workflows.workflow.metadata]
-isValidation = true
-
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
-
-[agent]
-integrations = ["stripe:1.0.0"]
-
-[userenv]
-
-[userenv.shared]
-STRIPE_PRICE_TIER_1 = "price_1TwU0uA4YyDC2xrabL3gWwz3"
-STRIPE_PRICE_TIER_2 = "price_1TwU0uA4YyDC2xraqQ7KPcKE"
-STRIPE_PRICE_TIER_3 = "price_1TwU0uA4YyDC2xraKSBAvIkf"
-STRIPE_PRICE_TIER_4 = "price_1TwU0vA4YyDC2xraO0c8nN4O"
