@@ -276,3 +276,92 @@ describe("Activity log browser back/forward restoration", () => {
     expect(calls[calls.length - 1]).toContain("startDate=2026-08-15");
   });
 });
+describe("Activity log clear filters", () => {
+  it("clicking Clear empties the search box and both date inputs", async () => {
+    renderActivityLog();
+    await advance(0);
+
+    fireEvent.change(screen.getByTestId("input-log-search"), {
+      target: { value: "merchant" },
+    });
+    fireEvent.change(screen.getByTestId("input-log-start-date"), {
+      target: { value: "2026-05-01" },
+    });
+    fireEvent.change(screen.getByTestId("input-log-end-date"), {
+      target: { value: "2026-05-31" },
+    });
+    // Let the debounced filters apply.
+    await advance(300);
+
+    fireEvent.click(screen.getByTestId("button-clear-filters"));
+    await advance(0);
+
+    expect(
+      (screen.getByTestId("input-log-search") as HTMLInputElement).value,
+    ).toBe("");
+    expect(
+      (screen.getByTestId("input-log-start-date") as HTMLInputElement).value,
+    ).toBe("");
+    expect(
+      (screen.getByTestId("input-log-end-date") as HTMLInputElement).value,
+    ).toBe("");
+  });
+
+  it("clicking Clear fires at most one new request with no date or search parameters, even after the debounce window", async () => {
+    renderActivityLog();
+    await advance(0);
+
+    fireEvent.change(screen.getByTestId("input-log-search"), {
+      target: { value: "merchant" },
+    });
+    fireEvent.change(screen.getByTestId("input-log-start-date"), {
+      target: { value: "2026-05-01" },
+    });
+    fireEvent.change(screen.getByTestId("input-log-end-date"), {
+      target: { value: "2026-05-31" },
+    });
+    await advance(300);
+    const baseline = activityCalls().length;
+
+    fireEvent.click(screen.getByTestId("button-clear-filters"));
+    await advance(0);
+
+    // Clearing applies immediately: exactly one new request, no filter params.
+    let calls = activityCalls();
+    expect(calls.length).toBe(baseline + 1);
+    const clearedUrl = calls[calls.length - 1];
+    expect(clearedUrl).not.toContain("startDate=");
+    expect(clearedUrl).not.toContain("endDate=");
+    expect(clearedUrl).not.toContain("search=");
+
+    // The skip-debounce path must prevent stray requests after the 300ms window.
+    await advance(1000);
+    expect(activityCalls().length).toBe(baseline + 1);
+  });
+
+  it("clicking Clear when only the dates are set fires one request without dates and no debounce echoes", async () => {
+    renderActivityLog();
+    await advance(0);
+
+    fireEvent.change(screen.getByTestId("input-log-start-date"), {
+      target: { value: "2026-06-01" },
+    });
+    fireEvent.change(screen.getByTestId("input-log-end-date"), {
+      target: { value: "2026-06-30" },
+    });
+    await advance(300);
+    const baseline = activityCalls().length;
+    expect(calledWithDates(activityCalls()[baseline - 1])).toBe(true);
+
+    fireEvent.click(screen.getByTestId("button-clear-filters"));
+    await advance(1000);
+
+    const calls = activityCalls();
+    expect(calls.length).toBe(baseline + 1);
+    expect(calledWithDates(calls[calls.length - 1])).toBe(false);
+  });
+});
+
+function calledWithDates(url: string): boolean {
+  return url.includes("startDate=") || url.includes("endDate=");
+}
