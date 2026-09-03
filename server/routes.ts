@@ -167,6 +167,20 @@ export async function registerRoutes(
   // === AUTH SETUP ===
   const PgSession = pgSession(session);
   
+  // Fail closed in production if SESSION_SECRET is missing
+  if (!process.env.SESSION_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "SECURITY: SESSION_SECRET environment variable is required in production. " +
+        "Refusing to start with a predictable session secret."
+      );
+    }
+    console.warn(
+      "[SECURITY WARNING] SESSION_SECRET not set. Using development fallback. " +
+      "This is ONLY safe for local development. Set SESSION_SECRET before deploying."
+    );
+  }
+  
   app.use(
     session({
       store: new PgSession({ pool, createTableIfMissing: true }),
